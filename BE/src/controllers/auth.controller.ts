@@ -1,8 +1,9 @@
-import { Controller, Post, Body, Get, Put, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, Put, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, Request  } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../services/auth.service';
 import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, UpdateProfileDto, ChangePasswordDto, ChangeEmailDto } from '../../libs/shared/models/auth.dto';
-
+import { FileInterceptor } from '@nestjs/platform-express';
+import 'multer';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -41,4 +42,13 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Post('change-email')
   changeEmail(@Request() req, @Body() dto: ChangeEmailDto) { return this.authService.verifyAndChangeEmail(req.user.userId, dto); }
+  @Post('profile/avatar')
+  @UseGuards(AuthGuard('jwt')) // Bắt buộc phải đăng nhập mới được up ảnh
+  @UseInterceptors(FileInterceptor('file')) // Cài "chốt chặn" để hứng cái file có tên là 'file'
+  async uploadAvatar(
+    @Request() req, 
+    @UploadedFile() file: Express.Multer.File
+  ) {
+    return this.authService.uploadAvatar(req.user.id, file);
+  }
 }
