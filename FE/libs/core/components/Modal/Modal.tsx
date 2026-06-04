@@ -1,0 +1,36 @@
+"use client";
+
+import type { ReactNode } from "react";
+
+type ModalProps = {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+};
+
+export function Modal({ open, title, onClose, children, footer }: ModalProps) {
+  return (
+    <div
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      className={`fixed inset-0 z-[200] flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
+        open ? "opacity-100" : "pointer-events-none opacity-0"
+      }`}
+    >
+      <div
+        className={`w-[400px] overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
+          open ? "translate-y-0" : "translate-y-3"
+        }`}
+      >
+        <div className="bg-primary px-5 py-4 text-center">
+          <h3 className="text-base font-semibold tracking-wide text-white">{title}</h3>
+        </div>
+        <div className="px-7 py-6">{children}</div>
+        {footer ? <div className="px-7 pb-6">{footer}</div> : null}
+      </div>
+    </div>
+  );
+}

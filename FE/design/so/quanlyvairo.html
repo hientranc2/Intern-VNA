@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vai trò - Quản lý ATVSLD</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f3f4f6; color: #111827; min-height: 100vh; }
+
+    /* ===== TOPBAR ===== */
+    .topbar { height: 52px; background: #1e3a8a; display: flex; align-items: center; padding: 0 16px; gap: 12px; position: fixed; top: 0; left: 0; right: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .topbar-logo { width: 34px; height: 34px; flex-shrink: 0; }
+    .topbar-title { font-size: 13px; font-weight: 600; color: white; flex: 1; }
+    .topbar-menu-btn { background: none; border: none; color: white; cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 5px; }
+    .topbar-menu-btn span { display: block; width: 22px; height: 2px; background: white; border-radius: 2px; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar { width: 220px; background: #1e3a8a; position: fixed; top: 52px; left: 0; bottom: 0; display: flex; flex-direction: column; overflow-y: auto; z-index: 50; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 16px; color: rgba(255,255,255,0.8); cursor: pointer; font-size: 13px; transition: background 0.15s; text-decoration: none; position: relative; user-select: none; }
+    .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; }
+    .nav-arrow { margin-left: auto; transition: transform 0.2s; }
+    .nav-item.open .nav-arrow { transform: rotate(180deg); }
+    .nav-sub { background: rgba(0,0,0,0.18); display: none; }
+    .nav-sub.open { display: block; }
+    .nav-sub .nav-item { padding-left: 36px; font-size: 12.5px; }
+    .nav-sub .nav-item.active { color: white; font-weight: 600; }
+    .nav-sub .nav-item.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #60a5fa; border-radius: 0 2px 2px 0; }
+    .sidebar-spacer { flex: 1; }
+    .user-footer { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: #93c5fd; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1e3a8a; flex-shrink: 0; }
+    .user-name { font-size: 13px; color: white; font-weight: 500; flex: 1; }
+
+    /* ===== MAIN ===== */
+    .main-content { margin-left: 220px; padding-top: 52px; min-height: 100vh; }
+    .page-header { background: white; border-bottom: 1px solid #e5e7eb; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .page-title { font-size: 16px; font-weight: 600; color: #111827; }
+    .btn-add { height: 36px; padding: 0 16px; background: #1d4ed8; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.15s; }
+    .btn-add:hover { background: #1e40af; }
+    .content-area { padding: 20px 24px; }
+
+    /* Selection toolbar */
+    .selection-bar {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 8px 16px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #1d4ed8;
+      font-weight: 500;
+    }
+    .selection-bar.show { display: flex; }
+    .selection-bar span { flex: 1; }
+    .btn-delete-sel {
+      height: 30px;
+      padding: 0 14px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-delete-sel:hover { background: #dc2626; }
+    .btn-close-sel { background: none; border: none; cursor: pointer; color: #6b7280; font-size: 18px; line-height: 1; }
+    .btn-close-sel:hover { color: #374151; }
+
+    /* TABLE */
+    .table-card { background: white; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead th { background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 11px 14px; text-align: left; font-size: 13px; font-weight: 600; color: #374151; }
+    .filter-row th { background: white; border-bottom: 1px solid #e5e7eb; padding: 6px 10px; }
+    .filter-input { width: 100%; height: 30px; border: 1px solid #d1d5db; border-radius: 5px; padding: 0 8px; font-size: 12.5px; outline: none; }
+    .filter-input:focus { border-color: #3b82f6; }
+    tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
+    tbody tr:hover { background: #f9fafb; }
+    tbody tr.selected { background: #eff6ff; }
+    tbody tr:last-child { border-bottom: none; }
+    td { padding: 10px 14px; font-size: 13.5px; color: #374151; vertical-align: middle; }
+    .col-check { width: 44px; }
+    .col-action { width: 48px; text-align: center; }
+    input[type="checkbox"] { width: 15px; height: 15px; accent-color: #1d4ed8; cursor: pointer; }
+
+    .btn-edit { background: none; border: none; cursor: pointer; color: #6b7280; padding: 4px; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+    .btn-edit:hover { color: #1d4ed8; background: #eff6ff; }
+
+    /* Pagination */
+    .pagination-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 12px 16px; border-top: 1px solid #f3f4f6; font-size: 13px; color: #374151; }
+    .page-size-select { height: 30px; border: 1px solid #d1d5db; border-radius: 5px; padding: 0 6px; font-size: 13px; outline: none; cursor: pointer; }
+    .page-info { color: #6b7280; }
+    .page-nav { display: flex; gap: 4px; }
+    .page-btn { width: 28px; height: 28px; background: white; border: 1px solid #d1d5db; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151; transition: background 0.15s; }
+    .page-btn:hover { background: #f3f4f6; }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ===== MODAL ===== */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .modal-overlay.show { opacity: 1; pointer-events: all; }
+    .modal { background: white; border-radius: 10px; width: 600px; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.25); transform: translateY(10px); transition: transform 0.2s; }
+    .modal-overlay.show .modal { transform: translateY(0); }
+    .modal-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e5e7eb; }
+    .modal-header h3 { font-size: 15px; font-weight: 700; color: #111827; }
+    .modal-close { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 20px; line-height: 1; }
+    .modal-close:hover { color: #374151; }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .modal-footer { padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e5e7eb; }
+    .btn-cancel { height: 36px; padding: 0 18px; background: none; border: 1px solid #d1d5db; color: #374151; border-radius: 6px; font-size: 13.5px; cursor: pointer; }
+    .btn-cancel:hover { background: #f9fafb; }
+    .btn-save { height: 36px; padding: 0 20px; background: #1d4ed8; color: white; border: none; border-radius: 6px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+    .btn-save:hover { background: #1e40af; }
+
+    /* Modal form */
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-label { font-size: 12.5px; color: #374151; font-weight: 500; }
+    .form-label span { color: #ef4444; }
+    .form-control { height: 38px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 12px; font-size: 13.5px; color: #111827; outline: none; }
+    .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .form-control:disabled { background: #f9fafb; color: #6b7280; }
+
+    /* Permission tree in modal */
+    .perm-section-title { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 10px; }
+    .perm-table-wrap { border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+    .perm-filter-row th { background: white; border-bottom: 1px solid #e5e7eb; padding: 5px 8px; }
+    .perm-filter { width: 100%; height: 28px; border: 1px solid #d1d5db; border-radius: 4px; padding: 0 7px; font-size: 12px; outline: none; }
+    .perm-filter:focus { border-color: #3b82f6; }
+    .perm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .perm-table thead th { background: #f9fafb; padding: 9px 10px; text-align: left; font-size: 12.5px; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb; }
+    .perm-table tbody tr { border-bottom: 1px solid #f3f4f6; }
+    .perm-table tbody tr:hover { background: #f9fafb; }
+    .perm-table td { padding: 8px 10px; color: #374151; vertical-align: middle; }
+    .perm-group-row td { font-weight: 600; background: #fafafa; }
+    .perm-child-row td:last-child { padding-left: 28px; }
+    .perm-expand { background: none; border: none; cursor: pointer; padding: 0 4px 0 0; color: #6b7280; display: inline-flex; align-items: center; transition: transform 0.2s; }
+    .perm-expand.open { transform: rotate(90deg); }
+    .perm-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 10px; background: #f9fafb; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+    .perm-page-sel { height: 26px; border: 1px solid #d1d5db; border-radius: 4px; padding: 0 5px; font-size: 12px; outline: none; }
+    .perm-page-btn { width: 24px; height: 24px; background: white; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .perm-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <svg class="topbar-logo" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="48" fill="#c0392b" stroke="#f39c12" stroke-width="3"/>
+      <circle cx="50" cy="50" r="38" fill="#c0392b" stroke="#f1c40f" stroke-width="1.5"/>
+      <polygon points="50,18 54,34 70,34 58,44 62,60 50,50 38,60 42,44 30,34 46,34" fill="#f1c40f"/>
+      <path d="M32 85 Q50 92 68 85 Q60 88 50 89 Q40 88 32 85Z" fill="#f1c40f"/>
+    </svg>
+    <span class="topbar-title">Ủy ban nhân dân thành phố Hồ Chí Minh</span>
+    <button class="topbar-menu-btn"><span></span><span></span><span></span></button>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <nav>
+      <a class="nav-item" href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Hướng dẫn sử dụng</a>
+      <a class="nav-item" href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Trang chủ</a>
+      <div class="nav-item open" onclick="toggleMenu('sub-hethong', this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        Hệ thống
+        <svg class="nav-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="nav-sub open" id="sub-hethong">
+        <a class="nav-item" href="quanlyquyen.html">Phân quyền</a>
+        <a class="nav-item active" href="quanlyvairo.html">Vai trò</a>
+        <a class="nav-item" href="quanlynguoidung.html">Tài khoản</a>
+        <a class="nav-item" href="#">Loại hình doanh nghiệp</a>
+        <a class="nav-item" href="#">Ngành nghề kinh doanh</a>
+        <a class="nav-item" href="#">Quản lý doanh nghiệp</a>
+        <a class="nav-item" href="#">Ký báo cáo</a>
+      </div>
+      <div class="nav-item" onclick="toggleMenu('sub-tnld', this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Tai nạn lao động
+        <svg class="nav-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="nav-sub" id="sub-tnld">
+        <a class="nav-item" href="#">Danh mục chung</a>
+        <a class="nav-item" href="#">TNLĐ theo HĐLĐ</a>
+      </div>
+    </nav>
+    <div class="sidebar-spacer"></div>
+    <div class="user-footer">
+      <div class="user-avatar">PT</div>
+      <span class="user-name">Phan Thanh Tùng</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" opacity="0.6"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">Danh sách vai trò</h1>
+      <button class="btn-add" onclick="openModal('add')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Thêm mới
+      </button>
+    </div>
+    <div class="content-area">
+
+      <!-- Selection toolbar -->
+      <div class="selection-bar" id="selectionBar">
+        <span id="selectionCount">0 dữ liệu được chọn</span>
+        <button class="btn-delete-sel" onclick="deleteSelected()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Xoá
+        </button>
+        <button class="btn-close-sel" onclick="clearSelection()">×</button>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="checkAll" onchange="toggleAll(this)" /></th>
+              <th>Mã vai trò</th>
+              <th>Tên vai trò</th>
+              <th class="col-action"></th>
+            </tr>
+            <tr class="filter-row">
+              <th></th>
+              <th><input type="text" class="filter-input" placeholder="" oninput="filterTable()" id="filterMa" /></th>
+              <th><input type="text" class="filter-input" placeholder="" oninput="filterTable()" id="filterTen" /></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div class="pagination-bar">
+          <select class="page-size-select" onchange="changePageSize(this.value)">
+            <option value="10">10</option>
+            <option value="20">20</option>
+          </select>
+          <span class="page-info" id="pageInfo">1 - 3 of 3</span>
+          <div class="page-nav">
+            <button class="page-btn" id="btnPrev" onclick="changePage(-1)" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="page-btn" id="btnNext" onclick="changePage(1)" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== MODAL THÊM / CHỈNH SỬA VAI TRÒ ===== -->
+  <div class="modal-overlay" id="modalRole">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">Thêm mới vai trò</h3>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Mã vai trò <span>*</span></label>
+            <input type="text" class="form-control" id="inputMaVaiTro" placeholder="VD: Role1" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên vai trò <span>*</span></label>
+            <input type="text" class="form-control" id="inputTenVaiTro" placeholder="VD: Manager" />
+          </div>
+        </div>
+
+        <div class="perm-section-title">Danh sách quyền</div>
+        <div class="perm-table-wrap">
+          <table class="perm-table">
+            <thead>
+              <tr>
+                <th style="width:44px;"></th>
+                <th>Mã quyền</th>
+                <th>Tên quyền</th>
+              </tr>
+              <tr class="perm-filter-row">
+                <th></th>
+                <th><input type="text" class="perm-filter" id="permFilterMa" oninput="renderPermTree()" placeholder="" /></th>
+                <th><input type="text" class="perm-filter" id="permFilterTen" oninput="renderPermTree()" placeholder="" /></th>
+              </tr>
+            </thead>
+            <tbody id="permTableBody"></tbody>
+          </table>
+          <div class="perm-pagination">
+            <select class="perm-page-sel" id="permPageSize" onchange="permChangePageSize(this.value)">
+              <option value="10">10</option>
+              <option value="20">20</option>
+            </select>
+            <span id="permPageInfo">1 - 3 of 3</span>
+            <button class="perm-page-btn" id="permBtnPrev" onclick="permChangePage(-1)" disabled>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="perm-page-btn" id="permBtnNext" onclick="permChangePage(1)" disabled>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal()">Hủy bỏ</button>
+        <button class="btn-save" onclick="saveRole()">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== DATA =====
+    let roles = [
+      { id: 1, ma: 'Role1', ten: 'Manager', perms: ['ADMIN_C_DEPARTMENT_VIEW', 'ADMIN_C_DEPARTMENT_CREATE', 'ADMIN_C_DEPARTMENT_UPDATE', 'ADMIN_C_DEPARTMENT_DELETE'] },
+      { id: 2, ma: 'Role2', ten: 'Employee', perms: ['ADMIN_C_DEPARTMENT_VIEW'] },
+      { id: 3, ma: 'Role3', ten: 'CEO', perms: ['ADMIN_C_DEPARTMENT_VIEW', 'ADMIN_C_DEPARTMENT_CREATE', 'ADMIN_C_DEPARTMENT_UPDATE', 'ADMIN_C_DEPARTMENT_DELETE', 'ADMIN_C_ROLE_VIEW', 'ADMIN_C_USER_VIEW'] },
+    ];
+
+    const allPerms = [
+      { id: 'g1', type: 'Group', code: 'ADMIN_G_DEPARTMENT', name: 'Department Group', parentId: null },
+      { id: 'c1', type: 'Component', code: 'ADMIN_C_DEPARTMENT_VIEW', name: 'View Department', parentId: 'g1' },
+      { id: 'c2', type: 'Component', code: 'ADMIN_C_DEPARTMENT_CREATE', name: 'Create Department', parentId: 'g1' },
+      { id: 'c3', type: 'Component', code: 'ADMIN_C_DEPARTMENT_UPDATE', name: 'Update Department', parentId: 'g1' },
+      { id: 'c4', type: 'Component', code: 'ADMIN_C_DEPARTMENT_DELETE', name: 'Delete Department', parentId: 'g1' },
+      { id: 'g2', type: 'Group', code: 'ADMIN_G_ROLE', name: 'Role Group', parentId: null },
+      { id: 'c5', type: 'Component', code: 'ADMIN_C_ROLE_VIEW', name: 'View Role', parentId: 'g2' },
+      { id: 'c6', type: 'Component', code: 'ADMIN_C_ROLE_CREATE', name: 'Create Role', parentId: 'g2' },
+      { id: 'c7', type: 'Component', code: 'ADMIN_C_ROLE_UPDATE', name: 'Update Role', parentId: 'g2' },
+      { id: 'c8', type: 'Component', code: 'ADMIN_C_ROLE_DELETE', name: 'Delete Role', parentId: 'g2' },
+      { id: 'g3', type: 'Group', code: 'ADMIN_G_USER', name: 'User Group', parentId: null },
+      { id: 'c9', type: 'Component', code: 'ADMIN_C_USER_VIEW', name: 'View User', parentId: 'g3' },
+      { id: 'c10', type: 'Component', code: 'ADMIN_C_USER_CREATE', name: 'Create User', parentId: 'g3' },
+      { id: 'c11', type: 'Component', code: 'ADMIN_C_USER_UPDATE', name: 'Update User', parentId: 'g3' },
+      { id: 'c12', type: 'Component', code: 'ADMIN_C_USER_DELETE', name: 'Delete User', parentId: 'g3' },
+    ];
+
+    let selectedIds = new Set();
+    let currentPage = 1;
+    let pageSize = 10;
+    let editingId = null;
+    let permExpanded = { g1: true, g2: true, g3: true };
+    let permPage = 1;
+    let permPageSize = 10;
+    let checkedPerms = new Set();
+
+    // ===== MAIN TABLE =====
+    function getFilteredRoles() {
+      const ma = document.getElementById('filterMa').value.toLowerCase();
+      const ten = document.getElementById('filterTen').value.toLowerCase();
+      return roles.filter(r =>
+        r.ma.toLowerCase().includes(ma) &&
+        r.ten.toLowerCase().includes(ten)
+      );
+    }
+
+    function renderTable() {
+      const filtered = getFilteredRoles();
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const paged = filtered.slice(start, end);
+
+      document.getElementById('pageInfo').textContent =
+        filtered.length === 0 ? '0 - 0 of 0' :
+        `${start + 1} - ${Math.min(end, filtered.length)} of ${filtered.length}`;
+      document.getElementById('btnPrev').disabled = currentPage <= 1;
+      document.getElementById('btnNext').disabled = end >= filtered.length;
+
+      const allChecked = paged.length > 0 && paged.every(r => selectedIds.has(r.id));
+      document.getElementById('checkAll').checked = allChecked;
+
+      document.getElementById('tableBody').innerHTML = paged.map(r => `
+        <tr class="${selectedIds.has(r.id) ? 'selected' : ''}">
+          <td class="col-check">
+            <input type="checkbox" ${selectedIds.has(r.id) ? 'checked' : ''} onchange="toggleRow(${r.id}, this)" />
+          </td>
+          <td>${r.ma}</td>
+          <td>${r.ten}</td>
+          <td class="col-action">
+            <button class="btn-edit" onclick="openModal('edit', ${r.id})" title="Chỉnh sửa">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+      updateSelectionBar();
+    }
+
+    function filterTable() { currentPage = 1; renderTable(); }
+    function changePage(dir) { currentPage += dir; renderTable(); }
+    function changePageSize(val) { pageSize = parseInt(val); currentPage = 1; renderTable(); }
+
+    function toggleRow(id, cb) {
+      if (cb.checked) selectedIds.add(id);
+      else selectedIds.delete(id);
+      renderTable();
+    }
+
+    function toggleAll(cb) {
+      const filtered = getFilteredRoles();
+      const start = (currentPage - 1) * pageSize;
+      const paged = filtered.slice(start, start + pageSize);
+      paged.forEach(r => cb.checked ? selectedIds.add(r.id) : selectedIds.delete(r.id));
+      renderTable();
+    }
+
+    function updateSelectionBar() {
+      const bar = document.getElementById('selectionBar');
+      const count = selectedIds.size;
+      bar.classList.toggle('show', count > 0);
+      document.getElementById('selectionCount').textContent = `${count} dữ liệu được chọn`;
+    }
+
+    function clearSelection() {
+      selectedIds.clear();
+      renderTable();
+    }
+
+    function deleteSelected() {
+      if (!confirm(`Xoá ${selectedIds.size} vai trò đã chọn?`)) return;
+      roles = roles.filter(r => !selectedIds.has(r.id));
+      selectedIds.clear();
+      currentPage = 1;
+      renderTable();
+    }
+
+    // ===== MODAL =====
+    function openModal(mode, id) {
+      editingId = id || null;
+      document.getElementById('permFilterMa').value = '';
+      document.getElementById('permFilterTen').value = '';
+      permPage = 1;
+      permExpanded = { g1: true, g2: true, g3: true };
+
+      if (mode === 'edit') {
+        const role = roles.find(r => r.id === id);
+        document.getElementById('modalTitle').textContent = 'Chỉnh sửa vai trò';
+        document.getElementById('inputMaVaiTro').value = role.ma;
+        document.getElementById('inputMaVaiTro').disabled = true;
+        document.getElementById('inputTenVaiTro').value = role.ten;
+        checkedPerms = new Set(role.perms);
+      } else {
+        document.getElementById('modalTitle').textContent = 'Thêm mới vai trò';
+        document.getElementById('inputMaVaiTro').value = '';
+        document.getElementById('inputMaVaiTro').disabled = false;
+        document.getElementById('inputTenVaiTro').value = '';
+        checkedPerms = new Set();
+      }
+
+      renderPermTree();
+      document.getElementById('modalRole').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('modalRole').classList.remove('show');
+    }
+
+    function saveRole() {
+      const ma = document.getElementById('inputMaVaiTro').value.trim();
+      const ten = document.getElementById('inputTenVaiTro').value.trim();
+      if (!ma || !ten) { alert('Vui lòng nhập đầy đủ mã và tên vai trò'); return; }
+
+      if (editingId) {
+        const role = roles.find(r => r.id === editingId);
+        role.ten = ten;
+        role.perms = [...checkedPerms];
+      } else {
+        if (roles.find(r => r.ma === ma)) { alert('Mã vai trò đã tồn tại'); return; }
+        roles.push({ id: Date.now(), ma, ten, perms: [...checkedPerms] });
+      }
+      closeModal();
+      renderTable();
+    }
+
+    // ===== PERM TREE IN MODAL =====
+    function getPermRows() {
+      const fMa = document.getElementById('permFilterMa').value.toLowerCase();
+      const fTen = document.getElementById('permFilterTen').value.toLowerCase();
+      const hasFilter = fMa || fTen;
+      const rows = [];
+      const groups = allPerms.filter(p => p.parentId === null);
+      groups.forEach(g => {
+        const children = allPerms.filter(p => p.parentId === g.id);
+        const childMatch = children.some(c =>
+          c.code.toLowerCase().includes(fMa) && c.name.toLowerCase().includes(fTen)
+        );
+        const groupMatch = g.code.toLowerCase().includes(fMa) && g.name.toLowerCase().includes(fTen);
+        if (!hasFilter || groupMatch || childMatch) {
+          rows.push({ ...g, isGroup: true });
+          if (permExpanded[g.id] || hasFilter) {
+            children.forEach(c => {
+              const cm = c.code.toLowerCase().includes(fMa) && c.name.toLowerCase().includes(fTen);
+              if (!hasFilter || cm) rows.push({ ...c, isGroup: false });
+            });
+          }
+        }
+      });
+      return rows;
+    }
+
+    function renderPermTree() {
+      const rows = getPermRows();
+      const start = (permPage - 1) * permPageSize;
+      const end = start + permPageSize;
+      const paged = rows.slice(start, end);
+
+      document.getElementById('permPageInfo').textContent =
+        rows.length === 0 ? '0 - 0 of 0' :
+        `${start + 1} - ${Math.min(end, rows.length)} of ${rows.length}`;
+      document.getElementById('permBtnPrev').disabled = permPage <= 1;
+      document.getElementById('permBtnNext').disabled = end >= rows.length;
+
+      document.getElementById('permTableBody').innerHTML = paged.map(row => {
+        if (row.isGroup) {
+          const children = allPerms.filter(p => p.parentId === row.id);
+          const allChecked = children.length > 0 && children.every(c => checkedPerms.has(c.code));
+          const someChecked = children.some(c => checkedPerms.has(c.code));
+          const isOpen = permExpanded[row.id];
+          return `<tr class="perm-group-row">
+            <td>
+              <input type="checkbox" ${allChecked ? 'checked' : ''} ${someChecked && !allChecked ? 'data-indeterminate="true"' : ''}
+                onchange="toggleGroupPerm('${row.id}', this)" style="accent-color:#1d4ed8;width:14px;height:14px;" />
+            </td>
+            <td>
+              <button class="perm-expand ${isOpen ? 'open' : ''}" onclick="togglePermGroup('${row.id}')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+              ${row.code}
+            </td>
+            <td>${row.name}</td>
+          </tr>`;
+        } else {
+          return `<tr class="perm-child-row">
+            <td>
+              <input type="checkbox" ${checkedPerms.has(row.code) ? 'checked' : ''}
+                onchange="toggleSinglePerm('${row.code}', '${row.parentId}', this)" style="accent-color:#1d4ed8;width:14px;height:14px;" />
+            </td>
+            <td style="padding-left:28px;">${row.code}</td>
+            <td>${row.name}</td>
+          </tr>`;
+        }
+      }).join('');
+
+      // Set indeterminate state
+      document.querySelectorAll('[data-indeterminate="true"]').forEach(cb => { cb.indeterminate = true; });
+    }
+
+    function togglePermGroup(groupId) {
+      permExpanded[groupId] = !permExpanded[groupId];
+      renderPermTree();
+    }
+
+    function toggleGroupPerm(groupId, cb) {
+      const children = allPerms.filter(p => p.parentId === groupId);
+      children.forEach(c => cb.checked ? checkedPerms.add(c.code) : checkedPerms.delete(c.code));
+      renderPermTree();
+    }
+
+    function toggleSinglePerm(code, parentId, cb) {
+      cb.checked ? checkedPerms.add(code) : checkedPerms.delete(code);
+      renderPermTree();
+    }
+
+    function permChangePage(dir) { permPage += dir; renderPermTree(); }
+    function permChangePageSize(val) { permPageSize = parseInt(val); permPage = 1; renderPermTree(); }
+
+    // ===== SIDEBAR TOGGLE =====
+    function toggleMenu(id, el) {
+      const sub = document.getElementById(id);
+      sub.classList.toggle('open');
+      el.classList.toggle('open');
+    }
+
+    // ===== INIT =====
+    document.getElementById('modalRole').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>

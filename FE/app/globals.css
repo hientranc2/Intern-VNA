@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3f4f6;
+  --foreground: #111827;
+  --font-base: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-base);
+
+  /* Design tokens cho dự án ATVSLD */
+  --color-primary: #1d4ed8;
+  --color-dark: #1e3a8a;
+  --color-medium: #2563eb;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-body: #f3f4f6;
+  --color-card: #ffffff;
+  --color-ink: #111827;
+  --color-muted: #6b7280;
+  --color-line: #d1d5db;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-base);
+  margin: 0;
+}
