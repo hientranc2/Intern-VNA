@@ -1,0 +1,446 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
+import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
+import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
+import {
+  INITIAL_ACCIDENT_REPORTS,
+  DETAIL_REPORT_ROWS,
+  EMPTY_VALS,
+  TONGHOP_I_ROWS,
+  TONGHOP_II_GROUPS,
+  type AccidentReport,
+} from "@/libs/tts/accident-report/accidentReportData";
+import { getToken, clearToken } from "@/libs/tts/auth/authApi";
+
+type ViewMode = "list" | "detail" | "tonghop";
+
+const FILTER_INPUT_CLASS =
+  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
+const SELECT_TOP_CLASS =
+  "h-9 min-w-[200px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none";
+
+const CT_TH = "border border-line bg-[#f9fafb] px-2 py-1.5 text-center align-middle font-semibold text-[#374151]";
+const CT_TD = "border border-line px-2 py-1.5 text-center align-middle text-[#374151]";
+
+export default function AccidentReportPage() {
+  const router = useRouter();
+
+  const [view, setView] = useState<ViewMode>("list");
+  const [reports] = useState<AccidentReport[]>(INITIAL_ACCIDENT_REPORTS);
+
+  const [fTen, setFTen] = useState("");
+  const [fMST, setFMST] = useState("");
+  const [fKy, setFKy] = useState("");
+  const [fTT, setFTT] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    if (!getToken()) router.replace("/login");
+  }, [router]);
+
+  const handleLogout = () => {
+    clearToken();
+    router.replace("/login");
+  };
+
+  const filtered = useMemo(() => {
+    return reports.filter(
+      (r) =>
+        r.ten.toLowerCase().includes(fTen.toLowerCase()) &&
+        r.mst.toLowerCase().includes(fMST.toLowerCase()) &&
+        (!fKy || r.ky === fKy) &&
+        (!fTT || r.tt === fTT),
+    );
+  }, [reports, fTen, fMST, fKy, fTT]);
+
+  const total = filtered.length;
+  const lastPage = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(currentPage, lastPage);
+  const start = (page - 1) * pageSize;
+  const end = Math.min(start + pageSize, total);
+  const paged = filtered.slice(start, end);
+
+  return (
+    <div className="min-h-screen bg-body text-ink">
+      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
+      <AppSidebar active="TNLĐ theo HĐLĐ" onLogout={handleLogout} />
+
+      {view === "list" ? (
+        <main className="ml-[220px] pt-[52px]">
+          <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+            <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ Tai nạn lao động</h1>
+            <div className="flex items-center gap-2.5">
+              <select className={SELECT_TOP_CLASS.replace("min-w-[200px]", "min-w-[100px]") + " h-[34px]"} defaultValue="2023">
+                <option>2022</option>
+                <option>2023</option>
+                <option>2024</option>
+              </select>
+              <button type="button" onClick={() => setView("tonghop")} className="h-9 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
+                Báo cáo tổng hợp
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-3 border-b border-[#e5e7eb] bg-white px-6 py-3">
+            <select className={SELECT_TOP_CLASS} defaultValue="Hồ Chí Minh">
+              <option>Hồ Chí Minh</option>
+              <option>Hà Nội</option>
+            </select>
+            <select className={SELECT_TOP_CLASS} defaultValue="Tất cả">
+              <option>Tất cả</option>
+              <option>Phường Bình Thọ</option>
+              <option>Phường Tân Định</option>
+            </select>
+          </div>
+
+          <div className="px-6 py-5">
+            <div className="overflow-hidden rounded-lg bg-white shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+              <table className="w-full border-collapse text-[13.5px]">
+                <thead>
+                  <tr>
+                    <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
+                    <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Thao tác</th>
+                    <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Tên doanh nghiệp</th>
+                    <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Mã số thuế</th>
+                    <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Kỳ báo cáo</th>
+                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Trạng thái</th>
+                  </tr>
+                  <tr>
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                      <input className={FILTER_INPUT_CLASS} value={fTen} onChange={(e) => { setFTen(e.target.value); setCurrentPage(1); }} />
+                    </th>
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                      <input className={FILTER_INPUT_CLASS} value={fMST} onChange={(e) => { setFMST(e.target.value); setCurrentPage(1); }} />
+                    </th>
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fKy} onChange={(e) => { setFKy(e.target.value); setCurrentPage(1); }}>
+                        <option value="">Tất cả</option>
+                        <option>6 tháng</option>
+                        <option>Cả năm</option>
+                      </select>
+                    </th>
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fTT} onChange={(e) => { setFTT(e.target.value); setCurrentPage(1); }}>
+                        <option value="">Tất cả</option>
+                        <option>Đang báo cáo</option>
+                        <option>Đã tiếp nhận</option>
+                      </select>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.length === 0 ? (
+                    <tr><td colSpan={6} className="px-3.5 py-8 text-center text-[13.5px] text-muted">Không có dữ liệu</td></tr>
+                  ) : (
+                    paged.map((r) => (
+                      <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
+                        <td className="px-3.5 py-2.5"><TriCheckbox checked={false} onChange={() => {}} /></td>
+                        <td className="px-3.5 py-2.5">
+                          <button type="button" onClick={() => setView("detail")} title="Xem" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </button>
+                        </td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">{r.mst}</td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
+                        <td className="px-3.5 py-2.5">
+                          <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
+                            <span className={`inline-block h-2 w-2 rounded-full ${r.tt === "Đang báo cáo" ? "bg-[#d1d5db]" : "bg-[#3b82f6]"}`} />
+                            {r.tt}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#374151]">
+                <select className="h-[30px] cursor-pointer rounded-[5px] border border-line px-1.5 text-[13px] outline-none" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                </select>
+                <span className="text-[#6b7280]">{total === 0 ? "0 of 0" : `${start + 1} - ${end} of ${total}`}</span>
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+                  </button>
+                  <button type="button" onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))} disabled={end >= total} className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      ) : null}
+
+      {view === "detail" ? (
+        <main className="ml-[220px] pt-[52px]">
+          <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+            <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ Tai nạn lao động</h1>
+            <div className="flex items-center gap-2.5">
+              <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151]">Huỷ bỏ</button>
+              <button type="button" className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 6 2 18 2 18 9" />
+                  <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+                  <rect x="6" y="14" width="12" height="8" />
+                </svg>
+                In báo cáo
+              </button>
+            </div>
+          </div>
+          <div className="px-6 py-5">
+            <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+              <div className="mb-1.5 text-[15px] font-bold text-ink">Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo: 6 tháng năm 2023</div>
+              <p className="mb-4 text-[13px] text-muted">
+                **Vui lòng đính kèm báo cáo TNLĐ có dấu mộc công ty: <a href="#" className="text-primary">baocaoTNLD.pdf</a>
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr>
+                      <th className={`${CT_TH} min-w-[220px] text-left`} rowSpan={4}>Tên chỉ tiêu thống kê</th>
+                      <th className={`${CT_TH} w-[60px]`} rowSpan={4}>Mã số</th>
+                      <th className={CT_TH} colSpan={11}>Phân loại TNLĐ theo mức độ thương tật</th>
+                    </tr>
+                    <tr>
+                      <th className={CT_TH} colSpan={3}>Số vụ (Vụ)</th>
+                      <th className={CT_TH} colSpan={8}>Số người bị nạn (Người)</th>
+                    </tr>
+                    <tr>
+                      <th className={CT_TH} rowSpan={2}>Tổng số</th>
+                      <th className={CT_TH} rowSpan={2}>Số vụ có người chết</th>
+                      <th className={CT_TH} rowSpan={2}>Số vụ có từ 2 người bị nạn trở lên</th>
+                      <th className={CT_TH} colSpan={2}>Tổng số</th>
+                      <th className={CT_TH} colSpan={2}>Số LĐ nữ</th>
+                      <th className={CT_TH} colSpan={2}>Số người bị chết</th>
+                      <th className={CT_TH} colSpan={2}>Số người bị thương nặng</th>
+                    </tr>
+                    <tr>
+                      <th className={CT_TH}>Tổng số</th>
+                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH}>Tổng số</th>
+                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH}>Tổng số</th>
+                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH}>Tổng số</th>
+                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DETAIL_REPORT_ROWS.map((row, idx) => {
+                      if (row.kind === "sub") {
+                        return (
+                          <tr key={idx}>
+                            <td className={`${CT_TD} text-left ${row.bold ? "font-semibold" : "italic"}`} colSpan={13} style={{ paddingLeft: row.bold ? 20 : 32 }}>
+                              {row.label}
+                            </td>
+                          </tr>
+                        );
+                      }
+                      const vals = row.vals && row.vals.length ? row.vals : EMPTY_VALS.map(() => "");
+                      if (row.kind === "section") {
+                        return (
+                          <tr key={idx} className="bg-[#f9fafb]">
+                            <td className={`${CT_TD} text-left font-bold`}>{row.label}</td>
+                            <td className={CT_TD} />
+                            {vals.map((v, i) => (
+                              <td key={i} className={`${CT_TD} font-bold`}>{v}</td>
+                            ))}
+                          </tr>
+                        );
+                      }
+                      return (
+                        <tr key={idx}>
+                          <td className={`${CT_TD} text-left`}>{row.label}</td>
+                          <td className={CT_TD}>{row.ma || ""}</td>
+                          {vals.map((v, i) => (
+                            <td key={i} className={CT_TD}>{v}</td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mb-3 mt-5 text-[15px] font-bold text-ink">II. Thiệt hại do tai nạn lao động</div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr>
+                      <th className={`${CT_TH} min-w-[300px] text-left`} rowSpan={3}>Tổng số ngày nghỉ vì tai nạn lao động (kể cả ngày nghỉ chế độ)</th>
+                      <th className={CT_TH} colSpan={4}>Tổng số ngày nghỉ vì TNLĐ (1.000đ)</th>
+                      <th className={CT_TH} rowSpan={3}>Thiệt hại tài sản (1.000đ)</th>
+                    </tr>
+                    <tr>
+                      <th className={CT_TH} rowSpan={2}>Tổng số</th>
+                      <th className={CT_TH} colSpan={3}>Khoảng chi cụ thể của cơ sở</th>
+                    </tr>
+                    <tr>
+                      <th className={CT_TH}>Y tế</th>
+                      <th className={CT_TH}>Trả lương trong thời gian điều trị</th>
+                      <th className={CT_TH}>Bồi thường trợ cấp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className={CT_TD}>20</td>
+                      <td className={CT_TD}>6.000.000</td>
+                      <td className={CT_TD}>2.000.000</td>
+                      <td className={CT_TD}>2.000.000</td>
+                      <td className={CT_TD}>2.000.000</td>
+                      <td className={CT_TD}>20.000.000</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </main>
+      ) : null}
+
+      {view === "tonghop" ? (
+        <main className="ml-[220px] pt-[52px]">
+          <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+            <h1 className="text-base font-semibold text-ink">Báo cáo tổng hợp</h1>
+            <div className="flex items-center gap-2.5">
+              <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151]">Huỷ bỏ</button>
+              <button type="button" className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f3f4f6]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Xuất dữ liệu
+              </button>
+            </div>
+          </div>
+          <div className="px-6 py-5">
+            <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+              <div className="mb-4 text-[15px] font-bold text-ink">I. Thông tin tổng quan:</div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr>
+                      <th className={`${CT_TH} min-w-[180px] text-left`} rowSpan={3}>Loại hình cơ sở</th>
+                      <th className={`${CT_TH} w-[50px]`} rowSpan={3}>Mã số</th>
+                      <th className={CT_TH} colSpan={2}>Cơ sở</th>
+                      <th className={CT_TH} colSpan={2}>Lực lượng lao động</th>
+                      <th className={CT_TH} colSpan={3}>Tổng số tai nạn lao động</th>
+                      <th className={CT_TH} colSpan={2}>Tần suất tai nạn lao động</th>
+                      <th className={`${CT_TH} min-w-[80px]`} rowSpan={3}>Ghi chú</th>
+                    </tr>
+                    <tr>
+                      <th className={CT_TH} rowSpan={2}>Tổng số</th>
+                      <th className={CT_TH} rowSpan={2}>Số cơ sở tham gia</th>
+                      <th className={CT_TH} rowSpan={2}>Tổng số lao động</th>
+                      <th className={CT_TH} rowSpan={2}>Số lđ có tham gia bảo hiểm</th>
+                      <th className={CT_TH} colSpan={3}>Số người bị TNLĐ</th>
+                      <th className={CT_TH} rowSpan={2}>KTNLĐ</th>
+                      <th className={CT_TH} rowSpan={2}>KCNN</th>
+                    </tr>
+                    <tr>
+                      <th className={CT_TH}>Tổng số</th>
+                      <th className={CT_TH}>Số người bị chết</th>
+                      <th className={CT_TH}>Số người bị thương nặng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="bg-[#f9fafb]">
+                      <td className={`${CT_TD} text-left font-bold`}>Tổng số</td>
+                      <td className={CT_TD} />
+                      {Array.from({ length: 9 }).map((_, i) => (
+                        <td key={i} className={CT_TD}>2</td>
+                      ))}
+                      <td className={CT_TD} />
+                    </tr>
+                    {TONGHOP_I_ROWS.map((name) => (
+                      <tr key={name}>
+                        <td className={`${CT_TD} text-left`} style={{ paddingLeft: 16 }}>{name}</td>
+                        <td className={CT_TD} />
+                        {Array.from({ length: 9 }).map((_, i) => (
+                          <td key={i} className={CT_TD}>2</td>
+                        ))}
+                        <td className={CT_TD} />
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+              <div className="mb-4 text-[15px] font-bold text-ink">II. Phân loại TNLĐ:</div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr>
+                      <th className={`${CT_TH} min-w-[140px] text-left`} rowSpan={3}>Tên chỉ tiêu thống kê</th>
+                      <th className={`${CT_TH} w-[50px]`} rowSpan={3}>Mã số</th>
+                      <th className={CT_TH} colSpan={7}>Phân loại TNLĐ theo mức độ thương tật</th>
+                      <th className={CT_TH} colSpan={6}>Theo mức độ thương tật</th>
+                    </tr>
+                    <tr>
+                      <th className={CT_TH} colSpan={3}>Số vụ TNLĐ</th>
+                      <th className={CT_TH} colSpan={4}>Số người bị nạn (Người)</th>
+                      <th className={CT_TH} rowSpan={2}>Tổng số ngày nghỉ vì TNLĐ</th>
+                      <th className={CT_TH} rowSpan={2}>Tổng số tiền</th>
+                      <th className={CT_TH} colSpan={3}>Tổng số ngày nghỉ vì TNLĐ</th>
+                      <th className={CT_TH} rowSpan={2}>Thiệt hại tài sản (1.000 đ)</th>
+                    </tr>
+                    <tr>
+                      <th className={CT_TH}>Tổng số</th>
+                      <th className={CT_TH}>Số vụ có người chết</th>
+                      <th className={CT_TH}>Số vụ có từ 2 người bị nạn trở lên</th>
+                      <th className={CT_TH}>Tổng số</th>
+                      <th className={CT_TH}>Số LĐ nữ</th>
+                      <th className={CT_TH}>Số người bị chết</th>
+                      <th className={CT_TH}>Số người bị thương nặng</th>
+                      <th className={CT_TH}>Y Tế</th>
+                      <th className={CT_TH}>Trả lương theo thời gian điều trị</th>
+                      <th className={CT_TH}>Bồi thường/ Trợ cấp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="bg-[#f9fafb]">
+                      <td className={`${CT_TD} text-left font-bold`}>Tổng số</td>
+                      <td className={CT_TD} />
+                      {Array.from({ length: 13 }).map((_, i) => (
+                        <td key={i} className={CT_TD}>2</td>
+                      ))}
+                    </tr>
+                    {TONGHOP_II_GROUPS.map((group) =>
+                      Array.from({ length: group.count }).map((_, index) => (
+                        <tr key={`${group.category}-${index}`}>
+                          {index === 0 ? (
+                            <td className={`${CT_TD} text-left font-semibold align-middle`} rowSpan={group.count}>{group.category}</td>
+                          ) : null}
+                          <td className={CT_TD}>1</td>
+                          {Array.from({ length: 13 }).map((_, i) => (
+                            <td key={i} className={CT_TD}>2</td>
+                          ))}
+                        </tr>
+                      )),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </main>
+      ) : null}
+    </div>
+  );
+}
