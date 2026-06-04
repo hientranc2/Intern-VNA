@@ -37,16 +37,10 @@
       gap: 6px;
     }
 
-    .logo-svg {
-      width: 70px;
-      height: 70px;
-    }
-
-    .logo-name {
-      font-size: 16px;
-      font-weight: 700;
-      color: #b8860b;
-      letter-spacing: 2px;
+    .logo-img {
+      width: 132px;
+      height: auto;
+      display: block;
     }
 
     /* Email body */
@@ -128,45 +122,7 @@
     <!-- Header: VNA Group Logo -->
     <div class="email-header">
       <div class="logo-wrapper">
-        <!-- VNA Logo SVG -->
-        <svg class="logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <!-- Gold background shield/badge -->
-          <defs>
-            <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#f5d060;stop-opacity:1"/>
-              <stop offset="50%" style="stop-color:#c8960c;stop-opacity:1"/>
-              <stop offset="100%" style="stop-color:#f5d060;stop-opacity:1"/>
-            </linearGradient>
-          </defs>
-
-          <!-- V shape left -->
-          <polygon points="10,15 28,15 50,65 28,65" fill="url(#goldGrad)"/>
-          <polygon points="28,15 46,15 50,65" fill="url(#goldGrad)"/>
-
-          <!-- A shape middle -->
-          <polygon points="38,15 62,15 72,65 55,65 50,45 45,65 28,65" fill="url(#goldGrad)"/>
-          <!-- A crossbar -->
-          <rect x="40" y="42" width="20" height="5" fill="white"/>
-
-          <!-- N shape right -->
-          <polygon points="60,15 78,15 78,65 60,65 60,15" fill="url(#goldGrad)"/>
-          <polygon points="60,15 78,15 60,65" fill="url(#goldGrad)"/>
-          <rect x="60" y="15" width="8" height="50" fill="url(#goldGrad)"/>
-          <rect x="70" y="15" width="8" height="50" fill="url(#goldGrad)"/>
-          <polygon points="60,15 78,65 78,15" fill="url(#goldGrad)"/>
-
-          <!-- Simplified clean VNA letters -->
-          <!-- V -->
-          <polygon points="8,12 20,12 30,58 20,58" fill="url(#goldGrad)" opacity="0"/>
-
-          <!-- Clean VNA -->
-          <text x="50" y="62" text-anchor="middle" font-family="serif" font-weight="900" font-size="44" fill="url(#goldGrad)" letter-spacing="-2">VNA</text>
-
-          <!-- Decorative lines below -->
-          <line x1="15" y1="72" x2="85" y2="72" stroke="url(#goldGrad)" stroke-width="2"/>
-          <line x1="25" y1="76" x2="75" y2="76" stroke="url(#goldGrad)" stroke-width="1"/>
-        </svg>
-        <span class="logo-name">VNA GROUP</span>
+        <img class="logo-img" src="/logo.png" alt="VNA GROUP" />
       </div>
     </div>
 

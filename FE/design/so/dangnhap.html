@@ -17,7 +17,7 @@
     /* ===== LEFT PANEL ===== */
     .left-panel {
       flex: 1;
-      /* FIX: gradient nhạt hơn, ít saturated hơn, khớp với thiết kế */
+      /* gradient nhạt, ít saturated, khớp với nền minh hoạ login.png */
       background: linear-gradient(145deg, #f0f8ff 0%, #ddf0fa 30%, #b8dcf5 60%, #8ec8e8 100%);
       display: flex;
       align-items: center;
@@ -37,187 +37,17 @@
       transform: translate(-50%, -50%);
     }
 
-    .illustration {
+    /* Ảnh minh hoạ đăng nhập (thay cho illustration dựng tay trước đây) */
+    .illustration-img {
       position: relative;
-      width: 420px;
-      height: 390px;
-    }
-
-    /* ── Laptop lid / screen ── */
-    .laptop-screen {
-      position: absolute;
-      top: 15px;
-      left: 55px;
-      width: 290px;
-      height: 165px;
-      background: #1a56db;
-      border-radius: 12px 12px 0 0;
-      box-shadow: 0 10px 30px rgba(26,86,219,0.4);
-      overflow: hidden;
-    }
-
-    .laptop-screen::before {
-      content: '';
-      position: absolute;
-      inset: 8px;
-      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%);
-      border-radius: 6px;
-    }
-
-    /* Checklist on screen */
-    .checklist {
-      position: absolute;
-      top: 22px;
-      left: 20px;
-      right: 20px;
-      z-index: 2;
-    }
-
-    .check-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .check-bar {
-      height: 10px;
-      border-radius: 5px;
-      background: rgba(255,255,255,0.22);
-      flex: 1;
-    }
-
-    .check-bar.done { background: rgba(255,255,255,0.75); }
-
-    .check-icon {
-      width: 18px;
-      height: 18px;
-      background: #22c55e;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .check-icon svg { width: 10px; height: 10px; }
-
-    /* ── Laptop hinge ── */
-    .laptop-hinge {
-      position: absolute;
-      top: 178px;
-      left: 48px;
-      width: 304px;
-      height: 11px;
-      background: linear-gradient(180deg, #1245b0 0%, #0e3080 100%);
-    }
-
-    /* ── Laptop keyboard body ── */
-    .laptop-body {
-      position: absolute;
-      top: 189px;
-      left: 40px;
-      width: 320px;
-      height: 118px;
-      background: linear-gradient(180deg, #1a56db 0%, #1040a8 100%);
-      border-radius: 0 0 10px 10px;
-      box-shadow: 0 8px 24px rgba(26,86,219,0.35);
-      padding: 8px 14px 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .keyboard-area {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      flex: 1;
-    }
-
-    .key-row {
-      display: flex;
-      gap: 2px;
-      justify-content: center;
-    }
-
-    .key {
-      width: 20px;
-      height: 12px;
-      background: rgba(255,255,255,0.17);
-      border-radius: 2px;
-      box-shadow: 0 1px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
-      flex-shrink: 0;
-    }
-
-    .key-wide  { width: 30px; }
-    .key-xwide { width: 44px; }
-    .key-space { width: 90px; }
-
-    .trackpad {
-      width: 60px;
-      height: 26px;
-      background: rgba(255,255,255,0.11);
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 4px;
-      margin: 0 auto;
-      flex-shrink: 0;
-    }
-
-    /* ── Laptop shadow ── */
-    .laptop-shadow {
-      position: absolute;
-      top: 307px;
-      left: 60px;
-      width: 290px;
-      height: 8px;
-      background: rgba(26,86,219,0.18);
-      border-radius: 50%;
-      filter: blur(5px);
-    }
-
-    /* ── Number circles ── */
-    .num-circle {
-      position: absolute;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #f97316;   /* FIX: tất cả 3 vòng tròn đều màu cam */
-      color: white;
-      font-weight: 700;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 12px rgba(249,115,22,0.5);
-      z-index: 10;
-    }
-
-    .num-1 { top: 118px; left: 18px; }
-    .num-2 { top: 248px; left: 92px; }
-    .num-3 { top: 8px;   right: 76px; }
-
-    /* ── People figures ── */
-    .person-left {
-      position: absolute;
-      left: 12px;
-      bottom: 60px;
-    }
-
-    .person-right {
-      position: absolute;
-      right: 28px;
-      bottom: 52px;
-    }
-
-    .person-mid {
-      position: absolute;
-      right: 82px;
-      bottom: 32px;
+      z-index: 1;
+      width: 80%;
+      max-width: 460px;
+      height: auto;
     }
 
     /* ===== RIGHT PANEL ===== */
-    /* FIX: dùng tỉ lệ % có chặn min/max thay cho width cố định 420px,
+    /* dùng tỉ lệ % có chặn min/max thay cho width cố định 420px,
        để tỉ lệ trái/phải cân đối trên mọi kích thước màn (bám ~1/3 như thiết kế) */
     .right-panel {
       flex: 0 0 36%;
@@ -419,77 +249,7 @@
 
   <!-- LEFT PANEL -->
   <div class="left-panel">
-    <div class="illustration">
-
-      <!-- Laptop screen (lid) -->
-      <div class="laptop-screen">
-        <div class="checklist">
-          <div class="check-item">
-            <div class="check-icon">
-              <svg viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <div class="check-bar done"></div>
-          </div>
-          <div class="check-item">
-            <div class="check-icon">
-              <svg viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <div class="check-bar done"></div>
-          </div>
-          <div class="check-item">
-            <div class="check-icon" style="background:#94a3b8;">
-              <svg viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <div class="check-bar"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Hinge -->
-      <div class="laptop-hinge"></div>
-
-      <!-- Keyboard body (generated by JS) -->
-      <div class="laptop-body">
-        <div class="keyboard-area" id="keyboard"></div>
-        <div class="trackpad"></div>
-      </div>
-
-      <div class="laptop-shadow"></div>
-
-      <!-- Number circles — tất cả đều màu cam #f97316 -->
-      <div class="num-circle num-1">1</div>
-      <div class="num-circle num-2">2</div>
-      <div class="num-circle num-3">3</div>
-
-      <!-- People -->
-      <svg class="person-left" viewBox="0 0 50 90" width="40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="25" cy="14" r="10" fill="#fbbf24"/>
-        <rect x="14" y="26" width="22" height="36" rx="6" fill="#1d4ed8"/>
-        <rect x="6"  y="28" width="10" height="24" rx="5" fill="#1d4ed8"/>
-        <rect x="34" y="28" width="10" height="24" rx="5" fill="#1d4ed8"/>
-        <rect x="15" y="62" width="9"  height="22" rx="4" fill="#1e3a8a"/>
-        <rect x="26" y="62" width="9"  height="22" rx="4" fill="#1e3a8a"/>
-      </svg>
-
-      <svg class="person-right" viewBox="0 0 50 90" width="38" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="25" cy="14" r="10" fill="#f97316"/>
-        <rect x="14" y="26" width="22" height="36" rx="6" fill="#22c55e"/>
-        <rect x="6"  y="28" width="10" height="24" rx="5" fill="#22c55e"/>
-        <rect x="34" y="28" width="10" height="20" rx="5" fill="#22c55e"/>
-        <rect x="15" y="62" width="9"  height="22" rx="4" fill="#166534"/>
-        <rect x="26" y="62" width="9"  height="22" rx="4" fill="#166534"/>
-      </svg>
-
-      <svg class="person-mid" viewBox="0 0 50 90" width="34" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="25" cy="14" r="10" fill="#fbbf24"/>
-        <rect x="14" y="26" width="22" height="36" rx="6" fill="#7c3aed"/>
-        <rect x="6"  y="28" width="10" height="18" rx="5" fill="#7c3aed"/>
-        <rect x="34" y="28" width="10" height="24" rx="5" fill="#7c3aed"/>
-        <rect x="15" y="62" width="9"  height="22" rx="4" fill="#4c1d95"/>
-        <rect x="26" y="62" width="9"  height="22" rx="4" fill="#4c1d95"/>
-      </svg>
-
-    </div>
+    <img class="illustration-img" src="/login.png" alt="Minh hoạ đăng nhập" />
   </div>
 
   <!-- RIGHT PANEL -->
@@ -557,31 +317,6 @@
   </div>
 
   <script>
-    // Generate keyboard rows
-    (function () {
-      const kb = document.getElementById('keyboard');
-      // 4 regular rows + 1 space row
-      [13, 12, 11, 10].forEach(count => {
-        const row = document.createElement('div');
-        row.className = 'key-row';
-        for (let i = 0; i < count; i++) {
-          const k = document.createElement('div');
-          k.className = 'key';
-          row.appendChild(k);
-        }
-        kb.appendChild(row);
-      });
-      // Space bar row
-      const spaceRow = document.createElement('div');
-      spaceRow.className = 'key-row';
-      [['key key-wide'], ['key key-space'], ['key key-wide'], ['key key-wide']].forEach(([cls]) => {
-        const k = document.createElement('div');
-        k.className = cls;
-        spaceRow.appendChild(k);
-      });
-      kb.appendChild(spaceRow);
-    })();
-
     function togglePassword() {
       const pwd  = document.getElementById('password');
       const icon = document.getElementById('eyeIcon');
