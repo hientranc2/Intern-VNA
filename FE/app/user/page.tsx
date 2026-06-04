@@ -17,6 +17,7 @@ import {
 } from "@/libs/tts/user/userData";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import { getToken, clearToken } from "@/libs/tts/auth/authApi";
+import { Switch } from "@/libs/core/components/Switch/Switch";
 
 type ViewMode = "list" | "detail";
 
@@ -52,24 +53,6 @@ function avatarColor(username: string): string {
   let hash = 0;
   for (let i = 0; i < username.length; i += 1) hash = (hash + username.charCodeAt(i)) % AVATAR_COLORS.length;
   return AVATAR_COLORS[hash];
-}
-
-function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-5 w-[38px] rounded-full transition-colors ${checked ? "bg-primary" : "bg-[#d1d5db]"}`}
-    >
-      <span
-        className={`absolute top-[3px] h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-          checked ? "translate-x-[21px]" : "translate-x-[3px]"
-        }`}
-      />
-    </button>
-  );
 }
 
 export default function UserPage() {

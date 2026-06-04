@@ -8,6 +8,7 @@ import { Alert } from "@/libs/core/components/Alert/Alert";
 import { Modal } from "@/libs/core/components/Modal/Modal";
 import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
 import { useCountdown } from "@/libs/core/hooks/useCountdown";
+import { Switch } from "@/libs/core/components/Switch/Switch";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import {
   getProfile,
@@ -49,7 +50,13 @@ function getInitials(fullName: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function FieldLabel({ children, required }: { children: string; required?: boolean }) {
+function FieldLabel({
+  children,
+  required,
+}: {
+  children: string;
+  required?: boolean;
+}) {
   return (
     <label className="text-xs text-muted">
       {children}
@@ -83,6 +90,14 @@ export default function AccountPage() {
   const [newEmailOpen, setNewEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newEmailError, setNewEmailError] = useState<string | null>(null);
+
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarPreview(URL.createObjectURL(file));
+  };
 
   const setField = (key: keyof ProfileForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -123,7 +138,9 @@ export default function AccountPage() {
           return;
         }
         setLoadError(
-          err instanceof ApiError ? err.message : "Không tải được thông tin tài khoản",
+          err instanceof ApiError
+            ? err.message
+            : "Không tải được thông tin tài khoản",
         );
       } finally {
         if (!cancelled) setLoading(false);
@@ -187,20 +204,17 @@ export default function AccountPage() {
     }
   };
 
-  // Bước 1: gửi mã OTP về email hiện tại.
-  const openChangeEmail = async () => {
+  // Bước 1: mở modal ngay, gửi OTP trong nền.
+  const openChangeEmail = () => {
     setOtp("");
     setOtpError(null);
-    try {
-      await requestChangeEmailOtp();
-      setOtpOpen(true);
-      otpCountdown.start();
-    } catch (err) {
-      setPageNotice(null);
-      setLoadError(
+    setOtpOpen(true);
+    otpCountdown.start();
+    requestChangeEmailOtp().catch((err) => {
+      setOtpError(
         err instanceof ApiError ? err.message : "Không gửi được mã OTP",
       );
-    }
+    });
   };
 
   // Bước 2: nhập OTP (xác thực thật sự cùng email mới ở bước lưu).
@@ -247,7 +261,9 @@ export default function AccountPage() {
 
       <main className="ml-[220px] pt-[52px]">
         <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-          <h1 className="text-base font-semibold text-ink">Chi tiết người dùng</h1>
+          <h1 className="text-base font-semibold text-ink">
+            Chi tiết người dùng
+          </h1>
           <div className="flex gap-2.5">
             <button
               type="button"
@@ -268,23 +284,74 @@ export default function AccountPage() {
 
         <div className="p-6">
           {loadError ? (
-            <Alert variant="error" message={loadError} onClose={() => setLoadError(null)} />
+            <Alert
+              variant="error"
+              message={loadError}
+              onClose={() => setLoadError(null)}
+            />
           ) : null}
           {pageNotice ? (
-            <Alert variant="success" message={pageNotice} onClose={() => setPageNotice(null)} />
+            <Alert
+              variant="success"
+              message={pageNotice}
+              onClose={() => setPageNotice(null)}
+            />
           ) : null}
 
           <div className="flex items-start gap-7 rounded-[10px] bg-white p-7 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
             {/* Cột trái: avatar + kích hoạt */}
             <div className="w-[240px] shrink-0 rounded-[10px] border border-[#e5e7eb] px-5 py-6">
               <div className="flex flex-col items-center gap-2">
-                <div className="flex h-[100px] w-[100px] cursor-pointer flex-col items-center justify-center rounded-full border-2 border-dashed border-[#9ca3af] bg-[#e5e7eb] hover:border-primary">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
-                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-                    <circle cx="12" cy="13" r="4" />
-                  </svg>
-                  <span className="mt-1 text-[11px] text-muted">Tải ảnh đại diện</span>
-                </div>
+                <label className="group relative flex h-25 w-25 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-[#9ca3af] bg-[#e5e7eb] hover:border-primary">
+                  <input
+                    type="file"
+                    accept=".jpeg,.jpg,.png"
+                    className="sr-only"
+                    onChange={handleAvatarChange}
+                  />
+                  {avatarPreview ? (
+                    <>
+                      <img
+                        src={avatarPreview}
+                        alt="avatar"
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                        <svg
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="1.5"
+                        >
+                          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                        <span className="mt-1 text-[10px] text-white">
+                          Thay đổi
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <svg
+                        width="28"
+                        height="28"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#9ca3af"
+                        strokeWidth="1.5"
+                      >
+                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                      <span className="mt-1 text-[11px] text-muted">
+                        Tải ảnh đại diện
+                      </span>
+                    </div>
+                  )}
+                </label>
                 <div className="text-center text-[11px] text-[#9ca3af]">
                   *.jpeg, *.jpg, *.png.
                   <br />
@@ -292,32 +359,28 @@ export default function AccountPage() {
                 </div>
                 <div className="mt-3 flex items-center gap-2.5">
                   <span className="text-[13px] text-[#374151]">Kích hoạt</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={active}
-                    onClick={() => setActive((prev) => !prev)}
-                    className={`relative h-6 w-11 rounded-full transition-colors ${
-                      active ? "bg-primary" : "bg-[#d1d5db]"
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white transition-transform ${
-                        active ? "translate-x-[23px]" : "translate-x-[3px]"
-                      }`}
-                    />
-                  </button>
+                  <Switch
+                    checked={active}
+                    onChange={setActive}
+                    ariaLabel="Kích hoạt tài khoản"
+                  />
                 </div>
               </div>
             </div>
 
             {/* Cột phải: thông tin */}
             <div className="flex-1">
-              <div className="mb-5 text-sm font-semibold text-dark">Thông tin cá nhân</div>
+              <div className="mb-5 text-sm font-semibold text-dark">
+                Thông tin cá nhân
+              </div>
               <div className="grid grid-cols-2 gap-x-5 gap-y-4">
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel required>Tên đăng nhập</FieldLabel>
-                  <input className={`${FIELD_CLASS} bg-[#f9fafb]`} value={form.username} readOnly />
+                  <input
+                    className={`${FIELD_CLASS} bg-[#f9fafb]`}
+                    value={form.username}
+                    readOnly
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel required>Họ và tên</FieldLabel>
@@ -337,8 +400,22 @@ export default function AccountPage() {
                       onChange={(e) => setField("dob", e.target.value)}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af]">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <rect
+                          x="3"
+                          y="4"
+                          width="18"
+                          height="18"
+                          rx="2"
+                          ry="2"
+                        />
                         <line x1="16" y1="2" x2="16" y2="6" />
                         <line x1="8" y1="2" x2="8" y2="6" />
                         <line x1="3" y1="10" x2="21" y2="10" />
@@ -370,16 +447,25 @@ export default function AccountPage() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel required>Vai trò</FieldLabel>
-                  <input className={`${FIELD_CLASS} bg-[#f9fafb]`} value={form.role} readOnly />
+                  <input
+                    className={`${FIELD_CLASS} bg-[#f9fafb]`}
+                    value={form.role}
+                    readOnly
+                  />
                 </div>
                 <div className="col-span-2 flex flex-col gap-1.5">
                   <FieldLabel>Email</FieldLabel>
                   <div className="flex items-center gap-2">
-                    <input className={`${FIELD_CLASS} flex-1`} value={email} readOnly />
+                    <input
+                      className={`${FIELD_CLASS} flex-1`}
+                      value={email}
+                      readOnly
+                    />
+                    
                     <button
                       type="button"
                       onClick={openChangeEmail}
-                      className="whitespace-nowrap text-[13px] font-medium text-primary hover:underline"
+                      className="whitespace-nowrap text-[13px] font-medium text-primary hover:underline cursor-pointer"
                     >
                       Thay đổi
                     </button>
@@ -389,7 +475,9 @@ export default function AccountPage() {
 
               <hr className="my-7 border-t border-[#f3f4f6]" />
 
-              <div className="mb-5 text-sm font-semibold text-dark">Thông tin liên hệ</div>
+              <div className="mb-5 text-sm font-semibold text-dark">
+                Thông tin liên hệ
+              </div>
               <div className="grid grid-cols-2 gap-x-5 gap-y-4">
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel>Tỉnh thành phố</FieldLabel>
@@ -399,7 +487,9 @@ export default function AccountPage() {
                     onChange={(e) => setField("province", e.target.value)}
                   >
                     <option value="">Tỉnh thành phố</option>
-                    <option value="Thành phố Hồ Chí Minh">Thành phố Hồ Chí Minh</option>
+                    <option value="Thành phố Hồ Chí Minh">
+                      Thành phố Hồ Chí Minh
+                    </option>
                     <option value="Hà Nội">Hà Nội</option>
                     <option value="Đà Nẵng">Đà Nẵng</option>
                   </select>
@@ -461,19 +551,33 @@ export default function AccountPage() {
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             Mật khẩu cũ <span className="text-danger">*</span>
           </label>
-          <PasswordField value={oldPwd} onChange={setOldPwd} placeholder="Mật khẩu cũ" />
+          <PasswordField
+            value={oldPwd}
+            onChange={setOldPwd}
+            placeholder="Mật khẩu cũ"
+          />
         </div>
         <div className="mb-4">
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             Mật khẩu mới <span className="text-danger">*</span>
           </label>
-          <PasswordField value={newPwd} onChange={setNewPwd} placeholder="Mật khẩu mới" autoComplete="new-password" />
+          <PasswordField
+            value={newPwd}
+            onChange={setNewPwd}
+            placeholder="Mật khẩu mới"
+            autoComplete="new-password"
+          />
         </div>
         <div>
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             Nhập lại mật khẩu mới <span className="text-danger">*</span>
           </label>
-          <PasswordField value={confirmPwd} onChange={setConfirmPwd} placeholder="Nhập lại mật khẩu mới" autoComplete="new-password" />
+          <PasswordField
+            value={confirmPwd}
+            onChange={setConfirmPwd}
+            placeholder="Nhập lại mật khẩu mới"
+            autoComplete="new-password"
+          />
         </div>
       </Modal>
 
@@ -533,7 +637,11 @@ export default function AccountPage() {
         </div>
         <div className="text-center text-[12.5px] text-muted">
           Chưa nhận được mã?{" "}
-          <button type="button" onClick={() => otpCountdown.start()} className="text-primary hover:underline">
+          <button
+            type="button"
+            onClick={() => otpCountdown.start()}
+            className="text-primary hover:underline"
+          >
             Gửi lại
           </button>
         </div>
@@ -563,8 +671,12 @@ export default function AccountPage() {
           </div>
         }
       >
-        <p className="mb-5 text-center text-[13px] text-muted">Vui lòng nhập email mới</p>
-        {newEmailError ? <Alert variant="error" message={newEmailError} /> : null}
+        <p className="mb-5 text-center text-[13px] text-muted">
+          Vui lòng nhập email mới
+        </p>
+        {newEmailError ? (
+          <Alert variant="error" message={newEmailError} />
+        ) : null}
         <div>
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             Email <span className="text-danger">*</span>

@@ -18,6 +18,7 @@ import {
   type EnterpriseForm,
 } from "@/libs/tts/enterprise/enterpriseData";
 import { getToken, clearToken } from "@/libs/tts/auth/authApi";
+import { Switch } from "@/libs/core/components/Switch/Switch";
 
 type WizardMode = "add" | "edit";
 
@@ -31,24 +32,6 @@ const FILE_ROWS = [
   { name: "Giấy phép kinh doanh", info: "GPKD.pdf" },
   { name: "Giấy tờ khác", info: "GTK1.pdf" },
 ];
-
-function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-5 w-[38px] rounded-full transition-colors ${checked ? "bg-primary" : "bg-[#d1d5db]"}`}
-    >
-      <span
-        className={`absolute top-[3px] h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-          checked ? "translate-x-[21px]" : "translate-x-[3px]"
-        }`}
-      />
-    </button>
-  );
-}
 
 function FieldGroup({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
