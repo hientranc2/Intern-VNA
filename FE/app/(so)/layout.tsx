@@ -83,7 +83,7 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
           {...sidebarOverride}
         />
         <AppTopbar sidebarCollapsed={!sidebarOpen} onToggleSidebar={toggle} />
-        <main className={`min-h-screen transition-[margin] duration-300 ${sidebarOpen ? "ml-[220px]" : "ml-0"}`}>
+        <main className={`min-h-screen transition-[margin,padding] duration-300 ${sidebarOpen ? "ml-55" : "ml-0 pt-13"}`}>
           {children}
         </main>
       </div>
