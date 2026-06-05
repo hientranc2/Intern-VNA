@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
 import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
 import { Switch } from "@/libs/core/components/Switch/Switch";
 import { Toast } from "@/libs/core/components/Toast/Toast";
@@ -19,7 +16,6 @@ import {
   type InjuryFactor,
   type TreeNode,
 } from "@/libs/tts/category/categoryData";
-import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 
 const TAB_META: Record<CategoryTab, { label: string; option: string }> = {
   factor: { label: "Yếu tố gây chấn thương", option: "Yếu tố chấn thương" },
@@ -37,7 +33,6 @@ const CAP_BADGE_CLASS = ["", "bg-[#eff6ff] text-[#1d4ed8]", "bg-[#f0fdf4] text-[
 const INDENT_PX = ["0", "0", "14px", "28px", "42px"];
 
 export default function CategoryPage() {
-  const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [factors, setFactors] = useState<InjuryFactor[]>(INJURY_FACTORS);
@@ -60,21 +55,12 @@ export default function CategoryPage() {
   const [panelError, setPanelError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!getToken()) router.replace("/login");
-  }, [router]);
-
-  useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
   }, []);
-
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/login");
-  };
 
   const switchTab = (next: CategoryTab) => {
     setTab(next);
@@ -152,12 +138,8 @@ export default function CategoryPage() {
   const parentOptions = tab === "injuryType" ? INJURY_TYPE_PARENTS : OCCUPATION_PARENTS;
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
-      <AppSidebar active="Danh mục chung" onLogout={handleLogout} />
-
-      <main className="ml-[220px] pt-[52px]">
-        <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+    <>
+      <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
           <h1 className="text-base font-semibold text-ink">Khai báo danh mục</h1>
           <div className="flex gap-2.5">
             {tab !== "occupation" ? (
@@ -342,7 +324,6 @@ export default function CategoryPage() {
             </div>
           </div>
         </div>
-      </main>
 
       <SlidePanel
         open={panelOpen}
@@ -401,6 +382,6 @@ export default function CategoryPage() {
       </SlidePanel>
 
       <Toast message={toast} onDone={() => setToast(null)} />
-    </div>
+    </>
   );
 }

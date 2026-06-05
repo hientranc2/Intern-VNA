@@ -1,9 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
+import { useMemo, useState } from "react";
 import { Switch } from "@/libs/core/components/Switch/Switch";
 import { Toast } from "@/libs/core/components/Toast/Toast";
 import { SlidePanel } from "@/libs/core/components/SlidePanel/SlidePanel";
@@ -13,7 +10,6 @@ import {
   KY_OPTIONS,
   type ReportConfig,
 } from "@/libs/tts/report-config/reportConfigData";
-import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
@@ -22,8 +18,6 @@ const FORM_CONTROL_CLASS =
 const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
 export default function ReportConfigPage() {
-  const router = useRouter();
-
   const [items, setItems] = useState<ReportConfig[]>(INITIAL_REPORT_CONFIGS);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -42,15 +36,6 @@ export default function ReportConfigPage() {
   const [inputKetThuc, setInputKetThuc] = useState("");
   const [inputActive, setInputActive] = useState("1");
   const [panelError, setPanelError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!getToken()) router.replace("/login");
-  }, [router]);
-
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/login");
-  };
 
   const filtered = useMemo(() => {
     return items.filter(
@@ -118,12 +103,8 @@ export default function ReportConfigPage() {
   const thBase = "border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151] whitespace-nowrap";
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
-      <AppSidebar active="Ký báo cáo" onLogout={handleLogout} />
-
-      <main className="ml-[220px] pt-[52px]">
-        <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+    <>
+      <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
           <h1 className="text-base font-semibold text-ink">Danh sách cấu hình báo cáo</h1>
           <button type="button" onClick={openAdd} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -225,7 +206,6 @@ export default function ReportConfigPage() {
             </div>
           </div>
         </div>
-      </main>
 
       <SlidePanel
         open={panelOpen}
@@ -293,6 +273,6 @@ export default function ReportConfigPage() {
       </SlidePanel>
 
       <Toast message={toast} onDone={() => setToast(null)} />
-    </div>
+    </>
   );
 }

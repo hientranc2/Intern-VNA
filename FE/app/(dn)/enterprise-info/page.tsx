@@ -1,9 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { DnSidebar } from "@/libs/tts/components/DnSidebar/DnSidebar";
+import { useState } from "react";
 import { Alert } from "@/libs/core/components/Alert/Alert";
 import { Toast } from "@/libs/core/components/Toast/Toast";
 import { useCountdown } from "@/libs/core/hooks/useCountdown";
@@ -14,7 +11,6 @@ import {
   TINH_OPTIONS,
   PHUONG_DKKD_OPTIONS,
 } from "@/libs/tts/enterprise/enterpriseData";
-import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 
 type PageMode = "view" | "edit1" | "edit2";
 
@@ -72,7 +68,6 @@ const FILE_ROWS = [
 ];
 
 export default function EnterpriseInfoPage() {
-  const router = useRouter();
   const countdown = useCountdown(60);
 
   const [mode, setMode] = useState<PageMode>("view");
@@ -84,15 +79,6 @@ export default function EnterpriseInfoPage() {
   const [otpOpen, setOtpOpen] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!getToken()) router.replace("/enterprise-login");
-  }, [router]);
-
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/enterprise-login");
-  };
 
   const setField = (key: keyof typeof DEMO_INFO, value: string) =>
     setEditForm((prev) => ({ ...prev, [key]: value }));
@@ -156,11 +142,8 @@ export default function EnterpriseInfoPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
-      <DnSidebar active="Thông tin doanh nghiệp" onLogout={handleLogout} />
-
-      <main className="ml-[220px] pt-[52px]">
+    <>
+      <>
         {mode === "view" ? (
           <>
             <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
@@ -321,7 +304,7 @@ export default function EnterpriseInfoPage() {
             </div>
           </>
         )}
-      </main>
+      </>
 
       {/* OTP modal for email change */}
       <div className={`fixed inset-0 z-[300] flex items-center justify-center bg-black/50 transition-opacity duration-200 ${otpOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}>
@@ -343,6 +326,6 @@ export default function EnterpriseInfoPage() {
       </div>
 
       <Toast message={toast} onDone={() => setToast(null)} />
-    </div>
+    </>
   );
 }

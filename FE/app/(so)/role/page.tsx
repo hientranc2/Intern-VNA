@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
+import { useMemo, useState } from "react";
 import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
 import { INITIAL_ROLES, type Role } from "@/libs/tts/role/roleData";
 import { PERMISSIONS } from "@/libs/tts/permission/permissionData";
-import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 
 type PermRow = {
   id: string;
@@ -26,8 +22,6 @@ const PERM_GROUPS = PERMISSIONS.filter((p) => p.parentId === null);
 const permChildrenOf = (groupId: string) => PERMISSIONS.filter((p) => p.parentId === groupId);
 
 export default function RolePage() {
-  const router = useRouter();
-
   const [roles, setRoles] = useState<Role[]>(INITIAL_ROLES);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [filterMa, setFilterMa] = useState("");
@@ -46,15 +40,6 @@ export default function RolePage() {
   const [permFilterTen, setPermFilterTen] = useState("");
   const [permPage, setPermPage] = useState(1);
   const [permPageSize, setPermPageSize] = useState(10);
-
-  useEffect(() => {
-    if (!getToken()) router.replace("/login");
-  }, [router]);
-
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/login");
-  };
 
   const filteredRoles = useMemo(() => {
     const ma = filterMa.toLowerCase();
@@ -189,12 +174,8 @@ export default function RolePage() {
     });
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
-      <AppSidebar active="Vai trò" onLogout={handleLogout} />
-
-      <main className="ml-[220px] pt-[52px]">
-        <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+    <>
+      <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
           <h1 className="text-base font-semibold text-ink">Danh sách vai trò</h1>
           <button
             type="button"
@@ -357,7 +338,6 @@ export default function RolePage() {
             </div>
           </div>
         </div>
-      </main>
 
       {/* Modal thêm / chỉnh sửa vai trò */}
       <div
@@ -563,6 +543,6 @@ export default function RolePage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

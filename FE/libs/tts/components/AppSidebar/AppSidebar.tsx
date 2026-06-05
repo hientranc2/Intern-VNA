@@ -45,6 +45,8 @@ type AppSidebarProps = {
   initials?: string;
   avatarUrl?: string | null;
   active?: string;
+  collapsed?: boolean;
+  onToggle?: () => void;
   onChangePassword?: () => void;
   onLogout: () => void;
 };
@@ -58,6 +60,8 @@ export function AppSidebar({
   initials = "PT",
   avatarUrl,
   active,
+  collapsed = false,
+  onToggle,
   onChangePassword,
   onLogout,
 }: AppSidebarProps) {
@@ -86,13 +90,24 @@ export function AppSidebar({
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
 
   return (
-    <aside className="fixed bottom-0 left-0 top-0 z-50 flex w-[220px] flex-col bg-dark">
-      {/* Logo section — same height as topbar so they align */}
+    <aside className={`fixed bottom-0 left-0 top-0 z-50 flex w-[220px] flex-col bg-dark transition-transform duration-300 ${collapsed ? "-translate-x-full" : "translate-x-0"}`}>
       <div className="flex h-[52px] shrink-0 items-center gap-2.5 border-b border-white/10 px-4">
         <GovSeal size={32} className="shrink-0" />
-        <span className="text-[11.5px] font-semibold leading-tight text-white">
+        <span className="flex-1 text-[11.5px] font-semibold leading-tight text-white">
           {orgName}
         </span>
+        {onToggle ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex shrink-0 flex-col gap-[5px] p-1 opacity-70 hover:opacity-100"
+            aria-label="Đóng menu"
+          >
+            <span className="block h-0.5 w-[18px] rounded bg-white" />
+            <span className="block h-0.5 w-[18px] rounded bg-white" />
+            <span className="block h-0.5 w-[18px] rounded bg-white" />
+          </button>
+        ) : null}
       </div>
 
       <nav className="flex-1 overflow-y-auto">

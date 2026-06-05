@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
 import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
 import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
 import { Alert } from "@/libs/core/components/Alert/Alert";
@@ -16,7 +13,6 @@ import {
   type User,
 } from "@/libs/tts/user/userData";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
-import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 import { Switch } from "@/libs/core/components/Switch/Switch";
 
 type ViewMode = "list" | "detail";
@@ -56,8 +52,6 @@ function avatarColor(username: string): string {
 }
 
 export default function UserPage() {
-  const router = useRouter();
-
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [view, setView] = useState<ViewMode>("list");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -85,19 +79,10 @@ export default function UserPage() {
   const [resetError, setResetError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!getToken()) router.replace("/login");
-  }, [router]);
-
-  useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 2500);
     return () => clearTimeout(timer);
   }, [toast]);
-
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/login");
-  };
 
   const setField = <K extends keyof Omit<User, "id">>(key: K, value: Omit<User, "id">[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -208,12 +193,9 @@ export default function UserPage() {
   };
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
-      <AppSidebar active="Tài khoản" onLogout={handleLogout} />
-
+    <>
       {view === "list" ? (
-        <main className="ml-[220px] pt-[52px]">
+        <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Danh sách người dùng</h1>
             <div className="flex gap-2.5">
@@ -456,9 +438,9 @@ export default function UserPage() {
               </div>
             </div>
           </div>
-        </main>
+        </>
       ) : (
-        <main className="ml-[220px] pt-[52px]">
+        <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Chi tiết người dùng</h1>
             <div className="flex gap-2.5">
@@ -600,7 +582,7 @@ export default function UserPage() {
               </div>
             </div>
           </div>
-        </main>
+        </>
       )}
 
       {/* Modal đặt lại mật khẩu */}
@@ -660,6 +642,6 @@ export default function UserPage() {
           <span>{toast}</span>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

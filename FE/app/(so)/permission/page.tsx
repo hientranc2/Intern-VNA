@@ -1,11 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
+import { useMemo, useState } from "react";
 import { PERMISSIONS, type Permission } from "@/libs/tts/permission/permissionData";
-import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 
 type VisibleRow = Permission & { isGroup: boolean };
 
@@ -24,23 +20,12 @@ function matches(p: Permission, loai: string, ma: string, ten: string): boolean 
 }
 
 export default function PermissionPage() {
-  const router = useRouter();
-
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ g1: true });
   const [filterLoai, setFilterLoai] = useState("");
   const [filterMa, setFilterMa] = useState("");
   const [filterTen, setFilterTen] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-
-  useEffect(() => {
-    if (!getToken()) router.replace("/login");
-  }, [router]);
-
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/login");
-  };
 
   const toggleGroup = (groupId: string) =>
     setExpanded((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
@@ -79,12 +64,8 @@ export default function PermissionPage() {
   const resetToFirstPage = () => setCurrentPage(1);
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
-      <AppSidebar active="Phân quyền" onLogout={handleLogout} />
-
-      <main className="ml-[220px] pt-[52px]">
-        <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+    <>
+      <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
           <h1 className="text-base font-semibold text-ink">Danh sách quyền</h1>
         </div>
 
@@ -224,7 +205,6 @@ export default function PermissionPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

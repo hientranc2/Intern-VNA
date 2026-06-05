@@ -7,10 +7,12 @@ type DnSidebarProps = {
   active?: string;
   userName?: string;
   initials?: string;
+  collapsed?: boolean;
+  onToggle?: () => void;
   onLogout?: () => void;
 };
 
-export function DnSidebar({ active, userName = "Doanh nghiệp", initials = "DN", onLogout }: DnSidebarProps) {
+export function DnSidebar({ active, userName = "Doanh nghiệp", initials = "DN", collapsed = false, onLogout }: DnSidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ "Hệ thống": true, "Tai nạn lao động": false });
 
   const toggle = (label: string) => setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -23,7 +25,7 @@ export function DnSidebar({ active, userName = "Doanh nghiệp", initials = "DN"
     }`;
 
   return (
-    <aside className="fixed bottom-0 left-0 top-[52px] z-50 flex w-[220px] flex-col overflow-y-auto bg-dark">
+    <aside className={`fixed bottom-0 left-0 top-[52px] z-50 flex w-[220px] flex-col overflow-y-auto bg-dark transition-transform duration-300 ${collapsed ? "-translate-x-full" : "translate-x-0"}`}>
       <nav>
         <button type="button" onClick={() => toggle("Hệ thống")} className="flex w-full items-center gap-2.5 px-4 py-[11px] text-left text-[13px] text-white/80 hover:bg-white/10 hover:text-white">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>

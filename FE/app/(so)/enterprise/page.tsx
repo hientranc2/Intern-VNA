@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
 import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
 import {
   INITIAL_ENTERPRISES,
@@ -17,7 +14,6 @@ import {
   type Enterprise,
   type EnterpriseForm,
 } from "@/libs/tts/enterprise/enterpriseData";
-import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 import { Switch } from "@/libs/core/components/Switch/Switch";
 
 type WizardMode = "add" | "edit";
@@ -45,8 +41,6 @@ function FieldGroup({ label, required, children }: { label: string; required?: b
 }
 
 export default function EnterprisePage() {
-  const router = useRouter();
-
   const [enterprises, setEnterprises] = useState<Enterprise[]>(INITIAL_ENTERPRISES);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
@@ -69,19 +63,10 @@ export default function EnterprisePage() {
   const [accountPopup, setAccountPopup] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!getToken()) router.replace("/login");
-  }, [router]);
-
-  useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 2500);
     return () => clearTimeout(timer);
   }, [toast]);
-
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/login");
-  };
 
   const setField = <K extends keyof EnterpriseForm>(key: K, value: EnterpriseForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -180,11 +165,8 @@ export default function EnterprisePage() {
     "whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2.5 text-left text-[12.5px] font-semibold text-[#374151]";
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
-      <AppSidebar active="Quản lý doanh nghiệp" onLogout={handleLogout} />
-
-      <main className="ml-[220px] pt-[52px]">
+    <>
+      <>
         <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
           <h1 className="text-base font-semibold text-ink">Danh sách doanh nghiệp</h1>
           <div className="flex gap-2.5">
@@ -372,7 +354,7 @@ export default function EnterprisePage() {
             </div>
           </div>
         </div>
-      </main>
+      </>
 
       {/* Wizard */}
       <div
@@ -679,6 +661,6 @@ export default function EnterprisePage() {
           <span>{toast}</span>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

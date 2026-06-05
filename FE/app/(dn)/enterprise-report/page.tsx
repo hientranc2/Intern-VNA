@@ -1,11 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { DnSidebar } from "@/libs/tts/components/DnSidebar/DnSidebar";
+import { useState } from "react";
 import { Toast } from "@/libs/core/components/Toast/Toast";
-import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 
 type PageView = "list" | "form";
 type FormSection = "ttct" | "tnld" | "tongquan";
@@ -38,7 +34,6 @@ const CT_TH = "border border-line bg-[#f9fafb] px-2 py-1.5 text-center text-[11p
 const CT_TD = "border border-line px-2 py-1.5 text-center text-[11px] text-[#374151] align-middle";
 
 export default function EnterpriseReportPage() {
-  const router = useRouter();
   const [view, setView] = useState<PageView>("list");
   const [section, setSection] = useState<FormSection>("ttct");
   const [subTab, setSubTab] = useState<SubTab>("tongSo");
@@ -51,15 +46,6 @@ export default function EnterpriseReportPage() {
   const [tongVu, setTongVu] = useState("1");
   const [vuChet, setVuChet] = useState("1");
   const [vuNhieu, setVuNhieu] = useState("0");
-
-  useEffect(() => {
-    if (!getToken()) router.replace("/enterprise-login");
-  }, [router]);
-
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/enterprise-login");
-  };
 
   const nextSection = () => {
     const idx = SECTION_OPTIONS.findIndex((o) => o.value === section);
@@ -77,13 +63,11 @@ export default function EnterpriseReportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
-      <DnSidebar active="TNLĐ theo HĐLĐ" onLogout={handleLogout} />
+    <>
       <Toast message={toast} onDone={() => setToast(null)} />
 
       {view === "list" ? (
-        <main className="ml-[220px] pt-[52px]">
+        <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ Tai nạn lao động</h1>
             <div className="flex items-center gap-2.5">
@@ -156,9 +140,9 @@ export default function EnterpriseReportPage() {
               </div>
             </div>
           </div>
-        </main>
+        </>
       ) : (
-        <main className="ml-[220px] pt-[52px]">
+        <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ Tai nạn lao động</h1>
             <div className="flex items-center gap-2">
@@ -335,8 +319,8 @@ export default function EnterpriseReportPage() {
               </div>
             )}
           </div>
-        </main>
+        </>
       )}
-    </div>
+    </>
   );
 }

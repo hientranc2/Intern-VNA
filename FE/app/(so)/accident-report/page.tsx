@@ -1,9 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
+import { useMemo, useState } from "react";
 import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
 import {
   INITIAL_ACCIDENT_REPORTS,
@@ -13,7 +10,6 @@ import {
   TONGHOP_II_GROUPS,
   type AccidentReport,
 } from "@/libs/tts/accident-report/accidentReportData";
-import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 
 type ViewMode = "list" | "detail" | "tonghop";
 
@@ -26,8 +22,6 @@ const CT_TH = "border border-line bg-[#f9fafb] px-2 py-1.5 text-center align-mid
 const CT_TD = "border border-line px-2 py-1.5 text-center align-middle text-[#374151]";
 
 export default function AccidentReportPage() {
-  const router = useRouter();
-
   const [view, setView] = useState<ViewMode>("list");
   const [reports] = useState<AccidentReport[]>(INITIAL_ACCIDENT_REPORTS);
 
@@ -37,15 +31,6 @@ export default function AccidentReportPage() {
   const [fTT, setFTT] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-
-  useEffect(() => {
-    if (!getToken()) router.replace("/login");
-  }, [router]);
-
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/login");
-  };
 
   const filtered = useMemo(() => {
     return reports.filter(
@@ -65,12 +50,9 @@ export default function AccidentReportPage() {
   const paged = filtered.slice(start, end);
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar orgName="Ủy ban nhân dân thành phố Hồ Chí Minh" />
-      <AppSidebar active="TNLĐ theo HĐLĐ" onLogout={handleLogout} />
-
+    <>
       {view === "list" ? (
-        <main className="ml-[220px] pt-[52px]">
+        <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ Tai nạn lao động</h1>
             <div className="flex items-center gap-2.5">
@@ -181,11 +163,11 @@ export default function AccidentReportPage() {
               </div>
             </div>
           </div>
-        </main>
+        </>
       ) : null}
 
       {view === "detail" ? (
-        <main className="ml-[220px] pt-[52px]">
+        <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ Tai nạn lao động</h1>
             <div className="flex items-center gap-2.5">
@@ -308,11 +290,11 @@ export default function AccidentReportPage() {
               </div>
             </div>
           </div>
-        </main>
+        </>
       ) : null}
 
       {view === "tonghop" ? (
-        <main className="ml-[220px] pt-[52px]">
+        <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Báo cáo tổng hợp</h1>
             <div className="flex items-center gap-2.5">
@@ -439,8 +421,8 @@ export default function AccidentReportPage() {
               </div>
             </div>
           </div>
-        </main>
+        </>
       ) : null}
-    </div>
+    </>
   );
 }

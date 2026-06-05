@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
+import { useContext, useEffect, useState } from "react";
 import { Alert } from "@/libs/core/components/Alert/Alert";
+import { SidebarOverrideContext } from "@/libs/tts/auth/sidebarContext";
 import { Modal } from "@/libs/core/components/Modal/Modal";
 import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
 import { useCountdown } from "@/libs/core/hooks/useCountdown";
@@ -16,8 +14,6 @@ import {
   changePassword,
   requestChangeEmailOtp,
   changeEmail,
-  getToken,
-  clearToken,
   ApiError,
 } from "@/libs/tts/auth/authApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
@@ -67,8 +63,8 @@ function FieldLabel({
 }
 
 export default function AccountPage() {
-  const router = useRouter();
   const otpCountdown = useCountdown(60);
+  const { setOverride } = useContext(SidebarOverrideContext);
 
   const [form, setForm] = useState<ProfileForm>(EMPTY_PROFILE);
   const [email, setEmail] = useState("");
@@ -103,17 +99,8 @@ export default function AccountPage() {
   const setField = (key: keyof ProfileForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const handleLogout = () => {
-    clearToken();
-    router.replace("/login");
-  };
-
   // Nạp thông tin tài khoản từ API khi mở trang.
   useEffect(() => {
-    if (!getToken()) {
-      router.replace("/login");
-      return;
-    }
     let cancelled = false;
     (async () => {
       try {
@@ -134,10 +121,6 @@ export default function AccountPage() {
         setActive(p.isActive ?? true);
       } catch (err) {
         if (cancelled) return;
-        if (err instanceof ApiError && err.status === 401) {
-          router.replace("/login");
-          return;
-        }
         setLoadError(
           err instanceof ApiError
             ? err.message
@@ -150,7 +133,16 @@ export default function AccountPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    setOverride({
+      userName: form.fullName || form.username,
+      initials: getInitials(form.fullName || form.username),
+      avatarUrl: avatarPreview,
+      onChangePassword: () => setPwdOpen(true),
+    });
+  }, [form.fullName, form.username, avatarPreview, setOverride]);
 
   const saveProfile = async () => {
     if (saving) return;
@@ -251,16 +243,8 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="min-h-screen bg-body text-ink">
-      <AppTopbar />
-      <AppSidebar
-        userName={form.fullName || form.username}
-        initials={getInitials(form.fullName || form.username)}
-        onChangePassword={() => setPwdOpen(true)}
-        onLogout={handleLogout}
-      />
-
-      <main className="ml-[220px] pt-[52px]">
+    <>
+      <>
         <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
           <h1 className="text-base font-semibold text-ink">
             Chi tiết người dùng
@@ -527,7 +511,7 @@ export default function AccountPage() {
             </div>
           </div>
         </div>
-      </main>
+      </>
 
       {/* Modal đổi mật khẩu */}
       <Modal
@@ -697,6 +681,6 @@ export default function AccountPage() {
           />
         </div>
       </Modal>
-    </div>
+    </>
   );
 }
