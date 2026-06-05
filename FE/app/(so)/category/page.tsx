@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import useDebounce from "@/libs/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
 import { Switch } from "@/libs/core/components/Switch/Switch";
 import { Toast } from "@/libs/core/components/Toast/Toast";
@@ -34,9 +35,20 @@ const INDENT_PX = ["0", "0", "14px", "28px", "42px"];
 
 export default function CategoryPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
 
   const [factors, setFactors] = useState<InjuryFactor[]>(INJURY_FACTORS);
   const [tab, setTab] = useState<CategoryTab>("factor");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -44,6 +56,9 @@ export default function CategoryPage() {
   const [fTen, setFTen] = useState("");
   const [fTT, setFTT] = useState("");
   const [pageSize, setPageSize] = useState(10);
+
+  const dFMa = useDebounce(fMa, 300);
+  const dFTen = useDebounce(fTen, 300);
   const [currentPage, setCurrentPage] = useState(1);
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -69,23 +84,24 @@ export default function CategoryPage() {
     setFTen("");
     setFTT("");
     setCurrentPage(1);
+    setSelectedIds(new Set());
   };
 
   const filteredFactors = useMemo(() => {
     return factors.filter(
       (r) =>
-        r.ma.toLowerCase().includes(fMa.toLowerCase()) &&
-        r.ten.toLowerCase().includes(fTen.toLowerCase()) &&
+        r.ma.toLowerCase().includes(dFMa.toLowerCase()) &&
+        r.ten.toLowerCase().includes(dFTen.toLowerCase()) &&
         (fTT === "" || (fTT === "1" ? r.active : !r.active)),
     );
-  }, [factors, fMa, fTen, fTT]);
+  }, [factors, dFMa, dFTen, fTT]);
 
   const filteredTree = useMemo(() => {
     const source = tab === "injuryType" ? INJURY_TYPES : OCCUPATIONS;
     return source.filter(
-      (r) => r.ma.toLowerCase().includes(fMa.toLowerCase()) && r.ten.toLowerCase().includes(fTen.toLowerCase()),
+      (r) => r.ma.toLowerCase().includes(dFMa.toLowerCase()) && r.ten.toLowerCase().includes(dFTen.toLowerCase()),
     );
-  }, [tab, fMa, fTen]);
+  }, [tab, dFMa, dFTen]);
 
   const total = tab === "factor" ? filteredFactors.length : filteredTree.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -152,7 +168,8 @@ export default function CategoryPage() {
                 Xuất danh sách
               </button>
             ) : null}
-            <button type="button" className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">
+            <input ref={importRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={() => setToast("Đã nhận file. Vui lòng chờ xử lý.")} />
+            <button type="button" onClick={() => importRef.current?.click()} className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
@@ -232,7 +249,7 @@ export default function CategoryPage() {
                   ) : (
                     pagedFactors.map((r) => (
                       <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
-                        <td className="px-3.5 py-2.5"><TriCheckbox checked={false} onChange={() => {}} /></td>
+                        <td className="px-3.5 py-2.5"><TriCheckbox checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
                         <td className="px-3.5 py-2.5">
@@ -290,7 +307,7 @@ export default function CategoryPage() {
                       );
                       return (
                         <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
-                          <td className="px-3.5 py-2.5"><TriCheckbox checked={false} onChange={() => {}} /></td>
+                          <td className="px-3.5 py-2.5"><TriCheckbox checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
                           {tab === "occupation" ? <td className="px-3.5 py-2.5">{editBtn}</td> : null}
                           <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
                           <td className="px-3.5 py-2.5 text-[#374151]" style={{ paddingLeft: INDENT_PX[r.cap] }}>{r.ten}</td>

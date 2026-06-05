@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import useDebounce from "@/libs/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
 import { Toast } from "@/libs/core/components/Toast/Toast";
 import { SlidePanel } from "@/libs/core/components/SlidePanel/SlidePanel";
@@ -21,6 +22,7 @@ const CAP_BADGE_CLASS = ["", "bg-[#eff6ff] text-[#1d4ed8]", "bg-[#f0fdf4] text-[
 const INDENT_PX = ["0", "0", "14px", "28px", "42px"];
 
 export default function BusinessSectorPage() {
+  const importRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<BusinessSector[]>(INITIAL_BUSINESS_SECTORS);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
@@ -28,6 +30,9 @@ export default function BusinessSectorPage() {
   const [fMa, setFMa] = useState("");
   const [fTen, setFTen] = useState("");
   const [pageSize, setPageSize] = useState(10);
+
+  const dFMa = useDebounce(fMa, 300);
+  const dFTen = useDebounce(fTen, 300);
   const [currentPage, setCurrentPage] = useState(1);
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -40,9 +45,9 @@ export default function BusinessSectorPage() {
 
   const filtered = useMemo(() => {
     return items.filter(
-      (r) => r.ma.toLowerCase().includes(fMa.toLowerCase()) && r.ten.toLowerCase().includes(fTen.toLowerCase()),
+      (r) => r.ma.toLowerCase().includes(dFMa.toLowerCase()) && r.ten.toLowerCase().includes(dFTen.toLowerCase()),
     );
-  }, [items, fMa, fTen]);
+  }, [items, dFMa, dFTen]);
 
   const total = filtered.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -110,7 +115,8 @@ export default function BusinessSectorPage() {
       <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
           <h1 className="text-base font-semibold text-ink">Danh sách ngành nghề kinh doanh</h1>
           <div className="flex gap-2.5">
-            <button type="button" className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">
+            <input ref={importRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={() => setToast("Đã nhận file. Vui lòng chờ xử lý.")} />
+            <button type="button" onClick={() => importRef.current?.click()} className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />

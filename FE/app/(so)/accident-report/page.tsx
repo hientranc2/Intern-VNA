@@ -25,12 +25,22 @@ export default function AccidentReportPage() {
   const [view, setView] = useState<ViewMode>("list");
   const [reports] = useState<AccidentReport[]>(INITIAL_ACCIDENT_REPORTS);
 
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [fTen, setFTen] = useState("");
   const [fMST, setFMST] = useState("");
   const [fKy, setFKy] = useState("");
   const [fTT, setFTT] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
     return reports.filter(
@@ -48,6 +58,19 @@ export default function AccidentReportPage() {
   const start = (page - 1) * pageSize;
   const end = Math.min(start + pageSize, total);
   const paged = filtered.slice(start, end);
+
+  const allPageSelected = paged.length > 0 && paged.every((r) => selectedIds.has(r.id));
+  const somePageSelected = paged.some((r) => selectedIds.has(r.id));
+
+  const toggleSelectAll = () => {
+    const allIds = paged.map((r) => r.id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) allIds.forEach((id) => next.delete(id));
+      else allIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
 
   return (
     <>
@@ -84,7 +107,9 @@ export default function AccidentReportPage() {
               <table className="w-full border-collapse text-[13.5px]">
                 <thead>
                   <tr>
-                    <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
+                    <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5">
+                      <TriCheckbox checked={allPageSelected} indeterminate={!allPageSelected && somePageSelected} onChange={toggleSelectAll} />
+                    </th>
                     <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Thao tác</th>
                     <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Tên doanh nghiệp</th>
                     <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Mã số thuế</th>
@@ -122,7 +147,7 @@ export default function AccidentReportPage() {
                   ) : (
                     paged.map((r) => (
                       <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
-                        <td className="px-3.5 py-2.5"><TriCheckbox checked={false} onChange={() => {}} /></td>
+                        <td className="px-3.5 py-2.5"><TriCheckbox checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
                         <td className="px-3.5 py-2.5">
                           <button type="button" onClick={() => setView("detail")} title="Xem" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

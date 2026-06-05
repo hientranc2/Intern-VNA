@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import useDebounce from "@/libs/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
 import {
   INITIAL_ENTERPRISES,
@@ -51,6 +52,10 @@ export default function EnterprisePage() {
   const [fNganh, setFNganh] = useState("");
   const [fPhuong, setFPhuong] = useState("");
   const [fTT, setFTT] = useState("");
+
+  const dFTen = useDebounce(fTen, 300);
+  const dFMST = useDebounce(fMST, 300);
+  const dFNganh = useDebounce(fNganh, 300);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -74,14 +79,14 @@ export default function EnterprisePage() {
   const filtered = useMemo(() => {
     return enterprises.filter(
       (e) =>
-        e.ten.toLowerCase().includes(fTen.toLowerCase()) &&
-        e.mst.toLowerCase().includes(fMST.toLowerCase()) &&
+        e.ten.toLowerCase().includes(dFTen.toLowerCase()) &&
+        e.mst.toLowerCase().includes(dFMST.toLowerCase()) &&
         (!fLoai || e.loai === fLoai) &&
-        e.nganh.toLowerCase().includes(fNganh.toLowerCase()) &&
+        e.nganh.toLowerCase().includes(dFNganh.toLowerCase()) &&
         (!fPhuong || e.phuong === fPhuong) &&
         (fTT === "" || (fTT === "1" ? e.active : !e.active)),
     );
-  }, [enterprises, fTen, fMST, fLoai, fNganh, fPhuong, fTT]);
+  }, [enterprises, dFTen, dFMST, fLoai, dFNganh, fPhuong, fTT]);
 
   const total = filtered.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));

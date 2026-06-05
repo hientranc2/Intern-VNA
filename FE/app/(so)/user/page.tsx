@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import useDebounce from "@/libs/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
 import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
 import { Alert } from "@/libs/core/components/Alert/Alert";
@@ -52,6 +53,7 @@ function avatarColor(username: string): string {
 }
 
 export default function UserPage() {
+  const importRef = useRef<HTMLInputElement>(null);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [view, setView] = useState<ViewMode>("list");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -64,6 +66,11 @@ export default function UserPage() {
   const [fRole, setFRole] = useState("");
   const [fChucDanh, setFChucDanh] = useState("");
   const [fActive, setFActive] = useState("");
+
+  const dFFullname = useDebounce(fFullname, 300);
+  const dFUsername = useDebounce(fUsername, 300);
+  const dFEmail = useDebounce(fEmail, 300);
+  const dFChucDanh = useDebounce(fChucDanh, 300);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -90,14 +97,14 @@ export default function UserPage() {
   const filteredUsers = useMemo(() => {
     return users.filter(
       (u) =>
-        u.fullname.toLowerCase().includes(fFullname.toLowerCase()) &&
-        u.username.toLowerCase().includes(fUsername.toLowerCase()) &&
-        u.email.toLowerCase().includes(fEmail.toLowerCase()) &&
+        u.fullname.toLowerCase().includes(dFFullname.toLowerCase()) &&
+        u.username.toLowerCase().includes(dFUsername.toLowerCase()) &&
+        u.email.toLowerCase().includes(dFEmail.toLowerCase()) &&
         (!fRole || u.role === fRole) &&
-        u.chucdanh.toLowerCase().includes(fChucDanh.toLowerCase()) &&
+        u.chucdanh.toLowerCase().includes(dFChucDanh.toLowerCase()) &&
         (fActive === "" || (fActive === "1" ? u.active : !u.active)),
     );
-  }, [users, fFullname, fUsername, fEmail, fRole, fChucDanh, fActive]);
+  }, [users, dFFullname, dFUsername, dFEmail, fRole, dFChucDanh, fActive]);
 
   const total = filteredUsers.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -199,8 +206,10 @@ export default function UserPage() {
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Danh sách người dùng</h1>
             <div className="flex gap-2.5">
+              <input ref={importRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={() => setToast("Đã nhận file. Vui lòng chờ xử lý.")} />
               <button
                 type="button"
+                onClick={() => importRef.current?.click()}
                 className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

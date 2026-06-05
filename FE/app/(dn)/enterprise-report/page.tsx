@@ -15,6 +15,19 @@ type ReportRecord = {
   tt: "Đang báo cáo" | "Đã nộp";
 };
 
+type AccidentDetail = {
+  id: number;
+  hoTen: string;
+  ngaySinh: string;
+  gioiTinh: string;
+  ngheNghiep: string;
+  loaiHopDong: string;
+  mucDo: string;
+  ngayXayRa: string;
+  diaDiem: string;
+  yeuTo: string;
+};
+
 const INITIAL_REPORTS: ReportRecord[] = [
   { id: 1, ten: "Công ty TNHH Thương mại Dịch vụ Vận tải Phạm Thiên Ân", mst: "0317118106", ky: "6 tháng", tt: "Đang báo cáo" },
   { id: 2, ten: "Công ty TNHH Thương mại Dịch vụ Vận tải Phạm Thiên Ân", mst: "0317118106", ky: "Cả năm", tt: "Đã nộp" },
@@ -26,12 +39,18 @@ const SECTION_OPTIONS: { value: FormSection; label: string }[] = [
   { value: "tongquan", label: "Xem tổng quan báo cáo tai nạn lao động" },
 ];
 
-const FORM_CONTROL_CLASS =
-  "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
-const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} min-w-[280px] cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
+const FC = "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
+const SC = `${FC} w-full cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
+const SELECT_TOP_CLASS = `${FC} min-w-[280px] cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
 const CT_TH = "border border-line bg-[#f9fafb] px-2 py-1.5 text-center text-[11px] font-semibold text-[#374151] align-middle";
 const CT_TD = "border border-line px-2 py-1.5 text-center text-[11px] text-[#374151] align-middle";
+
+const EMPTY_DETAIL: Omit<AccidentDetail, "id"> = {
+  hoTen: "", ngaySinh: "", gioiTinh: "Nam", ngheNghiep: "",
+  loaiHopDong: "Hợp đồng xác định thời hạn", mucDo: "Thương nhẹ",
+  ngayXayRa: "", diaDiem: "", yeuTo: "",
+};
 
 export default function EnterpriseReportPage() {
   const [view, setView] = useState<PageView>("list");
@@ -39,13 +58,38 @@ export default function EnterpriseReportPage() {
   const [subTab, setSubTab] = useState<SubTab>("tongSo");
   const [toast, setToast] = useState<string | null>(null);
 
-  // Form fields
+  // Thông tin công ty
   const [totalLao, setTotalLao] = useState("10");
   const [totalNu, setTotalNu] = useState("5");
   const [tongLuong, setTongLuong] = useState("10.2");
+
+  // Tổng số vụ
   const [tongVu, setTongVu] = useState("1");
   const [vuChet, setVuChet] = useState("1");
   const [vuNhieu, setVuNhieu] = useState("0");
+
+  // Số nạn nhân
+  const [tongNan, setTongNan] = useState("10");
+  const [tongNanNu, setTongNanNu] = useState("5");
+  const [tongChetNN, setTongChetNN] = useState("5");
+  const [tongThuongNang, setTongThuongNang] = useState("10");
+
+  // Không thuộc quyền quản lý
+  const [nanKhongQL, setNanKhongQL] = useState("0");
+  const [nuKhongQL, setNuKhongQL] = useState("0");
+  const [chetKhongQL, setChetKhongQL] = useState("0");
+  const [thuongKhongQL, setThuongKhongQL] = useState("0");
+
+  // Thiệt hại
+  const [chiPhiYTe, setChiPhiYTe] = useState("10.000.000");
+  const [chiPhiLuong, setChiPhiLuong] = useState("10.000.000");
+  const [chiPhiBTTC, setChiPhiBTTC] = useState("10.000.000");
+  const [tongChiPhi, setTongChiPhi] = useState("30.000.000");
+  const [soNgayNghi, setSoNgayNghi] = useState("20");
+  const [thiHaiTaiSan, setThiHaiTaiSan] = useState("10.000.000");
+
+  // Chi tiết từng vụ
+  const [accidentDetails, setAccidentDetails] = useState<AccidentDetail[]>([]);
 
   const nextSection = () => {
     const idx = SECTION_OPTIONS.findIndex((o) => o.value === section);
@@ -60,6 +104,18 @@ export default function EnterpriseReportPage() {
   const sendReport = () => {
     setView("list");
     setToast("Gửi báo cáo thành công");
+  };
+
+  const addDetail = () => {
+    setAccidentDetails((prev) => [...prev, { id: Date.now(), ...EMPTY_DETAIL }]);
+  };
+
+  const updateDetail = <K extends keyof AccidentDetail>(id: number, key: K, val: AccidentDetail[K]) => {
+    setAccidentDetails((prev) => prev.map((d) => (d.id === id ? { ...d, [key]: val } : d)));
+  };
+
+  const removeDetail = (id: number) => {
+    setAccidentDetails((prev) => prev.filter((d) => d.id !== id));
   };
 
   return (
@@ -188,7 +244,7 @@ export default function EnterpriseReportPage() {
           <div className="px-6 py-5">
             <div className="mb-4">
               <select
-                className={SELECT_CONTROL_CLASS}
+                className={SELECT_TOP_CLASS}
                 value={section}
                 onChange={(e) => setSection(e.target.value as FormSection)}
               >
@@ -207,29 +263,29 @@ export default function EnterpriseReportPage() {
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Tên công ty</label>
-                    <input className={FORM_CONTROL_CLASS} defaultValue="Công ty TNHH ABC" disabled />
+                    <input className={FC} defaultValue="Công ty TNHH ABC" disabled />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Loại hình công ty</label>
-                    <input className={FORM_CONTROL_CLASS} defaultValue="Công ty trách nhiệm hữu hạn tư nhân" disabled />
+                    <input className={FC} defaultValue="Công ty trách nhiệm hữu hạn tư nhân" disabled />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Ngành nghề kinh doanh</label>
-                    <input className={FORM_CONTROL_CLASS} defaultValue="Sản xuất cơ khí hàng tiêu dùng" disabled />
+                    <input className={FC} defaultValue="Sản xuất cơ khí hàng tiêu dùng" disabled />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3.5">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Tổng số lao động của cơ sở <span className="text-danger">*</span></label>
-                    <input type="number" className={FORM_CONTROL_CLASS} value={totalLao} onChange={(e) => setTotalLao(e.target.value)} />
+                    <input type="number" className={FC} value={totalLao} onChange={(e) => setTotalLao(e.target.value)} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Tổng số lao động nữ <span className="text-danger">*</span></label>
-                    <input type="number" className={FORM_CONTROL_CLASS} value={totalNu} onChange={(e) => setTotalNu(e.target.value)} />
+                    <input type="number" className={FC} value={totalNu} onChange={(e) => setTotalNu(e.target.value)} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Tổng quỹ lương <span className="text-danger">*</span></label>
-                    <input type="number" className={FORM_CONTROL_CLASS} value={tongLuong} onChange={(e) => setTongLuong(e.target.value)} />
+                    <input type="number" className={FC} value={tongLuong} onChange={(e) => setTongLuong(e.target.value)} />
                     <span className="text-xs text-muted">(1.000đ)</span>
                   </div>
                 </div>
@@ -263,22 +319,181 @@ export default function EnterpriseReportPage() {
                       **** Doanh nghiệp xảy ra tai nạn lao động vui lòng nhập theo từng bước
                     </p>
                     <div className="mb-2 text-[14px] font-semibold text-ink">1. Tổng số vụ tai nạn lao động & số nạn nhân tai nạn lao động</div>
-                    <div className="grid grid-cols-4 gap-3 mb-4">
-                      {[
+
+                    <div className="mb-3 grid grid-cols-4 gap-3">
+                      {([
                         ["Tổng số vụ *", tongVu, setTongVu],
                         ["Số vụ có người chết *", vuChet, setVuChet],
                         ["Số vụ ≥ 2 người bị nạn *", vuNhieu, setVuNhieu],
-                        ["Tổng số người bị nạn *", "10", () => {}],
-                      ].map(([label, val, setter]) => (
-                        <div key={label as string} className="flex flex-col gap-1.5">
-                          <label className="text-[12.5px] font-medium text-[#374151]">{label as string}</label>
-                          <input type="number" className={FORM_CONTROL_CLASS} value={val as string} onChange={(e) => (setter as (v: string) => void)(e.target.value)} />
+                        [null, null, null],
+                      ] as [string | null, string | null, ((v: string) => void) | null][]).map(([label, val, setter], i) =>
+                        label ? (
+                          <div key={i} className="flex flex-col gap-1.5">
+                            <label className="text-[12.5px] font-medium text-[#374151]">{label}</label>
+                            <input type="number" className={FC} value={val ?? ""} onChange={(e) => setter?.(e.target.value)} />
+                          </div>
+                        ) : <div key={i} />
+                      )}
+                    </div>
+
+                    <div className="mb-3 grid grid-cols-4 gap-3">
+                      {([
+                        ["Tổng số người bị nạn *", tongNan, setTongNan],
+                        ["Tổng số lao động nữ bị nạn *", tongNanNu, setTongNanNu],
+                        ["Tổng số người bị chết *", tongChetNN, setTongChetNN],
+                        ["Tổng số người bị thương nặng *", tongThuongNang, setTongThuongNang],
+                      ] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
+                        <div key={label} className="flex flex-col gap-1.5">
+                          <label className="text-[12.5px] font-medium text-[#374151]">{label}</label>
+                          <input type="number" className={FC} value={val} onChange={(e) => setter(e.target.value)} />
                         </div>
                       ))}
                     </div>
+
+                    <div className="mb-5 grid grid-cols-4 gap-3">
+                      {([
+                        ["Số người bị nạn không QL *", nanKhongQL, setNanKhongQL],
+                        ["Lao động nữ bị nạn không QL *", nuKhongQL, setNuKhongQL],
+                        ["Số người chết không QL *", chetKhongQL, setChetKhongQL],
+                        ["Người bị thương nặng không QL *", thuongKhongQL, setThuongKhongQL],
+                      ] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
+                        <div key={label} className="flex flex-col gap-1.5">
+                          <label className="text-[12.5px] font-medium text-[#374151]">{label}</label>
+                          <input type="number" className={FC} value={val} onChange={(e) => setter(e.target.value)} />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mb-2 text-[14px] font-semibold text-ink">2. Thiệt hại do tai nạn lao động</div>
+
+                    <div className="mb-3 grid grid-cols-4 gap-3">
+                      {([
+                        ["Chi phí y tế *", chiPhiYTe, setChiPhiYTe],
+                        ["Chi phí trả lương trong thời gian điều trị *", chiPhiLuong, setChiPhiLuong],
+                        ["Chi phí bồi thường trợ cấp *", chiPhiBTTC, setChiPhiBTTC],
+                        ["Tổng số tiền chi phí *", tongChiPhi, setTongChiPhi],
+                      ] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
+                        <div key={label} className="flex flex-col gap-1.5">
+                          <label className="text-[12.5px] font-medium text-[#374151]">{label}</label>
+                          <input className={FC} value={val} onChange={(e) => setter(e.target.value)} />
+                          <span className="text-xs text-muted">(1.000đ)</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[12.5px] font-medium text-[#374151]">Tổng số ngày nghỉ vì TNLĐ *</label>
+                        <input type="number" className={FC} value={soNgayNghi} onChange={(e) => setSoNgayNghi(e.target.value)} />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[12.5px] font-medium text-[#374151]">Thiệt hại tài sản</label>
+                        <input className={FC} value={thiHaiTaiSan} onChange={(e) => setThiHaiTaiSan(e.target.value)} />
+                        <span className="text-xs text-muted">(1.000đ)</span>
+                      </div>
+                    </div>
                   </>
                 ) : (
-                  <div className="text-[13.5px] text-muted py-4">Chi tiết từng vụ tai nạn lao động sẽ được nhập ở đây.</div>
+                  <>
+                    <p className="mb-4 text-[12.5px] font-medium text-danger">Chi tiết từng vụ tai nạn lao động</p>
+                    {accidentDetails.length === 0 ? (
+                      <div className="mb-4 rounded-md border border-dashed border-[#d1d5db] bg-[#f9fafb] py-8 text-center text-[13.5px] text-muted">
+                        Chưa có vụ tai nạn nào. Nhấn &quot;Thêm vụ&quot; để bắt đầu nhập.
+                      </div>
+                    ) : (
+                      accidentDetails.map((d, idx) => (
+                        <div key={d.id} className="mb-4 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] p-5">
+                          <div className="mb-3 flex items-center justify-between">
+                            <span className="text-[13.5px] font-semibold text-ink">Vụ {idx + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeDetail(d.id)}
+                              className="rounded p-1 text-muted hover:bg-[#fee2e2] hover:text-danger"
+                              title="Xoá vụ này"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                                <path d="M10 11v6M14 11v6" />
+                                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="mb-3 grid grid-cols-3 gap-3">
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[12.5px] font-medium text-[#374151]">Họ và tên nạn nhân <span className="text-danger">*</span></label>
+                              <input className={FC} placeholder="VD: Nguyễn Văn A" value={d.hoTen} onChange={(e) => updateDetail(d.id, "hoTen", e.target.value)} />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[12.5px] font-medium text-[#374151]">Ngày sinh</label>
+                              <input type="date" className={FC} value={d.ngaySinh} onChange={(e) => updateDetail(d.id, "ngaySinh", e.target.value)} />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[12.5px] font-medium text-[#374151]">Giới tính</label>
+                              <select className={SC} value={d.gioiTinh} onChange={(e) => updateDetail(d.id, "gioiTinh", e.target.value)}>
+                                <option>Nam</option>
+                                <option>Nữ</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="mb-3 grid grid-cols-3 gap-3">
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[12.5px] font-medium text-[#374151]">Nghề nghiệp</label>
+                              <input className={FC} placeholder="VD: Thợ hàn" value={d.ngheNghiep} onChange={(e) => updateDetail(d.id, "ngheNghiep", e.target.value)} />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[12.5px] font-medium text-[#374151]">Loại hợp đồng lao động</label>
+                              <select className={SC} value={d.loaiHopDong} onChange={(e) => updateDetail(d.id, "loaiHopDong", e.target.value)}>
+                                <option>Hợp đồng xác định thời hạn</option>
+                                <option>Hợp đồng không xác định thời hạn</option>
+                              </select>
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[12.5px] font-medium text-[#374151]">Mức độ thương tật</label>
+                              <select className={SC} value={d.mucDo} onChange={(e) => updateDetail(d.id, "mucDo", e.target.value)}>
+                                <option>Chết</option>
+                                <option>Thương nặng</option>
+                                <option>Thương nhẹ</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[12.5px] font-medium text-[#374151]">Ngày xảy ra tai nạn</label>
+                              <input type="date" className={FC} value={d.ngayXayRa} onChange={(e) => updateDetail(d.id, "ngayXayRa", e.target.value)} />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[12.5px] font-medium text-[#374151]">Địa điểm xảy ra tai nạn</label>
+                              <input className={FC} placeholder="VD: Xưởng sản xuất" value={d.diaDiem} onChange={(e) => updateDetail(d.id, "diaDiem", e.target.value)} />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[12.5px] font-medium text-[#374151]">Yếu tố gây chấn thương</label>
+                              <select className={SC} value={d.yeuTo} onChange={(e) => updateDetail(d.id, "yeuTo", e.target.value)}>
+                                <option value="">-- Chọn yếu tố --</option>
+                                <option>Điện</option>
+                                <option>Vật rơi, đổ, sập</option>
+                                <option>Thiết bị nâng</option>
+                                <option>Máy, thiết bị</option>
+                                <option>Phương tiện vận tải</option>
+                                <option>Khác</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    <button
+                      type="button"
+                      onClick={addDetail}
+                      className="flex h-9 items-center gap-1.5 rounded-md border border-dashed border-primary px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Thêm vụ
+                    </button>
+                  </>
                 )}
               </div>
             ) : (
@@ -308,10 +523,10 @@ export default function EnterpriseReportPage() {
                         <td className={CT_TD}>{tongVu}</td>
                         <td className={CT_TD}>{vuChet}</td>
                         <td className={CT_TD}>{vuNhieu}</td>
-                        <td className={CT_TD}>{totalLao}</td>
-                        <td className={CT_TD}>{totalNu}</td>
-                        <td className={CT_TD}>{vuChet}</td>
-                        <td className={CT_TD}>0</td>
+                        <td className={CT_TD}>{tongNan}</td>
+                        <td className={CT_TD}>{tongNanNu}</td>
+                        <td className={CT_TD}>{tongChetNN}</td>
+                        <td className={CT_TD}>{tongThuongNang}</td>
                       </tr>
                     </tbody>
                   </table>

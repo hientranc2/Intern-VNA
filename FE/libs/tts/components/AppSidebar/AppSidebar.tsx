@@ -29,7 +29,10 @@ const GROUPS: NavGroup[] = [
   },
   {
     label: "Tai nạn lao động",
-    children: [{ label: "Danh mục chung" }, { label: "TNLĐ theo HĐLĐ" }],
+    children: [
+      { label: "Danh mục chung", href: "/category" },
+      { label: "TNLĐ theo HĐLĐ", href: "/accident-report" },
+    ],
   },
 ];
 
@@ -120,6 +123,18 @@ export function AppSidebar({
                 onClick={() => toggleGroup(group.label)}
                 className="flex w-full items-center gap-2.5 px-4 py-[11px] text-left text-[13px] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
               >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="shrink-0"
+                >
+                  <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+                </svg>
                 <span className="flex-1">{group.label}</span>
                 <svg
                   width="14"
@@ -149,6 +164,7 @@ export function AppSidebar({
                           href={child.href}
                           className={`block ${className}`}
                         >
+                          <span className="mr-2 opacity-60">•</span>
                           {child.label}
                         </Link>
                       );
@@ -158,6 +174,7 @@ export function AppSidebar({
                         key={child.label}
                         className={`cursor-pointer ${className}`}
                       >
+                        <span className="mr-2 opacity-60">•</span>
                         {child.label}
                       </div>
                     );
