@@ -20,6 +20,7 @@ import {
   clearToken,
   ApiError,
 } from "@/libs/tts/auth/authApi";
+import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 
 const EMPTY_PROFILE = {
   username: "",
@@ -484,14 +485,15 @@ export default function AccountPage() {
                   <select
                     className={SELECT_CLASS}
                     value={form.province}
-                    onChange={(e) => setField("province", e.target.value)}
+                    onChange={(e) => {
+                      setField("province", e.target.value);
+                      setField("ward", "");
+                    }}
                   >
-                    <option value="">Tỉnh thành phố</option>
-                    <option value="Thành phố Hồ Chí Minh">
-                      Thành phố Hồ Chí Minh
-                    </option>
-                    <option value="Hà Nội">Hà Nội</option>
-                    <option value="Đà Nẵng">Đà Nẵng</option>
+                    <option value="">Chọn tỉnh / thành phố</option>
+                    {PROVINCES.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -500,11 +502,16 @@ export default function AccountPage() {
                     className={SELECT_CLASS}
                     value={form.ward}
                     onChange={(e) => setField("ward", e.target.value)}
+                    disabled={!form.province || !(WARDS_BY_PROVINCE[form.province]?.length)}
                   >
-                    <option value="">Phường xã</option>
-                    <option value="Phường Gò Vấp">Phường Gò Vấp</option>
-                    <option value="Phường 1">Phường 1</option>
-                    <option value="Phường 2">Phường 2</option>
+                    <option value="">
+                      {form.province && !WARDS_BY_PROVINCE[form.province]
+                        ? "Chưa có dữ liệu phường/xã"
+                        : "Chọn phường / xã"}
+                    </option>
+                    {(WARDS_BY_PROVINCE[form.province] ?? []).map((w) => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="col-span-2 flex flex-col gap-1.5">
