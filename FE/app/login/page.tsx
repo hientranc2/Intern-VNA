@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GovSeal } from "@/libs/core/components/GovSeal/GovSeal";
 import { AuthShell } from "@/libs/core/components/AuthShell/AuthShell";
 import { Alert } from "@/libs/core/components/Alert/Alert";
 import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
 import { type LoginField } from "@/libs/tts/auth/authValidation";
-import { login, setToken, ApiError } from "@/libs/tts/auth/authApi";
+import { login, setToken, getToken, ApiError } from "@/libs/tts/auth/authApi";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,6 +17,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [errorField, setErrorField] = useState<LoginField>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (getToken()) router.replace("/account");
+  }, [router]);
 
   const handleLogin = async () => {
     if (loading) return;
