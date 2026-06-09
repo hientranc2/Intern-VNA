@@ -49,6 +49,6 @@ export class AuthController {
     @Request() req, 
     @UploadedFile() file: Express.Multer.File
   ) {`  `
-    return this.authService.uploadAvatar(req.user.id, file);
+    return this.authService.uploadAvatar(req.user.userId, file);
   }
 }
