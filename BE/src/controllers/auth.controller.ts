@@ -43,12 +43,12 @@ export class AuthController {
   @Post('change-email')
   changeEmail(@Request() req, @Body() dto: ChangeEmailDto) { return this.authService.verifyAndChangeEmail(req.user.userId, dto); }
   @Post('profile/avatar')
-  @UseGuards(AuthGuard('jwt')) // Bắt buộc phải đăng nhập mới được up ảnh
-  @UseInterceptors(FileInterceptor('file')) // Cài "chốt chặn" để hứng cái file có tên là 'file'
+  @UseGuards(AuthGuard('jwt')) 
+  @UseInterceptors(FileInterceptor('file')) 
   async uploadAvatar(
     @Request() req, 
     @UploadedFile() file: Express.Multer.File
-  ) {
+  ) {`  `
     return this.authService.uploadAvatar(req.user.id, file);
   }
 }
