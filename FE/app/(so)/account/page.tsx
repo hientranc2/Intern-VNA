@@ -2,6 +2,7 @@
 
 import { useContext, useEffect, useState } from "react";
 import { Alert } from "@/libs/core/components/Alert/Alert";
+import { Toast } from "@/libs/core/components/Toast/Toast";
 import { SidebarOverrideContext } from "@/libs/tts/auth/sidebarContext";
 import { Modal } from "@/libs/core/components/Modal/Modal";
 import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
@@ -11,6 +12,7 @@ import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import {
   getProfile,
   updateProfile,
+  uploadAvatar,
   changePassword,
   requestChangeEmailOtp,
   changeEmail,
@@ -69,8 +71,7 @@ export default function AccountPage() {
   const [form, setForm] = useState<ProfileForm>(EMPTY_PROFILE);
   const [email, setEmail] = useState("");
   const [active, setActive] = useState(true);
-  const [pageNotice, setPageNotice] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -89,10 +90,12 @@ export default function AccountPage() {
   const [newEmailError, setNewEmailError] = useState<string | null>(null);
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
   };
 
@@ -119,13 +122,13 @@ export default function AccountPage() {
         });
         setEmail(p.email ?? "");
         setActive(p.isActive ?? true);
+        if (p.avatarUrl) setAvatarPreview(p.avatarUrl);
       } catch (err) {
         if (cancelled) return;
-        setLoadError(
-          err instanceof ApiError
-            ? err.message
-            : "Không tải được thông tin tài khoản",
-        );
+        setToast({
+          message: err instanceof ApiError ? err.message : "Không tải được thông tin tài khoản",
+          variant: "error",
+        });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -147,9 +150,12 @@ export default function AccountPage() {
   const saveProfile = async () => {
     if (saving) return;
     setSaving(true);
-    setPageNotice(null);
-    setLoadError(null);
     try {
+      if (avatarFile) {
+        const uploaded = await uploadAvatar(avatarFile);
+        setAvatarFile(null);
+        if (uploaded.avatarUrl) setAvatarPreview(uploaded.avatarUrl);
+      }
       await updateProfile({
         fullName: form.fullName,
         dob: form.dob || undefined,
@@ -159,11 +165,12 @@ export default function AccountPage() {
         ward: form.ward || undefined,
         address: form.address || undefined,
       });
-      setPageNotice("Lưu thông tin thành công!");
+      setToast({ message: "Lưu thông tin thành công!", variant: "success" });
     } catch (err) {
-      setLoadError(
-        err instanceof ApiError ? err.message : "Lưu thông tin thất bại",
-      );
+      setToast({
+        message: err instanceof ApiError ? err.message : "Lưu thông tin thất bại",
+        variant: "error",
+      });
     } finally {
       setSaving(false);
     }
@@ -189,7 +196,7 @@ export default function AccountPage() {
       setOldPwd("");
       setNewPwd("");
       setConfirmPwd("");
-      setPageNotice("Đổi mật khẩu thành công!");
+      setToast({ message: "Đổi mật khẩu thành công!", variant: "success" });
     } catch (err) {
       setPwdError(
         err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
@@ -234,7 +241,7 @@ export default function AccountPage() {
       otpCountdown.stop();
       setEmail(newEmail.trim());
       setNewEmailOpen(false);
-      setPageNotice("Thay đổi email thành công!");
+      setToast({ message: "Thay đổi email thành công!", variant: "success" });
     } catch (err) {
       setNewEmailError(
         err instanceof ApiError ? err.message : "Thay đổi email thất bại",
@@ -268,21 +275,6 @@ export default function AccountPage() {
         </div>
 
         <div className="p-6">
-          {loadError ? (
-            <Alert
-              variant="error"
-              message={loadError}
-              onClose={() => setLoadError(null)}
-            />
-          ) : null}
-          {pageNotice ? (
-            <Alert
-              variant="success"
-              message={pageNotice}
-              onClose={() => setPageNotice(null)}
-            />
-          ) : null}
-
           <div className="flex items-start gap-7 rounded-[10px] bg-white p-7 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
             {/* Cột trái: avatar + kích hoạt */}
             <div className="w-[240px] shrink-0 rounded-[10px] border border-[#e5e7eb] px-5 py-6">
@@ -446,7 +438,7 @@ export default function AccountPage() {
                       value={email}
                       readOnly
                     />
-                    
+
                     <button
                       type="button"
                       onClick={openChangeEmail}
@@ -476,7 +468,9 @@ export default function AccountPage() {
                   >
                     <option value="">Chọn tỉnh / thành phố</option>
                     {PROVINCES.map((p) => (
-                      <option key={p} value={p}>{p}</option>
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -486,7 +480,10 @@ export default function AccountPage() {
                     className={SELECT_CLASS}
                     value={form.ward}
                     onChange={(e) => setField("ward", e.target.value)}
-                    disabled={!form.province || !(WARDS_BY_PROVINCE[form.province]?.length)}
+                    disabled={
+                      !form.province ||
+                      !WARDS_BY_PROVINCE[form.province]?.length
+                    }
                   >
                     <option value="">
                       {form.province && !WARDS_BY_PROVINCE[form.province]
@@ -494,7 +491,9 @@ export default function AccountPage() {
                         : "Chọn phường / xã"}
                     </option>
                     {(WARDS_BY_PROVINCE[form.province] ?? []).map((w) => (
-                      <option key={w} value={w}>{w}</option>
+                      <option key={w} value={w}>
+                        {w}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -681,6 +680,12 @@ export default function AccountPage() {
           />
         </div>
       </Modal>
+
+      <Toast
+        message={toast?.message ?? null}
+        variant={toast?.variant}
+        onDone={() => setToast(null)}
+      />
     </>
   );
 }
