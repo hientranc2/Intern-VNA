@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { FormHelperText } from "@mui/material";
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
+import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import {
   LOAI_HINH_OPTIONS,
   NGANH_OPTIONS,
@@ -73,7 +75,7 @@ export default function EnterpriseInfoPage() {
   const [mode, setMode] = useState<PageMode>("view");
   const [info, setInfo] = useState({ ...DEMO_INFO });
   const [editForm, setEditForm] = useState({ ...DEMO_INFO });
-  const [alert, setAlert] = useState<string | null>(null);
+  const [editErrors, setEditErrors] = useState<{ ten?: string; mst?: string; email?: string }>({});
   const [toast, setToast] = useState<string | null>(null);
 
   const [otpOpen, setOtpOpen] = useState(false);
@@ -85,23 +87,20 @@ export default function EnterpriseInfoPage() {
 
   const goEdit1 = () => {
     setEditForm({ ...info });
-    setAlert(null);
+    setEditErrors({});
     setMode("edit1");
   };
 
   const goEdit2 = () => {
-    if (!editForm.ten.trim() || !editForm.mst.trim()) {
-      setAlert("Vui lòng nhập đầy đủ thông tin bắt buộc.");
+    const errors: { ten?: string; mst?: string; email?: string } = {};
+    if (!editForm.ten.trim()) errors.ten = "Tên doanh nghiệp không được để trống";
+    if (!editForm.mst.trim()) errors.mst = "Mã số thuế không được để trống";
+    if (editForm.email && !isValidEmail(editForm.email)) errors.email = "Email không hợp lệ";
+    if (Object.keys(errors).length > 0) {
+      setEditErrors(errors);
       return;
     }
-    if (editForm.email && !isValidEmail(editForm.email)) {
-      setAlert("Email không hợp lệ, vui lòng kiểm tra lại dữ liệu");
-      return;
-    }
-    if (editForm.email === info.email) {
-      setAlert(null);
-    }
-    setAlert(null);
+    setEditErrors({});
     setMode("edit2");
   };
 
@@ -202,32 +201,36 @@ export default function EnterpriseInfoPage() {
             <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
               <h1 className="text-base font-semibold text-ink">Thông tin doanh nghiệp</h1>
               <div className="flex gap-2.5">
-                <button type="button" onClick={() => { setMode("view"); setAlert(null); }} className="h-9 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">Trở về</button>
+                <button type="button" onClick={() => { setMode("view"); setEditErrors({}); }} className="h-9 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">Trở về</button>
                 <button type="button" onClick={goEdit2} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
                   Tiếp tục <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6" /></svg>
                 </button>
               </div>
             </div>
             <Stepper step={1} />
-            {alert ? (
-              <div className="mx-6 mt-4">
-                <Alert variant="error" message={alert} onClose={() => setAlert(null)} />
-              </div>
-            ) : null}
             <div className="px-6 py-5">
               <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
                 <div className="mb-3.5 text-[13.5px] font-semibold text-[#374151]">Thông tin doanh nghiệp</div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  {[["Tên doanh nghiệp", "ten", true], ["Mã số thuế", "mst", true], ["Loại hình kinh doanh", "loai", true]].map(([label, key, req]) => (
-                    <div key={key as string} className="flex flex-col gap-1.5">
-                      <label className="text-[12.5px] font-medium text-[#374151]">{label as string} {req ? <span className="text-danger">*</span> : null}</label>
+                  {([
+                    { label: "Tên doanh nghiệp", key: "ten", required: true, error: editErrors.ten },
+                    { label: "Mã số thuế", key: "mst", required: true, error: editErrors.mst },
+                    { label: "Loại hình kinh doanh", key: "loai", required: true },
+                  ] as { label: string; key: keyof typeof DEMO_INFO; required?: boolean; error?: string }[]).map(({ label, key, required, error }) => (
+                    <div key={key} className="flex flex-col gap-1">
+                      <label className="text-[12.5px] font-medium text-[#374151]">{label} {required ? <span className="text-danger">*</span> : null}</label>
                       {key === "loai" ? (
-                        <select className={SELECT_CONTROL_CLASS} value={editForm[key as keyof typeof DEMO_INFO]} onChange={(e) => setField(key as keyof typeof DEMO_INFO, e.target.value)}>
+                        <select className={SELECT_CONTROL_CLASS} value={editForm[key]} onChange={(e) => setField(key, e.target.value)}>
                           {LOAI_HINH_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                         </select>
                       ) : (
-                        <input className={FORM_CONTROL_CLASS} value={editForm[key as keyof typeof DEMO_INFO]} onChange={(e) => setField(key as keyof typeof DEMO_INFO, e.target.value)} />
+                        <input
+                          className={`${FORM_CONTROL_CLASS}${error ? " border-danger" : ""}`}
+                          value={editForm[key]}
+                          onChange={(e) => { setField(key, e.target.value); if (error) setEditErrors((p) => ({ ...p, [key]: undefined })); }}
+                        />
                       )}
+                      {error && <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>{error}</FormHelperText>}
                     </div>
                   ))}
                 </div>
@@ -240,7 +243,7 @@ export default function EnterpriseInfoPage() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Ngày cấp GPKD</label>
-                    <input type="date" className={FORM_CONTROL_CLASS} value={editForm.ngayCap} onChange={(e) => setField("ngayCap", e.target.value)} />
+                    <input type="date" className={FORM_CONTROL_CLASS} value={editForm.ngayCap} max={localISODate(new Date())} onChange={(e) => setField("ngayCap", e.target.value)} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Tỉnh/Thành phố ĐKKD <span className="text-danger">*</span></label>
@@ -264,10 +267,19 @@ export default function EnterpriseInfoPage() {
 
                 <div className="mt-4 mb-2 text-[13.5px] font-semibold text-[#374151]">Thông tin liên hệ</div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  {[["Tên tiếng nước ngoài", "tenNN"], ["Email", "email"], ["SĐT cơ quan", "sdt"]].map(([label, key]) => (
-                    <div key={key as string} className="flex flex-col gap-1.5">
-                      <label className="text-[12.5px] font-medium text-[#374151]">{label as string}</label>
-                      <input className={FORM_CONTROL_CLASS} value={editForm[key as keyof typeof DEMO_INFO]} onChange={(e) => setField(key as keyof typeof DEMO_INFO, e.target.value)} />
+                  {([
+                    { label: "Tên tiếng nước ngoài", key: "tenNN" },
+                    { label: "Email", key: "email", error: editErrors.email },
+                    { label: "SĐT cơ quan", key: "sdt" },
+                  ] as { label: string; key: keyof typeof DEMO_INFO; error?: string }[]).map(({ label, key, error }) => (
+                    <div key={key} className="flex flex-col gap-1">
+                      <label className="text-[12.5px] font-medium text-[#374151]">{label}</label>
+                      <input
+                        className={`${FORM_CONTROL_CLASS}${error ? " border-danger" : ""}`}
+                        value={editForm[key]}
+                        onChange={(e) => { setField(key, e.target.value); if (error) setEditErrors((p) => ({ ...p, [key]: undefined })); }}
+                      />
+                      {error && <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>{error}</FormHelperText>}
                     </div>
                   ))}
                 </div>

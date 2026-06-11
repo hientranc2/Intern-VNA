@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { FormHelperText } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import {
   INITIAL_ENTERPRISES,
   EMPTY_ENTERPRISE_FORM,
@@ -16,6 +18,7 @@ import {
   type EnterpriseForm,
 } from "@/libs/tts/enterprise/enterpriseData";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
+import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 
 type WizardMode = "add" | "edit";
 
@@ -30,13 +33,16 @@ const FILE_ROWS = [
   { name: "Giấy tờ khác", info: "GTK1.pdf" },
 ];
 
-function FieldGroup({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function FieldGroup({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <label className="text-[12.5px] font-medium text-[#374151]">
         {label} {required ? <span className="text-danger">*</span> : null}
       </label>
       {children}
+      {error && (
+        <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>{error}</FormHelperText>
+      )}
     </div>
   );
 }
@@ -44,7 +50,7 @@ function FieldGroup({ label, required, children }: { label: string; required?: b
 export default function EnterprisePage() {
   const [enterprises, setEnterprises] = useState<Enterprise[]>(INITIAL_ENTERPRISES);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   const [fTen, setFTen] = useState("");
   const [fMST, setFMST] = useState("");
@@ -63,15 +69,9 @@ export default function EnterprisePage() {
   const [wizardMode, setWizardMode] = useState<WizardMode>("add");
   const [wizardStep, setWizardStep] = useState(1);
   const [form, setForm] = useState<EnterpriseForm>(EMPTY_ENTERPRISE_FORM);
-  const [wizardError, setWizardError] = useState<string | null>(null);
+  const [wizardFieldErrors, setWizardFieldErrors] = useState<{ ten?: string; mst?: string }>({});
 
   const [accountPopup, setAccountPopup] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 2500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   const setField = <K extends keyof EnterpriseForm>(key: K, value: EnterpriseForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -117,7 +117,7 @@ export default function EnterprisePage() {
   const openWizard = (mode: WizardMode, ent?: Enterprise) => {
     setWizardMode(mode);
     setWizardStep(1);
-    setWizardError(null);
+    setWizardFieldErrors({});
     if (mode === "edit" && ent) {
       setForm({
         ...EMPTY_ENTERPRISE_FORM,
@@ -135,17 +135,20 @@ export default function EnterprisePage() {
   };
 
   const goStep2 = () => {
-    if (!form.ten.trim() || !form.mst.trim()) {
-      setWizardError("Vui lòng nhập đầy đủ thông tin bắt buộc.");
+    const errors: { ten?: string; mst?: string } = {};
+    if (!form.ten.trim()) errors.ten = "Tên doanh nghiệp không được để trống";
+    if (!form.mst.trim()) errors.mst = "Mã số thuế không được để trống";
+    if (Object.keys(errors).length > 0) {
+      setWizardFieldErrors(errors);
       return;
     }
-    setWizardError(null);
+    setWizardFieldErrors({});
     setWizardStep(2);
   };
 
   const confirmWizard = () => {
     setWizardOpen(false);
-    setToast(wizardMode === "add" ? "Thêm mới doanh nghiệp thành công" : "Cập nhật thành công");
+    setToast({ message: wizardMode === "add" ? "Thêm mới doanh nghiệp thành công" : "Cập nhật thành công", variant: "success" });
     if (wizardMode === "add") {
       const acc = "0" + Math.floor(Math.random() * 9e9).toString().padStart(9, "0");
       setAccountPopup(acc);
@@ -273,7 +276,7 @@ export default function EnterprisePage() {
                             <div className="flex gap-0.5">
                               <button
                                 type="button"
-                                onClick={() => setToast(`Xem chi tiết doanh nghiệp #${e.id}`)}
+                                onClick={() => setToast({ message: `Xem chi tiết doanh nghiệp #${e.id}`, variant: "success" })}
                                 title="Xem"
                                 className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                               >
@@ -416,19 +419,23 @@ export default function EnterprisePage() {
                 <div className="mb-4 text-[15px] font-bold text-ink">
                   {wizardMode === "add" ? "Thêm mới doanh nghiệp" : "Cập nhật doanh nghiệp"}
                 </div>
-                {wizardError ? (
-                  <div className="mb-4 rounded-md border border-[#fca5a5] bg-[#fff1f0] px-3.5 py-2.5 text-[13px] text-[#b91c1c]">
-                    {wizardError}
-                  </div>
-                ) : null}
-
                 <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                    <FieldGroup label="Tên doanh nghiệp" required>
-                      <input className={FORM_CONTROL_CLASS} value={form.ten} onChange={(e) => setField("ten", e.target.value)} placeholder="VD: Công ty cổ phần ABC" />
+                    <FieldGroup label="Tên doanh nghiệp" required error={wizardFieldErrors.ten}>
+                      <input
+                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.ten ? " border-danger" : ""}`}
+                        value={form.ten}
+                        onChange={(e) => { setField("ten", e.target.value); if (wizardFieldErrors.ten) setWizardFieldErrors((p) => ({ ...p, ten: undefined })); }}
+                        placeholder="VD: Công ty cổ phần ABC"
+                      />
                     </FieldGroup>
-                    <FieldGroup label="Mã số thuế" required>
-                      <input className={FORM_CONTROL_CLASS} value={form.mst} onChange={(e) => setField("mst", e.target.value)} placeholder="VD: 0310000888292" />
+                    <FieldGroup label="Mã số thuế" required error={wizardFieldErrors.mst}>
+                      <input
+                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.mst ? " border-danger" : ""}`}
+                        value={form.mst}
+                        onChange={(e) => { setField("mst", e.target.value); if (wizardFieldErrors.mst) setWizardFieldErrors((p) => ({ ...p, mst: undefined })); }}
+                        placeholder="VD: 0310000888292"
+                      />
                     </FieldGroup>
                     <FieldGroup label="Loại hình kinh doanh" required>
                       <select className={SELECT_CONTROL_CLASS} value={form.loai} onChange={(e) => setField("loai", e.target.value)}>
@@ -449,7 +456,7 @@ export default function EnterprisePage() {
                       </select>
                     </FieldGroup>
                     <FieldGroup label="Ngày cấp GPKD">
-                      <input type="date" className={FORM_CONTROL_CLASS} value={form.ngayCap} onChange={(e) => setField("ngayCap", e.target.value)} />
+                      <input type="date" className={FORM_CONTROL_CLASS} value={form.ngayCap} max={localISODate(new Date())} onChange={(e) => setField("ngayCap", e.target.value)} />
                     </FieldGroup>
                     <FieldGroup label="Tỉnh/Thành phố ĐKKD" required>
                       <select className={SELECT_CONTROL_CLASS} value={form.tinh} onChange={(e) => setField("tinh", e.target.value)}>
@@ -657,15 +664,7 @@ export default function EnterprisePage() {
         </>
       ) : null}
 
-      {/* Toast */}
-      {toast ? (
-        <div className="fixed right-5 top-[68px] z-[999] flex items-center gap-2 rounded-lg border border-[#86efac] bg-[#f0fdf4] px-4 py-2.5 text-[13px] text-[#166534] shadow-[0_4px_12px_rgba(0,0,0,0.15)]">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          <span>{toast}</span>
-        </div>
-      ) : null}
+      <Toast message={toast?.message ?? null} variant={toast?.variant} onDone={() => setToast(null)} />
     </>
   );
 }

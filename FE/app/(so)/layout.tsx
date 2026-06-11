@@ -4,16 +4,32 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
 import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
-import { getToken, clearToken, changePassword, ApiError } from "@/libs/tts/auth/authApi";
-import { SidebarOverrideContext, type SidebarOverride } from "@/libs/tts/auth/sidebarContext";
+import {
+  getToken,
+  clearToken,
+  getProfile,
+  changePassword,
+  ApiError,
+} from "@/libs/tts/auth/authApi";
+
+function getInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+import {
+  SidebarOverrideContext,
+  type SidebarOverride,
+} from "@/libs/tts/auth/sidebarContext";
+import { FormHelperText } from "@mui/material";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
-import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 
 const PATH_ACTIVE: Record<string, string> = {
   "/permission": "Phân quyền",
   "/role": "Vai trò",
-  "/user": "Tài khoản",
+  "/user": "Quản lý người dùng",
   "/enterprise-type": "Loại hình doanh nghiệp",
   "/business-sector": "Ngành nghề kinh doanh",
   "/enterprise": "Quản lý doanh nghiệp",
@@ -33,10 +49,17 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
-  const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdFieldErrors, setPwdFieldErrors] = useState<{ oldPwd?: string; newPwd?: string; confirmPwd?: string; api?: string }>({});
 
   useEffect(() => {
-    if (!getToken()) router.replace("/login");
+    if (!getToken()) { router.replace("/login"); return; }
+    getProfile().then((p) => {
+      setSidebarOverride({
+        userName: p.fullName || p.username,
+        initials: getInitials(p.fullName || p.username),
+        avatarUrl: p.avatarUrl,
+      });
+    }).catch(() => {});
   }, [router]);
 
   const handleLogout = () => {
@@ -48,31 +71,44 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
     setOldPwd("");
     setNewPwd("");
     setConfirmPwd("");
-    setPwdError(null);
+    setPwdFieldErrors({});
     setPwdOpen(true);
   };
 
   const savePassword = async () => {
-    if (!oldPwd || !newPwd || !confirmPwd) {
-      setPwdError("Vui lòng điền đầy đủ thông tin");
+    const errors: typeof pwdFieldErrors = {};
+    if (!oldPwd) errors.oldPwd = "Vui lòng nhập mật khẩu cũ";
+    if (!newPwd) errors.newPwd = "Vui lòng nhập mật khẩu mới";
+    else if (oldPwd && newPwd === oldPwd) errors.newPwd = "Mật khẩu mới không được trùng với mật khẩu cũ";
+    if (!confirmPwd) errors.confirmPwd = "Vui lòng nhập lại mật khẩu mới";
+    else if (newPwd && newPwd !== confirmPwd) errors.confirmPwd = "Mật khẩu mới không khớp";
+    if (Object.keys(errors).length > 0) {
+      setPwdFieldErrors(errors);
       return;
     }
-    if (newPwd !== confirmPwd) {
-      setPwdError("Mật khẩu mới không khớp");
-      return;
-    }
+    setPwdFieldErrors({});
     try {
-      await changePassword({ oldPassword: oldPwd, newPassword: newPwd, confirmPassword: confirmPwd });
+      await changePassword({
+        oldPassword: oldPwd,
+        newPassword: newPwd,
+        confirmPassword: confirmPwd,
+      });
       setPwdOpen(false);
+      clearToken();
+      router.replace("/login");
     } catch (err) {
-      setPwdError(err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại");
+      setPwdFieldErrors({
+        api: err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
+      });
     }
   };
 
   const toggle = () => setSidebarOpen((v) => !v);
 
   return (
-    <SidebarOverrideContext.Provider value={{ override: sidebarOverride, setOverride: setSidebarOverride }}>
+    <SidebarOverrideContext.Provider
+      value={{ override: sidebarOverride, setOverride: setSidebarOverride }}
+    >
       <div className="min-h-screen bg-body text-ink">
         <AppSidebar
           active={PATH_ACTIVE[pathname]}
@@ -83,7 +119,9 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
           {...sidebarOverride}
         />
         <AppTopbar sidebarCollapsed={!sidebarOpen} onToggleSidebar={toggle} />
-        <main className={`min-h-screen transition-[margin,padding] duration-300 ${sidebarOpen ? "ml-55" : "ml-0 pt-13"}`}>
+        <main
+          className={`min-h-screen transition-[margin,padding] duration-300 ${sidebarOpen ? "ml-55" : "ml-0 pt-13"}`}
+        >
           {children}
         </main>
       </div>
@@ -111,24 +149,52 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
           </div>
         }
       >
-        {pwdError ? <Alert variant="error" message={pwdError} /> : null}
         <div className="mb-4">
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             Mật khẩu cũ <span className="text-danger">*</span>
           </label>
-          <PasswordField value={oldPwd} onChange={setOldPwd} placeholder="Mật khẩu cũ" />
+          <PasswordField
+            value={oldPwd}
+            onChange={(v) => { setOldPwd(v); if (pwdFieldErrors.oldPwd) setPwdFieldErrors((p) => ({ ...p, oldPwd: undefined })); }}
+            placeholder="Mật khẩu cũ"
+            hasError={!!pwdFieldErrors.oldPwd}
+          />
+          {pwdFieldErrors.oldPwd && (
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.oldPwd}</FormHelperText>
+          )}
         </div>
         <div className="mb-4">
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             Mật khẩu mới <span className="text-danger">*</span>
           </label>
-          <PasswordField value={newPwd} onChange={setNewPwd} placeholder="Mật khẩu mới" autoComplete="new-password" />
+          <PasswordField
+            value={newPwd}
+            onChange={(v) => { setNewPwd(v); if (pwdFieldErrors.newPwd) setPwdFieldErrors((p) => ({ ...p, newPwd: undefined })); }}
+            placeholder="Mật khẩu mới"
+            autoComplete="new-password"
+            hasError={!!pwdFieldErrors.newPwd}
+          />
+          {pwdFieldErrors.newPwd && (
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.newPwd}</FormHelperText>
+          )}
         </div>
         <div>
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             Nhập lại mật khẩu mới <span className="text-danger">*</span>
           </label>
-          <PasswordField value={confirmPwd} onChange={setConfirmPwd} placeholder="Nhập lại mật khẩu mới" autoComplete="new-password" />
+          <PasswordField
+            value={confirmPwd}
+            onChange={(v) => { setConfirmPwd(v); if (pwdFieldErrors.confirmPwd) setPwdFieldErrors((p) => ({ ...p, confirmPwd: undefined })); }}
+            placeholder="Nhập lại mật khẩu mới"
+            autoComplete="new-password"
+            hasError={!!pwdFieldErrors.confirmPwd}
+          />
+          {pwdFieldErrors.confirmPwd && (
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.confirmPwd}</FormHelperText>
+          )}
+          {pwdFieldErrors.api && (
+            <FormHelperText error sx={{ mt: 1, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.api}</FormHelperText>
+          )}
         </div>
       </Modal>
     </SidebarOverrideContext.Provider>

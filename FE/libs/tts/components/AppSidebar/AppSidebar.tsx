@@ -264,9 +264,11 @@ export function AppSidebar({
               className="h-9 w-9 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#93c5fd] text-sm font-bold text-dark">
-              {initials}
-            </div>
+            <img
+              src="/avatar-default-svgrepo-com.svg"
+              alt="avatar"
+              className="block h-9 w-9 shrink-0 rounded-full bg-[#e5e7eb] object-contain"
+            />
           )}
           <span className="flex-1 text-left text-[13px] font-medium text-white">
             {userName}

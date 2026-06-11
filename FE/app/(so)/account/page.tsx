@@ -1,7 +1,8 @@
 "use client";
 
 import { useContext, useEffect, useState } from "react";
-import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { useRouter } from "next/navigation";
+import { FormHelperText } from "@mui/material";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { SidebarOverrideContext } from "@/libs/tts/auth/sidebarContext";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
@@ -16,9 +17,11 @@ import {
   changePassword,
   requestChangeEmailOtp,
   changeEmail,
+  clearToken,
   ApiError,
 } from "@/libs/tts/auth/authApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
+import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 
 const EMPTY_PROFILE = {
   username: "",
@@ -36,6 +39,9 @@ type ProfileForm = typeof EMPTY_PROFILE;
 
 const FIELD_CLASS =
   "h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition-colors focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
+
+const DISABLED_FIELD_CLASS =
+  "h-10 w-full rounded-md border border-line bg-[#f3f4f6] px-3 text-sm text-muted outline-none cursor-not-allowed select-none";
 
 const SELECT_CLASS = `${FIELD_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-9`;
 
@@ -65,13 +71,17 @@ function FieldLabel({
 }
 
 export default function AccountPage() {
+  const router = useRouter();
   const otpCountdown = useCountdown(300);
   const { setOverride } = useContext(SidebarOverrideContext);
 
   const [form, setForm] = useState<ProfileForm>(EMPTY_PROFILE);
   const [email, setEmail] = useState("");
   const [active, setActive] = useState(true);
-  const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    variant: "success" | "error";
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -79,7 +89,7 @@ export default function AccountPage() {
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
-  const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdFieldErrors, setPwdFieldErrors] = useState<{ oldPwd?: string; newPwd?: string; confirmPwd?: string }>({});
 
   const [otpOpen, setOtpOpen] = useState(false);
   const [otp, setOtp] = useState("");
@@ -88,6 +98,11 @@ export default function AccountPage() {
   const [newEmailOpen, setNewEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newEmailError, setNewEmailError] = useState<string | null>(null);
+
+  const [formErrors, setFormErrors] = useState<{
+    fullName?: string;
+    dob?: string;
+  }>({});
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -126,7 +141,10 @@ export default function AccountPage() {
       } catch (err) {
         if (cancelled) return;
         setToast({
-          message: err instanceof ApiError ? err.message : "Không tải được thông tin tài khoản",
+          message:
+            err instanceof ApiError
+              ? err.message
+              : "Không tải được thông tin tài khoản",
           variant: "error",
         });
       } finally {
@@ -149,6 +167,19 @@ export default function AccountPage() {
 
   const saveProfile = async () => {
     if (saving) return;
+    const errors: { fullName?: string; dob?: string } = {};
+    if (!form.fullName.trim())
+      errors.fullName = "Họ và tên không được để trống";
+    if (form.dob) {
+      const today = localISODate(new Date());
+      if (form.dob > today)
+        errors.dob = "Ngày sinh không được là ngày tương lai";
+    }
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
     setSaving(true);
     try {
       if (avatarFile) {
@@ -168,7 +199,8 @@ export default function AccountPage() {
       setToast({ message: "Lưu thông tin thành công!", variant: "success" });
     } catch (err) {
       setToast({
-        message: err instanceof ApiError ? err.message : "Lưu thông tin thất bại",
+        message:
+          err instanceof ApiError ? err.message : "Lưu thông tin thất bại",
         variant: "error",
       });
     } finally {
@@ -177,30 +209,31 @@ export default function AccountPage() {
   };
 
   const savePassword = async () => {
-    if (!oldPwd || !newPwd || !confirmPwd) {
-      setPwdError("Vui lòng điền đầy đủ thông tin");
+    const errors: typeof pwdFieldErrors = {};
+    if (!oldPwd) errors.oldPwd = "Vui lòng nhập mật khẩu cũ";
+    if (!newPwd) errors.newPwd = "Vui lòng nhập mật khẩu mới";
+    else if (oldPwd && newPwd === oldPwd) errors.newPwd = "Mật khẩu mới không được trùng với mật khẩu cũ";
+    if (!confirmPwd) errors.confirmPwd = "Vui lòng nhập lại mật khẩu mới";
+    else if (newPwd && newPwd !== confirmPwd) errors.confirmPwd = "Mật khẩu mới không khớp";
+    if (Object.keys(errors).length > 0) {
+      setPwdFieldErrors(errors);
       return;
     }
-    if (newPwd !== confirmPwd) {
-      setPwdError("Mật khẩu mới không khớp");
-      return;
-    }
+    setPwdFieldErrors({});
     try {
       await changePassword({
         oldPassword: oldPwd,
         newPassword: newPwd,
         confirmPassword: confirmPwd,
       });
-      setPwdError(null);
       setPwdOpen(false);
-      setOldPwd("");
-      setNewPwd("");
-      setConfirmPwd("");
-      setToast({ message: "Đổi mật khẩu thành công!", variant: "success" });
+      clearToken();
+      router.replace("/login");
     } catch (err) {
-      setPwdError(
-        err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
-      );
+      setToast({
+        message: err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
+        variant: "error",
+      });
     }
   };
 
@@ -211,9 +244,10 @@ export default function AccountPage() {
     setOtpOpen(true);
     otpCountdown.start();
     requestChangeEmailOtp().catch((err) => {
-      setOtpError(
-        err instanceof ApiError ? err.message : "Không gửi được mã OTP",
-      );
+      setToast({
+        message: err instanceof ApiError ? err.message : "Không gửi được mã OTP",
+        variant: "error",
+      });
     });
   };
 
@@ -232,6 +266,10 @@ export default function AccountPage() {
 
   // Bước 3: gửi OTP + email mới lên server để xác nhận đổi.
   const saveNewEmail = async () => {
+    if (newEmail.trim() === email) {
+      setNewEmailError("Email mới không được trùng với email hiện tại");
+      return;
+    }
     if (!isValidEmail(newEmail.trim())) {
       setNewEmailError("Vui lòng nhập email hợp lệ");
       return;
@@ -243,9 +281,10 @@ export default function AccountPage() {
       setNewEmailOpen(false);
       setToast({ message: "Thay đổi email thành công!", variant: "success" });
     } catch (err) {
-      setNewEmailError(
-        err instanceof ApiError ? err.message : "Thay đổi email thất bại",
-      );
+      setToast({
+        message: err instanceof ApiError ? err.message : "Thay đổi email thất bại",
+        variant: "error",
+      });
     }
   };
 
@@ -279,7 +318,7 @@ export default function AccountPage() {
             {/* Cột trái: avatar + kích hoạt */}
             <div className="w-[240px] shrink-0 rounded-[10px] border border-[#e5e7eb] px-5 py-6">
               <div className="flex flex-col items-center gap-2">
-                <label className="group relative flex h-25 w-25 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-[#9ca3af] bg-[#e5e7eb] hover:border-primary">
+                <label className="group relative flex h-25 w-25 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-[#e5e7eb]">
                   <input
                     type="file"
                     accept=".jpeg,.jpg,.png"
@@ -311,22 +350,29 @@ export default function AccountPage() {
                       </div>
                     </>
                   ) : (
-                    <div className="flex flex-col items-center">
-                      <svg
-                        width="28"
-                        height="28"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#9ca3af"
-                        strokeWidth="1.5"
-                      >
-                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-                        <circle cx="12" cy="13" r="4" />
-                      </svg>
-                      <span className="mt-1 text-[11px] text-muted">
-                        Tải ảnh đại diện
-                      </span>
-                    </div>
+                    <>
+                      <img
+                        src="/avatar-default-svgrepo-com.svg"
+                        alt="avatar"
+                        className="block h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                        <svg
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="1.5"
+                        >
+                          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                        <span className="mt-1 text-[10px] text-white">
+                          Tải ảnh đại diện
+                        </span>
+                      </div>
+                    </>
                   )}
                 </label>
                 <div className="text-center text-[11px] text-[#9ca3af]">
@@ -340,6 +386,7 @@ export default function AccountPage() {
                     checked={active}
                     onChange={setActive}
                     ariaLabel="Kích hoạt tài khoản"
+                    disabled
                   />
                 </div>
               </div>
@@ -354,27 +401,42 @@ export default function AccountPage() {
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel required>Tên đăng nhập</FieldLabel>
                   <input
-                    className={`${FIELD_CLASS} bg-[#f9fafb]`}
+                    className={DISABLED_FIELD_CLASS}
                     value={form.username}
                     readOnly
+                    tabIndex={-1}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel required>Họ và tên</FieldLabel>
                   <input
-                    className={FIELD_CLASS}
+                    className={`${FIELD_CLASS}${formErrors.fullName ? " border-danger focus:border-danger" : ""}`}
                     value={form.fullName}
-                    onChange={(e) => setField("fullName", e.target.value)}
+                    onChange={(e) => {
+                      setField("fullName", e.target.value);
+                      if (formErrors.fullName)
+                        setFormErrors((p) => ({ ...p, fullName: undefined }));
+                    }}
                   />
+                  {formErrors.fullName && (
+                    <p className="text-[11px] text-danger">
+                      {formErrors.fullName}
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel>Ngày tháng năm sinh</FieldLabel>
                   <div className="relative">
                     <input
                       type="date"
-                      className={`${FIELD_CLASS} pr-10`}
+                      className={`${FIELD_CLASS} pr-10${formErrors.dob ? " border-danger focus:border-danger" : ""}`}
                       value={form.dob}
-                      onChange={(e) => setField("dob", e.target.value)}
+                      max={localISODate(new Date())}
+                      onChange={(e) => {
+                        setField("dob", e.target.value);
+                        if (formErrors.dob)
+                          setFormErrors((p) => ({ ...p, dob: undefined }));
+                      }}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af]">
                       <svg
@@ -399,6 +461,9 @@ export default function AccountPage() {
                       </svg>
                     </span>
                   </div>
+                  {formErrors.dob && (
+                    <p className="text-[11px] text-danger">{formErrors.dob}</p>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel>Giới tính</FieldLabel>
@@ -425,18 +490,20 @@ export default function AccountPage() {
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel required>Vai trò</FieldLabel>
                   <input
-                    className={`${FIELD_CLASS} bg-[#f9fafb]`}
+                    className={DISABLED_FIELD_CLASS}
                     value={form.role}
                     readOnly
+                    tabIndex={-1}
                   />
                 </div>
                 <div className="col-span-2 flex flex-col gap-1.5">
                   <FieldLabel>Email</FieldLabel>
                   <div className="flex items-center gap-2">
                     <input
-                      className={`${FIELD_CLASS} flex-1`}
+                      className={`${DISABLED_FIELD_CLASS} flex-1`}
                       value={email}
                       readOnly
+                      tabIndex={-1}
                     />
 
                     <button
@@ -536,16 +603,19 @@ export default function AccountPage() {
           </div>
         }
       >
-        {pwdError ? <Alert variant="error" message={pwdError} /> : null}
         <div className="mb-4">
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             Mật khẩu cũ <span className="text-danger">*</span>
           </label>
           <PasswordField
             value={oldPwd}
-            onChange={setOldPwd}
+            onChange={(v) => { setOldPwd(v); if (pwdFieldErrors.oldPwd) setPwdFieldErrors((p) => ({ ...p, oldPwd: undefined })); }}
             placeholder="Mật khẩu cũ"
+            hasError={!!pwdFieldErrors.oldPwd}
           />
+          {pwdFieldErrors.oldPwd && (
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.oldPwd}</FormHelperText>
+          )}
         </div>
         <div className="mb-4">
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
@@ -553,10 +623,14 @@ export default function AccountPage() {
           </label>
           <PasswordField
             value={newPwd}
-            onChange={setNewPwd}
+            onChange={(v) => { setNewPwd(v); if (pwdFieldErrors.newPwd) setPwdFieldErrors((p) => ({ ...p, newPwd: undefined })); }}
             placeholder="Mật khẩu mới"
             autoComplete="new-password"
+            hasError={!!pwdFieldErrors.newPwd}
           />
+          {pwdFieldErrors.newPwd && (
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.newPwd}</FormHelperText>
+          )}
         </div>
         <div>
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
@@ -564,10 +638,14 @@ export default function AccountPage() {
           </label>
           <PasswordField
             value={confirmPwd}
-            onChange={setConfirmPwd}
+            onChange={(v) => { setConfirmPwd(v); if (pwdFieldErrors.confirmPwd) setPwdFieldErrors((p) => ({ ...p, confirmPwd: undefined })); }}
             placeholder="Nhập lại mật khẩu mới"
             autoComplete="new-password"
+            hasError={!!pwdFieldErrors.confirmPwd}
           />
+          {pwdFieldErrors.confirmPwd && (
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.confirmPwd}</FormHelperText>
+          )}
         </div>
       </Modal>
 
@@ -609,18 +687,20 @@ export default function AccountPage() {
           <br />
           Bạn vui lòng kiểm tra và điền mã xác thực
         </p>
-        {otpError ? <Alert variant="error" message={otpError} /> : null}
         <div className="mb-4">
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             OTP <span className="text-danger">*</span>
           </label>
           <input
-            className={MODAL_INPUT_CLASS}
+            className={`${MODAL_INPUT_CLASS}${otpError ? " border-danger" : ""}`}
             value={otp}
             maxLength={6}
-            onChange={(event) => setOtp(event.target.value)}
+            onChange={(event) => { setOtp(event.target.value); if (otpError) setOtpError(null); }}
             placeholder="Nhập mã OTP"
           />
+          {otpError && (
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{otpError}</FormHelperText>
+          )}
         </div>
         <div className="mb-1.5 text-center text-sm font-bold text-primary">
           {otpCountdown.formatted}
@@ -630,7 +710,8 @@ export default function AccountPage() {
           <button
             type="button"
             onClick={() => otpCountdown.start()}
-            className="text-primary hover:underline"
+            disabled={otpCountdown.seconds > 0}
+            className="text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-40"
           >
             Gửi lại
           </button>
@@ -664,20 +745,20 @@ export default function AccountPage() {
         <p className="mb-5 text-center text-[13px] text-muted">
           Vui lòng nhập email mới
         </p>
-        {newEmailError ? (
-          <Alert variant="error" message={newEmailError} />
-        ) : null}
         <div>
           <label className="mb-1.5 block text-[12.5px] text-[#374151]">
             Email <span className="text-danger">*</span>
           </label>
           <input
-            className={MODAL_INPUT_CLASS}
+            className={`${MODAL_INPUT_CLASS}${newEmailError ? " border-danger" : ""}`}
             type="email"
             value={newEmail}
-            onChange={(event) => setNewEmail(event.target.value)}
+            onChange={(event) => { setNewEmail(event.target.value); if (newEmailError) setNewEmailError(null); }}
             placeholder="Nhập email mới"
           />
+          {newEmailError && (
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{newEmailError}</FormHelperText>
+          )}
         </div>
       </Modal>
 

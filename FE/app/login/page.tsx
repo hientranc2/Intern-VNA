@@ -2,20 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FormHelperText } from "@mui/material";
 import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
-import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
-import { type LoginField } from "@/libs/tts/auth/authValidation";
 import { login, setToken, getToken, ApiError } from "@/libs/tts/auth/authApi";
+
+type FieldErrors = { username?: string; password?: string };
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errorField, setErrorField] = useState<LoginField>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -27,43 +29,39 @@ export default function LoginPage() {
 
     const user = username.trim();
     const pass = password.trim();
-    if (!user) {
-      setError("Vui lòng nhập đầy đủ thông tin");
-      setErrorField("username");
-      return;
-    }
-    if (!pass) {
-      setError("Vui lòng nhập đầy đủ thông tin");
-      setErrorField("password");
-      return;
-    }
 
-    setError(null);
-    setErrorField(null);
+    const errors: FieldErrors = {};
+    if (!user) errors.username = "Vui lòng nhập tên đăng nhập";
+    if (!pass) errors.password = "Vui lòng nhập mật khẩu";
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+    setApiError(null);
     setLoading(true);
     try {
       const res = await login({ username: user, password: pass, rememberMe });
       if (!res.user.isActive) {
-        setError("Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên.");
+        setApiError(
+          "Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên.",
+        );
         setPassword("");
         return;
       }
       setToken(res.accessToken);
       router.push("/account");
     } catch (err) {
-      const message =
+      setApiError(
         err instanceof ApiError
           ? err.message
-          : "Đã có lỗi xảy ra. Vui lòng thử lại.";
-      setError(message);
+          : "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      );
       setPassword("");
-      setErrorField(null);
     } finally {
       setLoading(false);
     }
   };
-
-  const usernameError = errorField === "username";
 
   return (
     <AuthShell>
@@ -79,10 +77,6 @@ export default function LoginPage() {
         ĐĂNG NHẬP
       </div>
 
-      {error ? (
-        <Alert variant="error" message={error} onClose={() => setError(null)} />
-      ) : null}
-
       <div className="mb-3.5 w-full">
         <label className="mb-1 block text-xs text-muted" htmlFor="username">
           Tên đăng nhập *
@@ -91,16 +85,24 @@ export default function LoginPage() {
           id="username"
           type="text"
           value={username}
-          onChange={(event) => setUsername(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && handleLogin()}
-          placeholder="nguyenvan3.sts"
+          onChange={(e) => {
+            setUsername(e.target.value);
+            if (fieldErrors.username)
+              setFieldErrors((p) => ({ ...p, username: undefined }));
+          }}
+          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
           autoComplete="username"
           className={`h-10 w-full rounded-md border bg-white px-3 text-sm text-ink outline-none transition-colors ${
-            usernameError
+            fieldErrors.username
               ? "border-danger"
               : "border-line focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
           }`}
         />
+        {fieldErrors.username && (
+          <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
+            {fieldErrors.username}
+          </FormHelperText>
+        )}
       </div>
 
       <div className="mb-3.5 w-full">
@@ -110,9 +112,18 @@ export default function LoginPage() {
         <PasswordField
           id="password"
           value={password}
-          onChange={setPassword}
-          hasError={errorField === "password"}
+          onChange={(v) => {
+            setPassword(v);
+            if (fieldErrors.password)
+              setFieldErrors((p) => ({ ...p, password: undefined }));
+          }}
+          hasError={!!fieldErrors.password}
         />
+        {fieldErrors.password && (
+          <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
+            {fieldErrors.password}
+          </FormHelperText>
+        )}
       </div>
 
       <div className="mb-5 flex w-full items-center justify-between">
@@ -120,7 +131,7 @@ export default function LoginPage() {
           <input
             type="checkbox"
             checked={rememberMe}
-            onChange={(event) => setRememberMe(event.target.checked)}
+            onChange={(e) => setRememberMe(e.target.checked)}
             className="h-4 w-4 cursor-pointer accent-primary"
           />
           Nhớ đăng nhập
@@ -150,6 +161,12 @@ export default function LoginPage() {
           Đăng ký tài khoản doanh nghiệp
         </a>
       </p>
+
+      <Toast
+        message={apiError}
+        variant="error"
+        onDone={() => setApiError(null)}
+      />
     </AuthShell>
   );
 }

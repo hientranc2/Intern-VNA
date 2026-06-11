@@ -31,7 +31,11 @@ export default function EnterpriseLoginPage() {
       setToken(res.accessToken);
       router.push("/enterprise-info");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại",
+      );
     } finally {
       setLoading(false);
     }
@@ -45,34 +49,55 @@ export default function EnterpriseLoginPage() {
         <br />
         An Toàn Vệ Sinh Lao Động
       </h1>
-      <div className="mb-3.5 w-full text-[13px] font-bold uppercase tracking-widest text-primary">Đăng nhập</div>
+      <div className="mb-3.5 w-full text-[13px] font-bold uppercase tracking-widest text-primary">
+        Đăng nhập
+      </div>
 
-      {error ? <Alert variant="error" message={error} onClose={() => setError(null)} /> : null}
+      {error ? (
+        <Alert variant="error" message={error} onClose={() => setError(null)} />
+      ) : null}
 
       <div className="mb-3.5 w-full">
-        <label className="mb-1 block text-xs text-muted" htmlFor="dn-username">Tên đăng nhập *</label>
+        <label className="mb-1 block text-xs text-muted" htmlFor="dn-username">
+          Tên đăng nhập *
+        </label>
         <input
           id="dn-username"
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-          placeholder="nguyenvanb.dttm"
           autoComplete="username"
           className="h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition-colors focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
         />
       </div>
       <div className="mb-3.5 w-full">
-        <label className="mb-1 block text-xs text-muted" htmlFor="dn-password">Mật khẩu *</label>
-        <PasswordField id="dn-password" value={password} onChange={setPassword} />
+        <label className="mb-1 block text-xs text-muted" htmlFor="dn-password">
+          Mật khẩu *
+        </label>
+        <PasswordField
+          id="dn-password"
+          value={password}
+          onChange={setPassword}
+        />
       </div>
 
       <div className="mb-5 flex w-full items-center justify-between">
         <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[#374151]">
-          <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 cursor-pointer accent-primary" />
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="h-4 w-4 cursor-pointer accent-primary"
+          />
           Nhớ đăng nhập
         </label>
-        <a href="/forgot-password" className="text-[13px] font-medium text-primary hover:underline">Quên mật khẩu</a>
+        <a
+          href="/forgot-password"
+          className="text-[13px] font-medium text-primary hover:underline"
+        >
+          Quên mật khẩu
+        </a>
       </div>
 
       <button

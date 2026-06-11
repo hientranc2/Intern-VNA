@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
+import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 
 type PageView = "list" | "form";
 type FormSection = "ttct" | "tnld" | "tongquan";
@@ -426,7 +427,7 @@ export default function EnterpriseReportPage() {
                             </div>
                             <div className="flex flex-col gap-1.5">
                               <label className="text-[12.5px] font-medium text-[#374151]">Ngày sinh</label>
-                              <input type="date" className={FC} value={d.ngaySinh} onChange={(e) => updateDetail(d.id, "ngaySinh", e.target.value)} />
+                              <input type="date" className={FC} value={d.ngaySinh} max={localISODate(new Date())} onChange={(e) => updateDetail(d.id, "ngaySinh", e.target.value)} />
                             </div>
                             <div className="flex flex-col gap-1.5">
                               <label className="text-[12.5px] font-medium text-[#374151]">Giới tính</label>
@@ -460,7 +461,7 @@ export default function EnterpriseReportPage() {
                           <div className="grid grid-cols-3 gap-3">
                             <div className="flex flex-col gap-1.5">
                               <label className="text-[12.5px] font-medium text-[#374151]">Ngày xảy ra tai nạn</label>
-                              <input type="date" className={FC} value={d.ngayXayRa} onChange={(e) => updateDetail(d.id, "ngayXayRa", e.target.value)} />
+                              <input type="date" className={FC} value={d.ngayXayRa} max={localISODate(new Date())} onChange={(e) => updateDetail(d.id, "ngayXayRa", e.target.value)} />
                             </div>
                             <div className="flex flex-col gap-1.5">
                               <label className="text-[12.5px] font-medium text-[#374151]">Địa điểm xảy ra tai nạn</label>

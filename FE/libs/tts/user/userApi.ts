@@ -40,6 +40,7 @@ export function getUserList(params?: {
   role?: string;
   jobTitle?: string;
   isActive?: boolean;
+  province?: string;
 }) {
   const query = new URLSearchParams();
   if (params?.page) query.set("page", String(params.page));
@@ -50,6 +51,7 @@ export function getUserList(params?: {
   if (params?.role) query.set("role", params.role);
   if (params?.jobTitle) query.set("jobTitle", params.jobTitle);
   if (params?.isActive !== undefined) query.set("isActive", String(params.isActive));
+  if (params?.province) query.set("province", params.province);
   const qs = query.toString();
   return request<UserListResponse>(`/admin/users${qs ? `?${qs}` : ""}`);
 }
@@ -79,4 +81,8 @@ export function resetUserPassword(id: string, newPassword: string) {
     method: "PATCH",
     body: { newPassword },
   });
+}
+
+export function deleteUser(id: string) {
+  return request<{ message: string }>(`/admin/users/${id}`, { method: "DELETE" });
 }
