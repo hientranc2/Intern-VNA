@@ -34,7 +34,7 @@ export default function EnterpriseTypePage() {
   const [inputMa, setInputMa] = useState("");
   const [inputTen, setInputTen] = useState("");
   const [inputActive, setInputActive] = useState("1");
-  const [panelError, setPanelError] = useState<string | null>(null);
+  const [panelErrors, setPanelErrors] = useState<{ ma?: string; ten?: string }>({});
 
   const filtered = useMemo(() => {
     return items.filter(
@@ -78,7 +78,7 @@ export default function EnterpriseTypePage() {
     setInputMa("");
     setInputTen("");
     setInputActive("1");
-    setPanelError(null);
+    setPanelErrors({});
     setPanelOpen(true);
   };
 
@@ -87,17 +87,21 @@ export default function EnterpriseTypePage() {
     setInputMa(r.ma);
     setInputTen(r.ten);
     setInputActive(r.active ? "1" : "0");
-    setPanelError(null);
+    setPanelErrors({});
     setPanelOpen(true);
   };
 
   const savePanel = () => {
     const ma = inputMa.trim();
     const ten = inputTen.trim();
-    if (!ma || !ten) {
-      setPanelError("Vui lòng nhập đầy đủ thông tin bắt buộc.");
+    const errors: { ma?: string; ten?: string } = {};
+    if (!ma) errors.ma = "Mã loại hình không được để trống";
+    if (!ten) errors.ten = "Tên loại hình không được để trống";
+    if (Object.keys(errors).length > 0) {
+      setPanelErrors(errors);
       return;
     }
+    setPanelErrors({});
     const active = inputActive === "1";
     if (editId) {
       setItems((prev) => prev.map((r) => (r.id === editId ? { ...r, ten, active } : r)));
@@ -228,16 +232,26 @@ export default function EnterpriseTypePage() {
           </>
         }
       >
-        {panelError ? (
-          <div className="mb-4 rounded-md border border-[#fca5a5] bg-[#fff1f0] px-3.5 py-2.5 text-[13px] text-[#b91c1c]">{panelError}</div>
-        ) : null}
         <div className="mb-4 flex flex-col gap-1.5">
           <label className="text-[12.5px] font-medium text-[#374151]">Mã loại hình <span className="text-danger">*</span></label>
-          <input className={FORM_CONTROL_CLASS} value={inputMa} disabled={editId !== null} onChange={(e) => setInputMa(e.target.value)} placeholder="VD: 120" />
+          <input
+            className={`${FORM_CONTROL_CLASS}${panelErrors.ma ? " border-danger" : ""}`}
+            value={inputMa}
+            disabled={editId !== null}
+            onChange={(e) => { setInputMa(e.target.value); if (panelErrors.ma) setPanelErrors((p) => ({ ...p, ma: undefined })); }}
+            placeholder="VD: 120"
+          />
+          {panelErrors.ma && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ma}</p>}
         </div>
         <div className="mb-4 flex flex-col gap-1.5">
           <label className="text-[12.5px] font-medium text-[#374151]">Tên loại hình kinh doanh <span className="text-danger">*</span></label>
-          <input className={FORM_CONTROL_CLASS} value={inputTen} onChange={(e) => setInputTen(e.target.value)} placeholder="VD: Doanh nghiệp nhà nước" />
+          <input
+            className={`${FORM_CONTROL_CLASS}${panelErrors.ten ? " border-danger" : ""}`}
+            value={inputTen}
+            onChange={(e) => { setInputTen(e.target.value); if (panelErrors.ten) setPanelErrors((p) => ({ ...p, ten: undefined })); }}
+            placeholder="VD: Doanh nghiệp nhà nước"
+          />
+          {panelErrors.ten && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ten}</p>}
         </div>
         <div className="mb-4 flex flex-col gap-1.5">
           <label className="text-[12.5px] font-medium text-[#374151]">Trạng thái <span className="text-danger">*</span></label>

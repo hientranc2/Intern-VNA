@@ -19,6 +19,7 @@ import {
 } from "@/libs/tts/enterprise/enterpriseData";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
+import { isValidEmail } from "@/libs/tts/auth/authValidation";
 
 type WizardMode = "add" | "edit";
 
@@ -69,7 +70,7 @@ export default function EnterprisePage() {
   const [wizardMode, setWizardMode] = useState<WizardMode>("add");
   const [wizardStep, setWizardStep] = useState(1);
   const [form, setForm] = useState<EnterpriseForm>(EMPTY_ENTERPRISE_FORM);
-  const [wizardFieldErrors, setWizardFieldErrors] = useState<{ ten?: string; mst?: string }>({});
+  const [wizardFieldErrors, setWizardFieldErrors] = useState<{ ten?: string; mst?: string; loai?: string; email?: string }>({});
 
   const [accountPopup, setAccountPopup] = useState<string | null>(null);
 
@@ -135,9 +136,12 @@ export default function EnterprisePage() {
   };
 
   const goStep2 = () => {
-    const errors: { ten?: string; mst?: string } = {};
+    const errors: typeof wizardFieldErrors = {};
     if (!form.ten.trim()) errors.ten = "Tên doanh nghiệp không được để trống";
     if (!form.mst.trim()) errors.mst = "Mã số thuế không được để trống";
+    if (!form.loai) errors.loai = "Vui lòng chọn loại hình kinh doanh";
+    if (!form.email.trim()) errors.email = "Email không được để trống";
+    else if (!isValidEmail(form.email.trim())) errors.email = "Email không đúng định dạng";
     if (Object.keys(errors).length > 0) {
       setWizardFieldErrors(errors);
       return;
@@ -437,8 +441,12 @@ export default function EnterprisePage() {
                         placeholder="VD: 0310000888292"
                       />
                     </FieldGroup>
-                    <FieldGroup label="Loại hình kinh doanh" required>
-                      <select className={SELECT_CONTROL_CLASS} value={form.loai} onChange={(e) => setField("loai", e.target.value)}>
+                    <FieldGroup label="Loại hình kinh doanh" required error={wizardFieldErrors.loai}>
+                      <select
+                        className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.loai ? " border-danger" : ""}`}
+                        value={form.loai}
+                        onChange={(e) => { setField("loai", e.target.value); if (wizardFieldErrors.loai) setWizardFieldErrors((p) => ({ ...p, loai: undefined })); }}
+                      >
                         <option value="">-- Chọn loại hình --</option>
                         {LOAI_HINH_OPTIONS.map((o) => (
                           <option key={o} value={o}>{o}</option>
@@ -486,8 +494,14 @@ export default function EnterprisePage() {
                     <FieldGroup label="Tên viết bằng tiếng nước ngoài">
                       <input className={FORM_CONTROL_CLASS} value={form.tenNN} onChange={(e) => setField("tenNN", e.target.value)} placeholder="VD: VNA Group" />
                     </FieldGroup>
-                    <FieldGroup label="Email" required>
-                      <input type="email" className={FORM_CONTROL_CLASS} value={form.email} onChange={(e) => setField("email", e.target.value)} placeholder="vna@gmail.com" />
+                    <FieldGroup label="Email" required error={wizardFieldErrors.email}>
+                      <input
+                        type="email"
+                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.email ? " border-danger" : ""}`}
+                        value={form.email}
+                        onChange={(e) => { setField("email", e.target.value); if (wizardFieldErrors.email) setWizardFieldErrors((p) => ({ ...p, email: undefined })); }}
+                        placeholder="vna@gmail.com"
+                      />
                     </FieldGroup>
                     <FieldGroup label="Số điện thoại cơ quan">
                       <input className={FORM_CONTROL_CLASS} value={form.sdt} onChange={(e) => setField("sdt", e.target.value)} placeholder="VD: 0283xxxxxxx" />

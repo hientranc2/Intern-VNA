@@ -67,7 +67,7 @@ export default function CategoryPage() {
   const [inputTen, setInputTen] = useState("");
   const [inputCha, setInputCha] = useState("");
   const [inputActive, setInputActive] = useState("1");
-  const [panelError, setPanelError] = useState<string | null>(null);
+  const [panelErrors, setPanelErrors] = useState<{ ma?: string; ten?: string }>({});
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -122,7 +122,7 @@ export default function CategoryPage() {
     setInputTen("");
     setInputCha("");
     setInputActive("1");
-    setPanelError(null);
+    setPanelErrors({});
     setPanelOpen(true);
   };
 
@@ -132,15 +132,19 @@ export default function CategoryPage() {
     setInputTen(r.ten);
     setInputCha(r.cha);
     setInputActive("1");
-    setPanelError(null);
+    setPanelErrors({});
     setPanelOpen(true);
   };
 
   const savePanel = () => {
-    if (!inputMa.trim() || !inputTen.trim()) {
-      setPanelError("Vui lòng nhập đầy đủ thông tin bắt buộc.");
+    const errors: { ma?: string; ten?: string } = {};
+    if (!inputMa.trim()) errors.ma = "Mã không được để trống";
+    if (!inputTen.trim()) errors.ten = "Tên không được để trống";
+    if (Object.keys(errors).length > 0) {
+      setPanelErrors(errors);
       return;
     }
+    setPanelErrors({});
     if (tab === "factor" && !isEdit) {
       setFactors((prev) => [
         { id: Date.now(), ma: inputMa.trim(), ten: inputTen.trim(), active: inputActive === "1" },
@@ -360,20 +364,28 @@ export default function CategoryPage() {
           </>
         }
       >
-        {panelError ? (
-          <div className="mb-4 rounded-md border border-[#fca5a5] bg-[#fff1f0] px-3.5 py-2.5 text-[13px] text-[#b91c1c]">{panelError}</div>
-        ) : null}
         <div className="mb-4 flex flex-col gap-1.5">
           <label className="text-[12.5px] font-medium text-[#374151]">
             {tab === "factor" ? "Mã yếu tố chấn thương" : tab === "injuryType" ? "Mã số" : "Mã ngành"} <span className="text-danger">*</span>
           </label>
-          <input className={FORM_CONTROL_CLASS} value={inputMa} disabled={isEdit} onChange={(e) => setInputMa(e.target.value)} />
+          <input
+            className={`${FORM_CONTROL_CLASS}${panelErrors.ma ? " border-danger" : ""}`}
+            value={inputMa}
+            disabled={isEdit}
+            onChange={(e) => { setInputMa(e.target.value); if (panelErrors.ma) setPanelErrors((p) => ({ ...p, ma: undefined })); }}
+          />
+          {panelErrors.ma && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ma}</p>}
         </div>
         <div className="mb-4 flex flex-col gap-1.5">
           <label className="text-[12.5px] font-medium text-[#374151]">
             {tab === "factor" ? "Tên yếu tố chấn thương" : tab === "injuryType" ? "Tên loại chấn thương" : "Tên ngành"} <span className="text-danger">*</span>
           </label>
-          <input className={FORM_CONTROL_CLASS} value={inputTen} onChange={(e) => setInputTen(e.target.value)} />
+          <input
+            className={`${FORM_CONTROL_CLASS}${panelErrors.ten ? " border-danger" : ""}`}
+            value={inputTen}
+            onChange={(e) => { setInputTen(e.target.value); if (panelErrors.ten) setPanelErrors((p) => ({ ...p, ten: undefined })); }}
+          />
+          {panelErrors.ten && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ten}</p>}
         </div>
         {tab === "factor" ? (
           <div className="mb-4 flex flex-col gap-1.5">

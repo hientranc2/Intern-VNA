@@ -33,7 +33,7 @@ export default function RolePage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formMa, setFormMa] = useState("");
   const [formTen, setFormTen] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<{ ma?: string; ten?: string }>({});
   const [checkedPerms, setCheckedPerms] = useState<Set<string>>(new Set());
   const [permExpanded, setPermExpanded] = useState<Record<string, boolean>>({});
   const [permFilterMa, setPermFilterMa] = useState("");
@@ -83,7 +83,7 @@ export default function RolePage() {
     setEditingId(null);
     setFormMa("");
     setFormTen("");
-    setFormError(null);
+    setFormErrors({});
     setCheckedPerms(new Set());
     resetPermView();
     setModalOpen(true);
@@ -93,7 +93,7 @@ export default function RolePage() {
     setEditingId(role.id);
     setFormMa(role.ma);
     setFormTen(role.ten);
-    setFormError(null);
+    setFormErrors({});
     setCheckedPerms(new Set(role.perms));
     resetPermView();
     setModalOpen(true);
@@ -109,8 +109,11 @@ export default function RolePage() {
   const saveRole = () => {
     const ma = formMa.trim();
     const ten = formTen.trim();
-    if (!ma || !ten) {
-      setFormError("Vui lòng nhập đầy đủ mã và tên vai trò");
+    const errors: { ma?: string; ten?: string } = {};
+    if (!ma) errors.ma = "Mã vai trò không được để trống";
+    if (!ten) errors.ten = "Tên vai trò không được để trống";
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
     const perms = [...checkedPerms];
@@ -118,11 +121,12 @@ export default function RolePage() {
       setRoles((prev) => prev.map((r) => (r.id === editingId ? { ...r, ten, perms } : r)));
     } else {
       if (roles.some((r) => r.ma === ma)) {
-        setFormError("Mã vai trò đã tồn tại");
+        setFormErrors({ ma: "Mã vai trò đã tồn tại" });
         return;
       }
       setRoles((prev) => [...prev, { id: Date.now(), ma, ten, perms }]);
     }
+    setFormErrors({});
     setModalOpen(false);
   };
 
@@ -368,34 +372,31 @@ export default function RolePage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-5">
-            {formError ? (
-              <div className="mb-4 rounded-md border border-[#fca5a5] bg-[#fff1f0] px-3.5 py-2.5 text-[13px] text-[#b91c1c]">
-                {formError}
-              </div>
-            ) : null}
             <div className="mb-[18px] grid grid-cols-2 gap-3.5">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12.5px] font-medium text-[#374151]">
                   Mã vai trò <span className="text-danger">*</span>
                 </label>
                 <input
-                  className={FORM_CONTROL_CLASS}
+                  className={`${FORM_CONTROL_CLASS}${formErrors.ma ? " border-danger" : ""}`}
                   value={formMa}
                   disabled={editingId !== null}
-                  onChange={(e) => setFormMa(e.target.value)}
+                  onChange={(e) => { setFormMa(e.target.value); if (formErrors.ma) setFormErrors((p) => ({ ...p, ma: undefined })); }}
                   placeholder="VD: Role1"
                 />
+                {formErrors.ma && <p className="mt-0.5 text-[11px] text-danger">{formErrors.ma}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12.5px] font-medium text-[#374151]">
                   Tên vai trò <span className="text-danger">*</span>
                 </label>
                 <input
-                  className={FORM_CONTROL_CLASS}
+                  className={`${FORM_CONTROL_CLASS}${formErrors.ten ? " border-danger" : ""}`}
                   value={formTen}
-                  onChange={(e) => setFormTen(e.target.value)}
+                  onChange={(e) => { setFormTen(e.target.value); if (formErrors.ten) setFormErrors((p) => ({ ...p, ten: undefined })); }}
                   placeholder="VD: Manager"
                 />
+                {formErrors.ten && <p className="mt-0.5 text-[11px] text-danger">{formErrors.ten}</p>}
               </div>
             </div>
 

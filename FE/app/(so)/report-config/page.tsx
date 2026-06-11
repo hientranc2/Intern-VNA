@@ -35,7 +35,13 @@ export default function ReportConfigPage() {
   const [inputBatDau, setInputBatDau] = useState("");
   const [inputKetThuc, setInputKetThuc] = useState("");
   const [inputActive, setInputActive] = useState("1");
-  const [panelError, setPanelError] = useState<string | null>(null);
+  const [panelErrors, setPanelErrors] = useState<{
+    ten?: string;
+    nam?: string;
+    ky?: string;
+    batDau?: string;
+    ketThuc?: string;
+  }>({});
 
   const filtered = useMemo(() => {
     return items.filter(
@@ -66,7 +72,7 @@ export default function ReportConfigPage() {
     setInputBatDau("");
     setInputKetThuc("");
     setInputActive("1");
-    setPanelError(null);
+    setPanelErrors({});
     setPanelOpen(true);
   };
 
@@ -78,15 +84,25 @@ export default function ReportConfigPage() {
     setInputBatDau("");
     setInputKetThuc("");
     setInputActive(r.active ? "1" : "0");
-    setPanelError(null);
+    setPanelErrors({});
     setPanelOpen(true);
   };
 
   const savePanel = () => {
-    if (!inputTen || !inputNam.trim() || !inputKy) {
-      setPanelError("Vui lòng nhập đầy đủ thông tin bắt buộc.");
+    const errors: typeof panelErrors = {};
+    if (!inputTen) errors.ten = "Vui lòng chọn tên báo cáo";
+    if (!inputNam.trim()) errors.nam = "Năm không được để trống";
+    else if (!/^\d{4}$/.test(inputNam.trim())) errors.nam = "Năm phải là 4 chữ số";
+    if (!inputKy) errors.ky = "Vui lòng chọn kỳ báo cáo";
+    if (!inputBatDau) errors.batDau = "Ngày bắt đầu không được để trống";
+    if (!inputKetThuc) errors.ketThuc = "Ngày kết thúc không được để trống";
+    else if (inputBatDau && inputKetThuc < inputBatDau)
+      errors.ketThuc = "Ngày kết thúc phải sau ngày bắt đầu";
+    if (Object.keys(errors).length > 0) {
+      setPanelErrors(errors);
       return;
     }
+    setPanelErrors({});
     const active = inputActive === "1";
     if (editId) {
       setItems((prev) => prev.map((r) => (r.id === editId ? { ...r, ten: inputTen, nam: inputNam, ky: inputKy, active } : r)));
@@ -226,41 +242,66 @@ export default function ReportConfigPage() {
           </>
         }
       >
-        {panelError ? (
-          <div className="mb-4 rounded-md border border-[#fca5a5] bg-[#fff1f0] px-3.5 py-2.5 text-[13px] text-[#b91c1c]">{panelError}</div>
-        ) : null}
         <div className="mb-4 flex flex-col gap-1.5">
           <label className="text-[12.5px] font-medium text-[#374151]">Tên báo cáo <span className="text-danger">*</span></label>
-          <select className={SELECT_CONTROL_CLASS} value={inputTen} onChange={(e) => setInputTen(e.target.value)}>
+          <select
+            className={`${SELECT_CONTROL_CLASS}${panelErrors.ten ? " border-danger" : ""}`}
+            value={inputTen}
+            onChange={(e) => { setInputTen(e.target.value); if (panelErrors.ten) setPanelErrors((p) => ({ ...p, ten: undefined })); }}
+          >
             <option value="">-- Chọn báo cáo --</option>
             {REPORT_NAME_OPTIONS.map((o) => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
+          {panelErrors.ten && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ten}</p>}
         </div>
         <div className="mb-4 grid grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
             <label className="text-[12.5px] font-medium text-[#374151]">Năm <span className="text-danger">*</span></label>
-            <input className={FORM_CONTROL_CLASS} value={inputNam} onChange={(e) => setInputNam(e.target.value)} placeholder="VD: 2022" />
+            <input
+              className={`${FORM_CONTROL_CLASS}${panelErrors.nam ? " border-danger" : ""}`}
+              value={inputNam}
+              onChange={(e) => { setInputNam(e.target.value); if (panelErrors.nam) setPanelErrors((p) => ({ ...p, nam: undefined })); }}
+              placeholder="VD: 2024"
+            />
+            {panelErrors.nam && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.nam}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12.5px] font-medium text-[#374151]">Kỳ báo cáo <span className="text-danger">*</span></label>
-            <select className={SELECT_CONTROL_CLASS} value={inputKy} onChange={(e) => setInputKy(e.target.value)}>
+            <select
+              className={`${SELECT_CONTROL_CLASS}${panelErrors.ky ? " border-danger" : ""}`}
+              value={inputKy}
+              onChange={(e) => { setInputKy(e.target.value); if (panelErrors.ky) setPanelErrors((p) => ({ ...p, ky: undefined })); }}
+            >
               <option value="">-- Chọn kỳ --</option>
               {KY_OPTIONS.map((o) => (
                 <option key={o} value={o}>{o}</option>
               ))}
             </select>
+            {panelErrors.ky && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ky}</p>}
           </div>
         </div>
         <div className="mb-4 grid grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
             <label className="text-[12.5px] font-medium text-[#374151]">Ngày bắt đầu <span className="text-danger">*</span></label>
-            <input type="date" className={FORM_CONTROL_CLASS} value={inputBatDau} onChange={(e) => setInputBatDau(e.target.value)} />
+            <input
+              type="date"
+              className={`${FORM_CONTROL_CLASS}${panelErrors.batDau ? " border-danger" : ""}`}
+              value={inputBatDau}
+              onChange={(e) => { setInputBatDau(e.target.value); if (panelErrors.batDau) setPanelErrors((p) => ({ ...p, batDau: undefined })); }}
+            />
+            {panelErrors.batDau && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.batDau}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12.5px] font-medium text-[#374151]">Ngày kết thúc <span className="text-danger">*</span></label>
-            <input type="date" className={FORM_CONTROL_CLASS} value={inputKetThuc} onChange={(e) => setInputKetThuc(e.target.value)} />
+            <input
+              type="date"
+              className={`${FORM_CONTROL_CLASS}${panelErrors.ketThuc ? " border-danger" : ""}`}
+              value={inputKetThuc}
+              onChange={(e) => { setInputKetThuc(e.target.value); if (panelErrors.ketThuc) setPanelErrors((p) => ({ ...p, ketThuc: undefined })); }}
+            />
+            {panelErrors.ketThuc && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ketThuc}</p>}
           </div>
         </div>
         <div className="mb-4 flex flex-col gap-1.5">
