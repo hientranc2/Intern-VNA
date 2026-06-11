@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
+import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import {
   INITIAL_ACCIDENT_REPORTS,
   DETAIL_REPORT_ROWS,

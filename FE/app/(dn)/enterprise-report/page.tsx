@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Toast } from "@/libs/core/components/Toast/Toast";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 
 type PageView = "list" | "form";
 type FormSection = "ttct" | "tnld" | "tongquan";

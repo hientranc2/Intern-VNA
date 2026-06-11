@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { notFound } from "next/navigation";
-import { DesignFrame } from "@/libs/core/components/DesignFrame/DesignFrame";
+import { DesignFrame } from "@/libs/shared/core/components/DesignFrame/DesignFrame";
 import { DESIGN_PAGE_BY_SLUG, DESIGN_PAGES } from "@/libs/tts/design-pages";
 
 export const dynamicParams = false;

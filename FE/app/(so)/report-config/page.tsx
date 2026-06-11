@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Switch } from "@/libs/core/components/Switch/Switch";
-import { Toast } from "@/libs/core/components/Toast/Toast";
-import { SlidePanel } from "@/libs/core/components/SlidePanel/SlidePanel";
+import { Switch } from "@/libs/shared/core/components/Switch/Switch";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
+import { SlidePanel } from "@/libs/shared/core/components/SlidePanel/SlidePanel";
 import {
   INITIAL_REPORT_CONFIGS,
   REPORT_NAME_OPTIONS,

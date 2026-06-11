@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GovSeal } from "@/libs/core/components/GovSeal/GovSeal";
-import { AuthShell } from "@/libs/core/components/AuthShell/AuthShell";
-import { Alert } from "@/libs/core/components/Alert/Alert";
-import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
-import { useCountdown } from "@/libs/core/hooks/useCountdown";
+import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
+import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
+import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
+import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import {
   forgotPassword,
@@ -19,7 +19,7 @@ type Notice = { variant: "error" | "success"; message: string } | null;
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const countdown = useCountdown(60);
+  const countdown = useCountdown(300);
 
   const [step, setStep] = useState<Step>(1);
   const [email, setEmail] = useState("");

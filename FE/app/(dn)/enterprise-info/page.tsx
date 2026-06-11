@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Alert } from "@/libs/core/components/Alert/Alert";
-import { Toast } from "@/libs/core/components/Toast/Toast";
-import { useCountdown } from "@/libs/core/hooks/useCountdown";
+import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
+import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import {
   LOAI_HINH_OPTIONS,
@@ -68,7 +68,7 @@ const FILE_ROWS = [
 ];
 
 export default function EnterpriseInfoPage() {
-  const countdown = useCountdown(60);
+  const countdown = useCountdown(300);
 
   const [mode, setMode] = useState<PageMode>("view");
   const [info, setInfo] = useState({ ...DEMO_INFO });

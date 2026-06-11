@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AuthShell } from "@/libs/core/components/AuthShell/AuthShell";
-import { GovSeal } from "@/libs/core/components/GovSeal/GovSeal";
-import { Alert } from "@/libs/core/components/Alert/Alert";
-import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
-import { useCountdown } from "@/libs/core/hooks/useCountdown";
+import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
+import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
+import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
+import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import {
   LOAI_HINH_OPTIONS,
@@ -42,7 +42,7 @@ const FILE_ROWS = [
 
 export default function EnterpriseRegisterPage() {
   const router = useRouter();
-  const countdown = useCountdown(60);
+  const countdown = useCountdown(300);
 
   const [appView, setAppView] = useState<AppView>("login");
   const [wizardStep, setWizardStep] = useState<WizardStep>(1);

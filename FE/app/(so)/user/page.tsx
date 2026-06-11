@@ -1,35 +1,55 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import useDebounce from "@/libs/core/hooks/useDebounce";
-import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
-import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
-import { Alert } from "@/libs/core/components/Alert/Alert";
+import { useCallback, useEffect, useRef, useState } from "react";
+import useDebounce from "@/libs/shared/core/hooks/useDebounce";
+import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
+import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
+import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import {
-  INITIAL_USERS,
   ROLE_OPTIONS,
-  PROVINCE_OPTIONS,
-  WARD_OPTIONS,
   GENDER_OPTIONS,
   type User,
 } from "@/libs/tts/user/userData";
+import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
+import {
+  getUserList,
+  createUser,
+  updateUser,
+  toggleUserStatus,
+  resetUserPassword,
+} from "@/libs/tts/user/userApi";
+import { ApiError } from "@/libs/tts/auth/apiClient";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
-import { Switch } from "@/libs/core/components/Switch/Switch";
+import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 
 type ViewMode = "list" | "detail";
 
-const EMPTY_FORM: Omit<User, "id"> = {
+type UserForm = {
+  username: string;
+  fullName: string;
+  email: string;
+  role: string;
+  jobTitle: string;
+  isActive: boolean;
+  dob: string;
+  gender: string;
+  province: string;
+  ward: string;
+  address: string;
+};
+
+const EMPTY_FORM: UserForm = {
   username: "",
-  fullname: "",
+  fullName: "",
   email: "",
   role: "",
-  chucdanh: "",
-  active: true,
+  jobTitle: "",
+  isActive: true,
   dob: "",
   gender: "",
-  tinh: "Thành phố Hồ Chí Minh",
-  phuong: "Phường Gò Vấp",
-  diachi: "",
+  province: "",
+  ward: "",
+  address: "",
 };
 
 const FILTER_INPUT_CLASS =
@@ -48,42 +68,51 @@ function getInitials(fullName: string): string {
 const AVATAR_COLORS = ["#fecaca", "#fed7aa", "#fde68a", "#bbf7d0", "#bfdbfe", "#ddd6fe"];
 function avatarColor(username: string): string {
   let hash = 0;
-  for (let i = 0; i < username.length; i += 1) hash = (hash + username.charCodeAt(i)) % AVATAR_COLORS.length;
+  for (let i = 0; i < username.length; i += 1)
+    hash = (hash + username.charCodeAt(i)) % AVATAR_COLORS.length;
   return AVATAR_COLORS[hash];
 }
 
 export default function UserPage() {
   const importRef = useRef<HTMLInputElement>(null);
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [users, setUsers] = useState<User[]>([]);
   const [view, setView] = useState<ViewMode>("list");
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
 
-  // List filters
-  const [fFullname, setFFullname] = useState("");
+  // Server-side pagination
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Filters
+  const [fFullName, setFFullName] = useState("");
   const [fUsername, setFUsername] = useState("");
   const [fEmail, setFEmail] = useState("");
   const [fRole, setFRole] = useState("");
-  const [fChucDanh, setFChucDanh] = useState("");
+  const [fJobTitle, setFJobTitle] = useState("");
   const [fActive, setFActive] = useState("");
 
-  const dFFullname = useDebounce(fFullname, 300);
-  const dFUsername = useDebounce(fUsername, 300);
-  const dFEmail = useDebounce(fEmail, 300);
-  const dFChucDanh = useDebounce(fChucDanh, 300);
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  const dFFullName = useDebounce(fFullName, 400);
+  const dFUsername = useDebounce(fUsername, 400);
+  const dFEmail = useDebounce(fEmail, 400);
+  const dFJobTitle = useDebounce(fJobTitle, 400);
 
   // Detail form
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<Omit<User, "id">>(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<UserForm>(EMPTY_FORM);
   const [password, setPassword] = useState("");
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Reset password modal
   const [resetTarget, setResetTarget] = useState<User | null>(null);
   const [resetPwd, setResetPwd] = useState("");
   const [resetError, setResetError] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -91,30 +120,47 @@ export default function UserPage() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const setField = <K extends keyof Omit<User, "id">>(key: K, value: Omit<User, "id">[K]) =>
+  const loadUsers = useCallback(async () => {
+    setIsLoading(true);
+    setListError(null);
+    try {
+      const isActiveParam =
+        fActive === "1" ? true : fActive === "0" ? false : undefined;
+      const res = await getUserList({
+        page: currentPage,
+        limit: pageSize,
+        fullName: dFFullName || undefined,
+        username: dFUsername || undefined,
+        email: dFEmail || undefined,
+        role: fRole || undefined,
+        jobTitle: dFJobTitle || undefined,
+        isActive: isActiveParam,
+      });
+      setUsers(res.data);
+      setTotalItems(res.meta.totalItems);
+      setTotalPages(res.meta.totalPages);
+    } catch (err) {
+      setListError(
+        err instanceof ApiError ? err.message : "Không thể tải danh sách người dùng",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, pageSize, dFFullName, dFUsername, dFEmail, fRole, dFJobTitle, fActive]);
+
+  useEffect(() => {
+    if (view === "list") loadUsers();
+  }, [loadUsers, view]);
+
+  const setField = <K extends keyof UserForm>(key: K, value: UserForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const filteredUsers = useMemo(() => {
-    return users.filter(
-      (u) =>
-        u.fullname.toLowerCase().includes(dFFullname.toLowerCase()) &&
-        u.username.toLowerCase().includes(dFUsername.toLowerCase()) &&
-        u.email.toLowerCase().includes(dFEmail.toLowerCase()) &&
-        (!fRole || u.role === fRole) &&
-        u.chucdanh.toLowerCase().includes(dFChucDanh.toLowerCase()) &&
-        (fActive === "" || (fActive === "1" ? u.active : !u.active)),
-    );
-  }, [users, dFFullname, dFUsername, dFEmail, fRole, dFChucDanh, fActive]);
+  const start = (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, totalItems);
+  const allPageChecked =
+    users.length > 0 && users.every((u) => selectedIds.has(u.id));
 
-  const total = filteredUsers.length;
-  const lastPage = Math.max(1, Math.ceil(total / pageSize));
-  const page = Math.min(currentPage, lastPage);
-  const start = (page - 1) * pageSize;
-  const end = Math.min(start + pageSize, total);
-  const pagedUsers = filteredUsers.slice(start, end);
-  const allPageChecked = pagedUsers.length > 0 && pagedUsers.every((u) => selectedIds.has(u.id));
-
-  const toggleRow = (id: number, checked: boolean) =>
+  const toggleRow = (id: string, checked: boolean) =>
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (checked) next.add(id);
@@ -125,19 +171,19 @@ export default function UserPage() {
   const toggleAll = (checked: boolean) =>
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      pagedUsers.forEach((u) => (checked ? next.add(u.id) : next.delete(u.id)));
+      users.forEach((u) => (checked ? next.add(u.id) : next.delete(u.id)));
       return next;
     });
 
-  const toggleStatus = (id: number, active: boolean) =>
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, active } : u)));
-
-  const deleteSelected = () => {
-    if (selectedIds.size === 0) return;
-    if (!window.confirm(`Xoá ${selectedIds.size} người dùng đã chọn?`)) return;
-    setUsers((prev) => prev.filter((u) => !selectedIds.has(u.id)));
-    setSelectedIds(new Set());
-    setCurrentPage(1);
+  const handleToggleStatus = async (user: User) => {
+    try {
+      const res = await toggleUserStatus(user.id);
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, isActive: res.isActive } : u)),
+      );
+    } catch (err) {
+      setToast(err instanceof ApiError ? err.message : "Không thể thay đổi trạng thái");
+    }
   };
 
   const openAdd = () => {
@@ -150,17 +196,30 @@ export default function UserPage() {
 
   const openEdit = (user: User) => {
     setEditingId(user.id);
-    setForm(user);
+    setForm({
+      username: user.username,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      jobTitle: user.jobTitle ?? "",
+      isActive: user.isActive,
+      dob: user.dob ?? "",
+      gender: user.gender ?? "",
+      province: user.province ?? "",
+      ward: user.ward ?? "",
+      address: user.address ?? "",
+    });
     setPassword("");
     setDetailError(null);
     setView("detail");
   };
 
-  const saveUser = () => {
-    const username = form.username.trim();
-    const fullname = form.fullname.trim();
+  const saveUser = async () => {
+    const fullName = form.fullName.trim();
     const email = form.email.trim();
-    if (!username || !fullname || !email || !form.role) {
+    const username = form.username.trim();
+
+    if (!username || !fullName || !email || !form.role) {
       setDetailError("Vui lòng nhập đầy đủ các trường bắt buộc (*)");
       return;
     }
@@ -168,35 +227,65 @@ export default function UserPage() {
       setDetailError("Email không đúng định dạng");
       return;
     }
-    const payload = { ...form, username, fullname, email };
-    if (editingId) {
-      setUsers((prev) => prev.map((u) => (u.id === editingId ? { ...u, ...payload } : u)));
-      setView("list");
-      setToast("Cập nhật thành công");
-      return;
-    }
-    if (!password) {
+    if (!editingId && !password) {
       setDetailError("Vui lòng nhập mật khẩu");
       return;
     }
-    if (users.some((u) => u.username === username)) {
-      setDetailError("Tên đăng nhập đã tồn tại");
-      return;
+
+    setIsSaving(true);
+    setDetailError(null);
+    try {
+      if (editingId) {
+        await updateUser(editingId, {
+          fullName,
+          email,
+          role: form.role,
+          jobTitle: form.jobTitle || undefined,
+          isActive: form.isActive,
+        });
+        setToast("Cập nhật thành công");
+      } else {
+        await createUser({
+          username,
+          password,
+          email,
+          fullName,
+          role: form.role || undefined,
+          jobTitle: form.jobTitle || undefined,
+          isActive: form.isActive,
+        });
+        setToast("Thêm mới thành công");
+      }
+      setView("list");
+    } catch (err) {
+      setDetailError(
+        err instanceof ApiError ? err.message : "Lưu thông tin thất bại",
+      );
+    } finally {
+      setIsSaving(false);
     }
-    setUsers((prev) => [...prev, { id: Date.now(), ...payload }]);
-    setView("list");
-    setToast("Thêm mới thành công");
   };
 
-  const confirmResetPwd = () => {
+  const confirmResetPwd = async () => {
     if (!resetPwd.trim()) {
       setResetError("Vui lòng nhập mật khẩu mới");
       return;
     }
-    setResetTarget(null);
-    setResetPwd("");
+    if (!resetTarget) return;
+    setIsResetting(true);
     setResetError(null);
-    setToast("Đặt lại mật khẩu thành công");
+    try {
+      await resetUserPassword(resetTarget.id, resetPwd.trim());
+      setResetTarget(null);
+      setResetPwd("");
+      setToast("Đặt lại mật khẩu thành công");
+    } catch (err) {
+      setResetError(
+        err instanceof ApiError ? err.message : "Đặt lại mật khẩu thất bại",
+      );
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -206,7 +295,13 @@ export default function UserPage() {
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Danh sách người dùng</h1>
             <div className="flex gap-2.5">
-              <input ref={importRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={() => setToast("Đã nhận file. Vui lòng chờ xử lý.")} />
+              <input
+                ref={importRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+                onChange={() => setToast("Đã nhận file. Vui lòng chờ xử lý.")}
+              />
               <button
                 type="button"
                 onClick={() => importRef.current?.click()}
@@ -239,19 +334,6 @@ export default function UserPage() {
                 <span className="flex-1">{selectedIds.size} dữ liệu được chọn</span>
                 <button
                   type="button"
-                  onClick={deleteSelected}
-                  className="flex h-[30px] items-center gap-1.5 rounded-[5px] bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626]"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6l-1 14H6L5 6" />
-                    <path d="M10 11v6M14 11v6" />
-                    <path d="M9 6V4h6v2" />
-                  </svg>
-                  Xoá
-                </button>
-                <button
-                  type="button"
                   onClick={() => setSelectedIds(new Set())}
                   className="text-lg leading-none text-muted hover:text-[#374151]"
                   aria-label="Bỏ chọn"
@@ -259,6 +341,10 @@ export default function UserPage() {
                   ×
                 </button>
               </div>
+            ) : null}
+
+            {listError ? (
+              <Alert variant="error" message={listError} onClose={() => setListError(null)} />
             ) : null}
 
             <div className="overflow-hidden rounded-lg bg-white shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
@@ -295,7 +381,7 @@ export default function UserPage() {
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT_CLASS} value={fFullname} onChange={(e) => { setFFullname(e.target.value); setCurrentPage(1); }} />
+                        <input className={FILTER_INPUT_CLASS} value={fFullName} onChange={(e) => { setFFullName(e.target.value); setCurrentPage(1); }} />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <input className={FILTER_INPUT_CLASS} value={fUsername} onChange={(e) => { setFUsername(e.target.value); setCurrentPage(1); }} />
@@ -312,7 +398,7 @@ export default function UserPage() {
                         </select>
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT_CLASS} value={fChucDanh} onChange={(e) => { setFChucDanh(e.target.value); setCurrentPage(1); }} />
+                        <input className={FILTER_INPUT_CLASS} value={fJobTitle} onChange={(e) => { setFJobTitle(e.target.value); setCurrentPage(1); }} />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fActive} onChange={(e) => { setFActive(e.target.value); setCurrentPage(1); }}>
@@ -324,14 +410,20 @@ export default function UserPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pagedUsers.length === 0 ? (
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={8} className="px-3.5 py-8 text-center text-[13.5px] text-muted">
+                          Đang tải...
+                        </td>
+                      </tr>
+                    ) : users.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="px-3.5 py-8 text-center text-[13.5px] text-muted">
                           Không có dữ liệu
                         </td>
                       </tr>
                     ) : (
-                      pagedUsers.map((u) => {
+                      users.map((u) => {
                         const selected = selectedIds.has(u.id);
                         return (
                           <tr key={u.id} className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}>
@@ -369,9 +461,9 @@ export default function UserPage() {
                                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-[#374151]"
                                   style={{ background: avatarColor(u.username) }}
                                 >
-                                  {getInitials(u.fullname)}
+                                  {getInitials(u.fullName)}
                                 </span>
-                                <span className="text-[#374151]">{u.fullname}</span>
+                                <span className="text-[#374151]">{u.fullName}</span>
                               </div>
                             </td>
                             <td className="px-3.5 py-2.5 text-[#374151]">{u.username}</td>
@@ -381,10 +473,10 @@ export default function UserPage() {
                                 {u.role}
                               </span>
                             </td>
-                            <td className="px-3.5 py-2.5 text-[#374151]">{u.chucdanh}</td>
+                            <td className="px-3.5 py-2.5 text-[#374151]">{u.jobTitle ?? "—"}</td>
                             <td className="px-3.5 py-2.5">
                               <div className="flex justify-center">
-                                <Switch checked={u.active} onChange={(c) => toggleStatus(u.id, c)} />
+                                <Switch checked={u.isActive} onChange={() => handleToggleStatus(u)} />
                               </div>
                             </td>
                           </tr>
@@ -419,13 +511,13 @@ export default function UserPage() {
                     <option value={50}>50</option>
                   </select>
                   <span className="text-[#6b7280]">
-                    {total === 0 ? "0 - 0 of 0" : `${start + 1} - ${end} of ${total}`}
+                    {totalItems === 0 ? "0 - 0 of 0" : `${start} - ${end} of ${totalItems}`}
                   </span>
                   <div className="flex gap-1">
                     <button
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={page <= 1}
+                      disabled={currentPage <= 1}
                       className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -434,8 +526,8 @@ export default function UserPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
-                      disabled={end >= total}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage >= totalPages}
                       className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -463,20 +555,23 @@ export default function UserPage() {
               <button
                 type="button"
                 onClick={saveUser}
-                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+                disabled={isSaving}
+                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                   <polyline points="17 21 17 13 7 13 7 21" />
                   <polyline points="7 3 7 8 15 8" />
                 </svg>
-                Lưu
+                {isSaving ? "Đang lưu..." : "Lưu"}
               </button>
             </div>
           </div>
 
           <div className="p-6">
-            {detailError ? <Alert variant="error" message={detailError} onClose={() => setDetailError(null)} /> : null}
+            {detailError ? (
+              <Alert variant="error" message={detailError} onClose={() => setDetailError(null)} />
+            ) : null}
 
             <div className="flex items-start gap-7 rounded-[10px] bg-white p-7 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
               <div className="w-[240px] shrink-0 rounded-[10px] border border-[#e5e7eb] px-5 py-6">
@@ -495,7 +590,7 @@ export default function UserPage() {
                   </div>
                   <div className="mt-3 flex items-center gap-2.5 self-start">
                     <span className="text-[13px] text-[#374151]">Kích hoạt</span>
-                    <Switch checked={form.active} onChange={(c) => setField("active", c)} />
+                    <Switch checked={form.isActive} onChange={(c) => setField("isActive", c)} />
                   </div>
                 </div>
               </div>
@@ -522,7 +617,7 @@ export default function UserPage() {
                   )}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs text-muted">Họ và tên<span className="text-danger">*</span></label>
-                    <input className={FORM_CONTROL_CLASS} value={form.fullname} onChange={(e) => setField("fullname", e.target.value)} />
+                    <input className={FORM_CONTROL_CLASS} value={form.fullName} onChange={(e) => setField("fullName", e.target.value)} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs text-muted">Ngày tháng năm sinh</label>
@@ -539,7 +634,7 @@ export default function UserPage() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs text-muted">Chức danh</label>
-                    <input className={FORM_CONTROL_CLASS} placeholder="Chức danh" value={form.chucdanh} onChange={(e) => setField("chucdanh", e.target.value)} />
+                    <input className={FORM_CONTROL_CLASS} placeholder="Chức danh" value={form.jobTitle} onChange={(e) => setField("jobTitle", e.target.value)} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs text-muted">Vai trò <span className="text-danger">*</span></label>
@@ -569,23 +664,37 @@ export default function UserPage() {
                 <div className="grid grid-cols-2 gap-x-5 gap-y-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs text-muted">Tỉnh thành phố</label>
-                    <select className={SELECT_CLASS} value={form.tinh} onChange={(e) => setField("tinh", e.target.value)}>
-                      {PROVINCE_OPTIONS.map((p) => (
+                    <select
+                      className={SELECT_CLASS}
+                      value={form.province}
+                      onChange={(e) => {
+                        setField("province", e.target.value);
+                        setField("ward", "");
+                      }}
+                    >
+                      <option value="">-- Chọn tỉnh --</option>
+                      {PROVINCES.map((p) => (
                         <option key={p} value={p}>{p}</option>
                       ))}
                     </select>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs text-muted">Phường xã</label>
-                    <select className={SELECT_CLASS} value={form.phuong} onChange={(e) => setField("phuong", e.target.value)}>
-                      {WARD_OPTIONS.map((w) => (
+                    <label className="text-xs text-muted">Quận / Huyện</label>
+                    <select
+                      className={SELECT_CLASS}
+                      value={form.ward}
+                      onChange={(e) => setField("ward", e.target.value)}
+                      disabled={!form.province}
+                    >
+                      <option value="">-- Chọn quận/huyện --</option>
+                      {(WARDS_BY_PROVINCE[form.province] ?? []).map((w) => (
                         <option key={w} value={w}>{w}</option>
                       ))}
                     </select>
                   </div>
                   <div className="col-span-2 flex flex-col gap-1.5">
                     <label className="text-xs text-muted">Địa chỉ</label>
-                    <input className={FORM_CONTROL_CLASS} placeholder="Địa chỉ" value={form.diachi} onChange={(e) => setField("diachi", e.target.value)} />
+                    <input className={FORM_CONTROL_CLASS} placeholder="Địa chỉ" value={form.address} onChange={(e) => setField("address", e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -596,9 +705,7 @@ export default function UserPage() {
 
       {/* Modal đặt lại mật khẩu */}
       <div
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setResetTarget(null);
-        }}
+        onClick={(e) => { if (e.target === e.currentTarget) setResetTarget(null); }}
         className={`fixed inset-0 z-[200] flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
           resetTarget ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
@@ -634,9 +741,10 @@ export default function UserPage() {
             <button
               type="button"
               onClick={confirmResetPwd}
-              className="h-[38px] rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af]"
+              disabled={isResetting}
+              className="h-[38px] rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
             >
-              Lưu
+              {isResetting ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
         </div>

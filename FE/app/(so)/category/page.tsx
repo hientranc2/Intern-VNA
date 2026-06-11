@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import useDebounce from "@/libs/core/hooks/useDebounce";
-import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
-import { Switch } from "@/libs/core/components/Switch/Switch";
-import { Toast } from "@/libs/core/components/Toast/Toast";
-import { SlidePanel } from "@/libs/core/components/SlidePanel/SlidePanel";
+import useDebounce from "@/libs/shared/core/hooks/useDebounce";
+import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
+import { Switch } from "@/libs/shared/core/components/Switch/Switch";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
+import { SlidePanel } from "@/libs/shared/core/components/SlidePanel/SlidePanel";
 import {
   INJURY_FACTORS,
   INJURY_TYPES,

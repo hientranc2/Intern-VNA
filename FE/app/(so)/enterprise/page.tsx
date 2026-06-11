@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import useDebounce from "@/libs/core/hooks/useDebounce";
-import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
+import useDebounce from "@/libs/shared/core/hooks/useDebounce";
+import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import {
   INITIAL_ENTERPRISES,
   EMPTY_ENTERPRISE_FORM,
@@ -15,7 +15,7 @@ import {
   type Enterprise,
   type EnterpriseForm,
 } from "@/libs/tts/enterprise/enterpriseData";
-import { Switch } from "@/libs/core/components/Switch/Switch";
+import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 
 type WizardMode = "add" | "edit";
 

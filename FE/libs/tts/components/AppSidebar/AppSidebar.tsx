@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { GovSeal } from "@/libs/core/components/GovSeal/GovSeal";
+import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 
 type NavLink = {
   label: string;

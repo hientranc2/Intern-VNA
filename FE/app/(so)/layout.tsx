@@ -6,9 +6,9 @@ import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
 import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
 import { getToken, clearToken, changePassword, ApiError } from "@/libs/tts/auth/authApi";
 import { SidebarOverrideContext, type SidebarOverride } from "@/libs/tts/auth/sidebarContext";
-import { Modal } from "@/libs/core/components/Modal/Modal";
-import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
-import { Alert } from "@/libs/core/components/Alert/Alert";
+import { Modal } from "@/libs/shared/core/components/Modal/Modal";
+import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
+import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 
 const PATH_ACTIVE: Record<string, string> = {
   "/permission": "Phân quyền",

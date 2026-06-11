@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AuthShell } from "@/libs/core/components/AuthShell/AuthShell";
-import { GovSeal } from "@/libs/core/components/GovSeal/GovSeal";
-import { Alert } from "@/libs/core/components/Alert/Alert";
-import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
+import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
+import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
+import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 import { login, setToken, ApiError } from "@/libs/tts/auth/authApi";
 
 export default function EnterpriseLoginPage() {

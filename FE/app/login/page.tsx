@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GovSeal } from "@/libs/core/components/GovSeal/GovSeal";
-import { AuthShell } from "@/libs/core/components/AuthShell/AuthShell";
-import { Alert } from "@/libs/core/components/Alert/Alert";
-import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
+import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
+import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
+import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 import { type LoginField } from "@/libs/tts/auth/authValidation";
 import { login, setToken, getToken, ApiError } from "@/libs/tts/auth/authApi";
 
@@ -43,6 +43,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await login({ username: user, password: pass, rememberMe });
+      if (!res.user.isActive) {
+        setError("Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên.");
+        setPassword("");
+        return;
+      }
       setToken(res.accessToken);
       router.push("/account");
     } catch (err) {
@@ -51,6 +56,7 @@ export default function LoginPage() {
           ? err.message
           : "Đã có lỗi xảy ra. Vui lòng thử lại.";
       setError(message);
+      setPassword("");
       setErrorField(null);
     } finally {
       setLoading(false);

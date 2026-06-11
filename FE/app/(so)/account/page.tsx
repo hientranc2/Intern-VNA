@@ -1,13 +1,13 @@
 "use client";
 
 import { useContext, useEffect, useState } from "react";
-import { Alert } from "@/libs/core/components/Alert/Alert";
-import { Toast } from "@/libs/core/components/Toast/Toast";
+import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { SidebarOverrideContext } from "@/libs/tts/auth/sidebarContext";
-import { Modal } from "@/libs/core/components/Modal/Modal";
-import { PasswordField } from "@/libs/core/components/PasswordField/PasswordField";
-import { useCountdown } from "@/libs/core/hooks/useCountdown";
-import { Switch } from "@/libs/core/components/Switch/Switch";
+import { Modal } from "@/libs/shared/core/components/Modal/Modal";
+import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
+import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
+import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import {
   getProfile,
@@ -65,7 +65,7 @@ function FieldLabel({
 }
 
 export default function AccountPage() {
-  const otpCountdown = useCountdown(60);
+  const otpCountdown = useCountdown(300);
   const { setOverride } = useContext(SidebarOverrideContext);
 
   const [form, setForm] = useState<ProfileForm>(EMPTY_PROFILE);

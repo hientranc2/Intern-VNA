@@ -46,7 +46,7 @@ export async function request<T>(
     throw new ApiError("Không thể kết nối tới máy chủ. Vui lòng thử lại.", 0);
   }
 
-  if (res.status === 401) return handle401();
+  if (res.status === 401 && auth) return handle401();
 
   let data: unknown = null;
   const text = await res.text();

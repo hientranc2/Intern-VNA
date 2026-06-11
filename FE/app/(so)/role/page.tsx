@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TriCheckbox } from "@/libs/core/components/TriCheckbox/TriCheckbox";
+import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { INITIAL_ROLES, type Role } from "@/libs/tts/role/roleData";
 import { PERMISSIONS } from "@/libs/tts/permission/permissionData";
 
