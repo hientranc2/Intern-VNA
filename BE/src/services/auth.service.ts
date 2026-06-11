@@ -26,7 +26,19 @@ export class AuthService {
     process.env.SUPABASE_KEY,
     {
       auth: {
-        persistSession: false, 
+        persistSession: false,
+      },
+    }
+  );
+
+  // Service role key bypass RLS — chỉ dùng cho storage admin operations
+  private supabaseAdmin = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
     }
   );
@@ -278,12 +290,14 @@ export class AuthService {
     const fileExt = file.originalname.split('.').pop();
     const fileName = `user-${userId}-${Date.now()}.${fileExt}`;
 
-    // 2. Đẩy file vật lý lên Supabase Storage (vào bucket 'avatars' vừa tạo)
-    const { data, error } = await this.supabase.storage
+    // 2. Đẩy file vật lý lên Supabase Storage — dùng admin client để bypass RLS
+    // Convert Buffer → Blob vì native fetch (Node 18+) không handle Buffer trực tiếp
+    const fileBlob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
+    const { data, error } = await this.supabaseAdmin.storage
       .from('avatars')
-      .upload(fileName, file.buffer, {
+      .upload(fileName, fileBlob, {
         contentType: file.mimetype,
-        upsert: true, // Nếu trùng tên thì ghi đè
+        upsert: true,
       });
 
     if (error) {
@@ -292,7 +306,7 @@ export class AuthService {
     }
 
     // 3. Xin Supabase cái đường link URL công khai của bức ảnh
-    const { data: publicUrlData } = this.supabase.storage
+    const { data: publicUrlData } = this.supabaseAdmin.storage
       .from('avatars')
       .getPublicUrl(fileName);
 

@@ -168,3 +168,46 @@ export function changeEmail(input: { otpCode: string; newEmail: string }) {
     auth: true,
   });
 }
+
+export async function uploadAvatar(file: File): Promise<{ message: string; avatarUrl: string }> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/auth/profile/avatar`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+  } catch {
+    throw new ApiError("Không thể kết nối tới máy chủ. Vui lòng thử lại.", 0);
+  }
+
+  let data: unknown = null;
+  const text = await res.text();
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
+
+  if (!res.ok) {
+    const payload = data as { message?: string | string[] } | null;
+    let message = "Đã có lỗi xảy ra. Vui lòng thử lại.";
+    if (payload?.message) {
+      message = Array.isArray(payload.message)
+        ? payload.message[0]
+        : payload.message;
+    }
+    throw new ApiError(message, res.status);
+  }
+
+  return data as { message: string; avatarUrl: string };
+}
