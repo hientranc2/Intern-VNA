@@ -18,7 +18,7 @@ const PATH_ACTIVE: Record<string, string> = {
   "/business-sector": "Ngành nghề kinh doanh",
   "/enterprise": "Quản lý doanh nghiệp",
   "/sign-report": "Ký báo cáo",
-  "/report-config": "Ký báo cáo",
+  "/report-config": "Cấu hình báo cáo",
   "/category": "Danh mục chung",
   "/accident-report": "TNLĐ theo HĐLĐ",
 };
