@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormHelperText } from "@mui/material";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
@@ -106,6 +106,41 @@ export default function AccountPage() {
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  const [provinceSearch, setProvinceSearch] = useState("");
+  const [provinceOpen, setProvinceOpen] = useState(false);
+  const provinceRef = useRef<HTMLDivElement>(null);
+
+  const [wardSearch, setWardSearch] = useState("");
+  const [wardOpen, setWardOpen] = useState(false);
+  const wardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (provinceRef.current && !provinceRef.current.contains(e.target as Node)) {
+        setProvinceOpen(false);
+        setProvinceSearch("");
+      }
+      if (wardRef.current && !wardRef.current.contains(e.target as Node)) {
+        setWardOpen(false);
+        setWardSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredProvinces = PROVINCES.filter((p) =>
+    p.toLowerCase().includes(provinceSearch.toLowerCase()),
+  );
+
+  const currentWards = WARDS_BY_PROVINCE[form.province] ?? [];
+  const filteredWards = currentWards.filter((w) =>
+    w.toLowerCase().includes(wardSearch.toLowerCase()),
+  );
+  const wardDisabled = !form.province || currentWards.length === 0;
+  const wardPlaceholder =
+    form.province && currentWards.length === 0 ? "Chưa có dữ liệu phường/xã" : "Chọn phường / xã";
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -525,44 +560,164 @@ export default function AccountPage() {
               <div className="grid grid-cols-2 gap-x-5 gap-y-4">
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel>Tỉnh thành phố</FieldLabel>
-                  <select
-                    className={SELECT_CLASS}
-                    value={form.province}
-                    onChange={(e) => {
-                      setField("province", e.target.value);
-                      setField("ward", "");
-                    }}
-                  >
-                    <option value="">Chọn tỉnh / thành phố</option>
-                    {PROVINCES.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
+                  <div ref={provinceRef} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProvinceOpen((prev) => !prev);
+                        setProvinceSearch("");
+                      }}
+                      className={`${FIELD_CLASS} flex w-full items-center justify-between text-left`}
+                    >
+                      <span className={form.province ? "text-ink" : "text-muted"}>
+                        {form.province || "Chọn tỉnh / thành phố"}
+                      </span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#6b7280"
+                        strokeWidth="2"
+                        className={`shrink-0 transition-transform duration-150 ${provinceOpen ? "" : "rotate-180"}`}
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </button>
+                    {provinceOpen && (
+                      <div className="absolute left-0 bottom-full z-50 mb-1 w-full overflow-hidden rounded-md border border-line bg-white shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
+                        <div className="p-2">
+                          <input
+                            type="text"
+                            autoFocus
+                            className="h-8 w-full rounded border border-line px-2.5 text-sm text-ink outline-none focus:border-[#3b82f6]"
+                            placeholder="Tìm kiếm..."
+                            value={provinceSearch}
+                            onChange={(e) => setProvinceSearch(e.target.value)}
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          <div
+                            className="cursor-pointer px-3 py-1.5 text-sm text-muted hover:bg-[#f3f4f6]"
+                            onClick={() => {
+                              setField("province", "");
+                              setField("ward", "");
+                              setProvinceOpen(false);
+                              setProvinceSearch("");
+                              setWardOpen(false);
+                              setWardSearch("");
+                            }}
+                          >
+                            Chọn tỉnh / thành phố
+                          </div>
+                          {filteredProvinces.map((p) => (
+                            <div
+                              key={p}
+                              className={`cursor-pointer px-3 py-1.5 text-sm hover:bg-[#f3f4f6] ${
+                                form.province === p
+                                  ? "bg-[#eff6ff] font-medium text-primary"
+                                  : "text-ink"
+                              }`}
+                              onClick={() => {
+                                setField("province", p);
+                                setField("ward", "");
+                                setProvinceOpen(false);
+                                setProvinceSearch("");
+                                setWardOpen(false);
+                                setWardSearch("");
+                              }}
+                            >
+                              {p}
+                            </div>
+                          ))}
+                          {filteredProvinces.length === 0 && (
+                            <div className="px-3 py-3 text-center text-sm text-muted">
+                              Không tìm thấy
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel>Phường xã</FieldLabel>
-                  <select
-                    className={SELECT_CLASS}
-                    value={form.ward}
-                    onChange={(e) => setField("ward", e.target.value)}
-                    disabled={
-                      !form.province ||
-                      !WARDS_BY_PROVINCE[form.province]?.length
-                    }
-                  >
-                    <option value="">
-                      {form.province && !WARDS_BY_PROVINCE[form.province]
-                        ? "Chưa có dữ liệu phường/xã"
-                        : "Chọn phường / xã"}
-                    </option>
-                    {(WARDS_BY_PROVINCE[form.province] ?? []).map((w) => (
-                      <option key={w} value={w}>
-                        {w}
-                      </option>
-                    ))}
-                  </select>
+                  <div ref={wardRef} className="relative">
+                    <button
+                      type="button"
+                      disabled={wardDisabled}
+                      onClick={() => {
+                        setWardOpen((prev) => !prev);
+                        setWardSearch("");
+                      }}
+                      className={`${wardDisabled ? DISABLED_FIELD_CLASS : FIELD_CLASS} flex w-full items-center justify-between text-left`}
+                    >
+                      <span className={form.ward ? "text-ink" : "text-muted"}>
+                        {form.ward || wardPlaceholder}
+                      </span>
+                      {!wardDisabled && (
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#6b7280"
+                          strokeWidth="2"
+                          className={`shrink-0 transition-transform duration-150 ${wardOpen ? "" : "rotate-180"}`}
+                        >
+                          <path d="M6 9l6 6 6-6" />
+                        </svg>
+                      )}
+                    </button>
+                    {wardOpen && !wardDisabled && (
+                      <div className="absolute left-0 bottom-full z-50 mb-1 w-full overflow-hidden rounded-md border border-line bg-white shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
+                        <div className="p-2">
+                          <input
+                            type="text"
+                            autoFocus
+                            className="h-8 w-full rounded border border-line px-2.5 text-sm text-ink outline-none focus:border-[#3b82f6]"
+                            placeholder="Tìm kiếm..."
+                            value={wardSearch}
+                            onChange={(e) => setWardSearch(e.target.value)}
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          <div
+                            className="cursor-pointer px-3 py-1.5 text-sm text-muted hover:bg-[#f3f4f6]"
+                            onClick={() => {
+                              setField("ward", "");
+                              setWardOpen(false);
+                              setWardSearch("");
+                            }}
+                          >
+                            Chọn phường / xã
+                          </div>
+                          {filteredWards.map((w) => (
+                            <div
+                              key={w}
+                              className={`cursor-pointer px-3 py-1.5 text-sm hover:bg-[#f3f4f6] ${
+                                form.ward === w
+                                  ? "bg-[#eff6ff] font-medium text-primary"
+                                  : "text-ink"
+                              }`}
+                              onClick={() => {
+                                setField("ward", w);
+                                setWardOpen(false);
+                                setWardSearch("");
+                              }}
+                            >
+                              {w}
+                            </div>
+                          ))}
+                          {filteredWards.length === 0 && (
+                            <div className="px-3 py-3 text-center text-sm text-muted">
+                              Không tìm thấy
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="col-span-2 flex flex-col gap-1.5">
                   <FieldLabel>Địa chỉ</FieldLabel>

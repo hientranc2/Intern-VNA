@@ -22,6 +22,7 @@ import {
   deleteUser,
 } from "@/libs/tts/user/userApi";
 import { ApiError } from "@/libs/tts/auth/apiClient";
+import { getProfile } from "@/libs/tts/auth/authApi";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
@@ -91,6 +92,7 @@ export default function UserPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [view, setView] = useState<ViewMode>("list");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
@@ -133,6 +135,10 @@ export default function UserPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  useEffect(() => {
+    getProfile().then((p) => setCurrentUserId(p.id)).catch(() => {});
+  }, []);
+
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
     setListError(null);
@@ -174,8 +180,9 @@ export default function UserPage() {
 
   const start = (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalItems);
+  const selectableUsers = users.filter((u) => u.id !== currentUserId);
   const allPageChecked =
-    users.length > 0 && users.every((u) => selectedIds.has(u.id));
+    selectableUsers.length > 0 && selectableUsers.every((u) => selectedIds.has(u.id));
 
   const toggleRow = (id: string, checked: boolean) =>
     setSelectedIds((prev) => {
@@ -188,7 +195,10 @@ export default function UserPage() {
   const toggleAll = (checked: boolean) =>
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      users.forEach((u) => (checked ? next.add(u.id) : next.delete(u.id)));
+      users.forEach((u) => {
+        if (u.id === currentUserId) return;
+        checked ? next.add(u.id) : next.delete(u.id);
+      });
       return next;
     });
 
@@ -471,7 +481,15 @@ export default function UserPage() {
                         return (
                           <tr key={u.id} className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}>
                             <td className="px-3.5 py-2.5">
-                              <TriCheckbox checked={selected} onChange={(c) => toggleRow(u.id, c)} />
+                              {u.id === currentUserId ? (
+                                <input
+                                  type="checkbox"
+                                  disabled
+                                  className="h-[15px] w-[15px] cursor-not-allowed opacity-30 accent-primary"
+                                />
+                              ) : (
+                                <TriCheckbox checked={selected} onChange={(c) => toggleRow(u.id, c)} />
+                              )}
                             </td>
                             <td className="px-3.5 py-2.5">
                               <div className="flex gap-0.5">
@@ -630,7 +648,11 @@ export default function UserPage() {
                   </div>
                   <div className="mt-3 flex items-center gap-2.5">
                     <span className="text-[13px] text-[#374151]">Kích hoạt</span>
-                    <Switch checked={form.isActive} onChange={(c) => setField("isActive", c)} />
+                    <Switch
+                      checked={form.isActive}
+                      onChange={(c) => setField("isActive", c)}
+                      disabled={editingId === currentUserId}
+                    />
                   </div>
                 </div>
               </div>
