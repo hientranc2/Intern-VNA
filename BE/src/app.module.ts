@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-
+import { UsersController } from './controllers/users.controller';
 import { User } from './entities/user.entity';
 import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
 import { JwtStrategy } from './services/jwt.strategy';
+import { UsersService } from './services/users.service';
 
 @Module({
   imports: [
@@ -26,7 +27,14 @@ import { JwtStrategy } from './services/jwt.strategy';
       signOptions: { expiresIn: '1h' },
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+ controllers: [
+    AuthController, 
+    UsersController 
+  ],
+  providers: [
+    AuthService, 
+    JwtStrategy, 
+    UsersService    
+  ],
 })
 export class AppModule {}

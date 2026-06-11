@@ -1,9 +1,9 @@
-import { Controller, Post, Body, Get, Put, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, Request  } from '@nestjs/common';
+import { Controller, Post, Body, Get, Put, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, Request, BadRequestException, ParseFilePipeBuilder } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../services/auth.service';
 import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, UpdateProfileDto, ChangePasswordDto, ChangeEmailDto } from '../../libs/shared/models/auth.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import 'multer';
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -43,12 +43,35 @@ export class AuthController {
   @Post('change-email')
   changeEmail(@Request() req, @Body() dto: ChangeEmailDto) { return this.authService.verifyAndChangeEmail(req.user.userId, dto); }
   @Post('profile/avatar')
-  @UseGuards(AuthGuard('jwt')) 
-  @UseInterceptors(FileInterceptor('file')) 
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(
-    @Request() req, 
-    @UploadedFile() file: Express.Multer.File
-  ) {`  `
+    @Request() req,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /(jpg|jpeg|png)$/i,
+        })
+        .addMaxSizeValidator({
+          maxSize: 5 * 1024 * 1024,
+          message: 'Kích thước file ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.', // Tiếng Việt cho lỗi dung lượng
+        })
+        .build({
+          errorHttpStatusCode: HttpStatus.BAD_REQUEST,
+          fileIsRequired: true, 
+          exceptionFactory: (error) => {
+            if (error.includes('expected type is')) {
+              return new BadRequestException('Chỉ chấp nhận định dạng ảnh JPG, JPEG, hoặc PNG!');
+            }
+            if (error.includes('File is required')) {
+              return new BadRequestException('Vui lòng chọn một file ảnh để tải lên!');
+            }
+            return new BadRequestException(error); 
+          },
+        }),
+    )
+    file: Express.Multer.File,
+  ) {
     return this.authService.uploadAvatar(req.user.userId, file);
   }
 }

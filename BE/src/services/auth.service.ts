@@ -83,7 +83,7 @@ export class AuthService {
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 1);
+    expiresAt.setMinutes(expiresAt.getMinutes() + 5);
 
     user.otpCode = otp;
     user.otpExpiresAt = expiresAt;
@@ -113,7 +113,7 @@ export class AuthService {
       ${otp}
     </div>
     
-    <p><strong>Lưu ý quan trọng:</strong> Mã OTP có hiệu lực trong <strong>1 phút</strong></p>
+    <p><strong>Lưu ý quan trọng:</strong> Mã OTP có hiệu lực trong <strong>5 phút</strong></p>
     
     <p>Không chia sẻ mã này với bất kỳ ai, kể cả nhân viên hỗ trợ.</p>
     <p>Nếu bạn không yêu cầu khôi phục mật khẩu, vui lòng bỏ qua email này.</p>
@@ -136,7 +136,7 @@ export class AuthService {
         from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
         to: user.email,
         subject: 'Mã OTP khôi phục mật khẩu - VNA GROUP',
-        html: htmlTemplate, // Đã cập nhật dòng này
+        html: htmlTemplate,   
       });
     } catch (error) {
        console.error('--- LỖI GỬI MAIL THỰC TẾ TỪ GOOGLE ---');
@@ -195,7 +195,7 @@ export class AuthService {
     
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 1);
+    expiresAt.setMinutes(expiresAt.getMinutes() + 5);
 
     user.otpCode = otp;
     user.otpExpiresAt = expiresAt;
@@ -223,7 +223,7 @@ export class AuthService {
       ${otp}
     </div>
     
-    <p><strong>Lưu ý quan trọng:</strong> Mã OTP có hiệu lực trong <strong>1 phút</strong></p>
+    <p><strong>Lưu ý quan trọng:</strong> Mã OTP có hiệu lực trong <strong>5 phút</strong></p>
     
     <p>Không chia sẻ mã này với bất kỳ ai, kể cả nhân viên hỗ trợ.</p>
     <p>Nếu bạn không yêu cầu thay đổi Email, vui lòng bỏ qua email này.</p>
@@ -264,7 +264,7 @@ export class AuthService {
     if (emailExist) throw new ConflictException('Email mới này đã được sử dụng bởi người khác!');
 
     user.email = dto.newEmail;
-    user.otpCode = null;
+    user.otpCode = null;  
     user.otpExpiresAt = null;
     await this.userRepository.save(user);
 
