@@ -454,12 +454,14 @@ export default function UserPage() {
                         <input className={FILTER_INPUT_CLASS} value={fJobTitle} onChange={(e) => { setFJobTitle(e.target.value); setCurrentPage(1); }} />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fProvince} onChange={(e) => { setFProvince(e.target.value); setCurrentPage(1); }}>
-                          <option value="">Tất cả</option>
-                          {PROVINCES.map((p) => (
-                            <option key={p} value={p}>{p}</option>
-                          ))}
-                        </select>
+                        <SearchableSelect
+                          compact
+                          fixed
+                          options={PROVINCES}
+                          value={fProvince}
+                          placeholder="Tất cả"
+                          onChange={(v) => { setFProvince(v); setCurrentPage(1); }}
+                        />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fActive} onChange={(e) => { setFActive(e.target.value); setCurrentPage(1); }}>

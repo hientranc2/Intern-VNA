@@ -1,21 +1,240 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
+import { Modal } from "@/libs/shared/core/components/Modal/Modal";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
+import { PhuLucIIView } from "@/libs/tts/accident-report/PhuLucIIView";
+import {
+  INITIAL_ATVSLD_REPORTS,
+  SAMPLE_DECLARATION,
+  STATUS_META,
+  STATUS_OPTIONS,
+  type AtvsldReport,
+  type ReportStatus,
+} from "@/libs/tts/accident-report/atvsldReportData";
+
+type ViewMode = "list" | "detail";
+
+const FILTER_INPUT =
+  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
+const YEAR_SELECT =
+  "h-[34px] min-w-[100px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none";
+
+function StatusCell({ status }: { status: ReportStatus }) {
+  const meta = STATUS_META[status];
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${meta.text}`}>
+      <span className={`inline-block h-2 w-2 rounded-full ${meta.dot}`} />
+      {status}
+    </span>
+  );
+}
+
 export default function SignReportPage() {
+  const [view, setView] = useState<ViewMode>("list");
+  const [reports, setReports] = useState<AtvsldReport[]>(INITIAL_ATVSLD_REPORTS);
+  const [viewingReport, setViewingReport] = useState<AtvsldReport | null>(null);
+  const [year, setYear] = useState("2022");
+  const [toast, setToast] = useState<string | null>(null);
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [fTen, setFTen] = useState("");
+  const [fMST, setFMST] = useState("");
+  const [fPhuong, setFPhuong] = useState("");
+  const [fStatus, setFStatus] = useState("");
+
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const filtered = useMemo(
+    () =>
+      reports.filter(
+        (r) =>
+          r.ten.toLowerCase().includes(fTen.toLowerCase()) &&
+          r.mst.toLowerCase().includes(fMST.toLowerCase()) &&
+          r.ward.toLowerCase().includes(fPhuong.toLowerCase()) &&
+          (!fStatus || r.status === fStatus),
+      ),
+    [reports, fTen, fMST, fPhuong, fStatus],
+  );
+
+  const allSelected = filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id));
+  const someSelected = filtered.some((r) => selectedIds.has(r.id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) filtered.forEach((r) => next.delete(r.id));
+      else filtered.forEach((r) => next.add(r.id));
+      return next;
+    });
+  };
+
+  const approveSelected = () => {
+    const count = selectedIds.size;
+    setReports((prev) =>
+      prev.map((r) => (selectedIds.has(r.id) ? { ...r, status: "Hoàn thành", lyDoTuChoi: undefined } : r)),
+    );
+    setToast(`Đã duyệt ${count} báo cáo`);
+    setSelectedIds(new Set());
+  };
+
+  const confirmReject = () => {
+    const count = selectedIds.size;
+    setReports((prev) =>
+      prev.map((r) => (selectedIds.has(r.id) ? { ...r, status: "Từ chối", lyDoTuChoi: rejectReason.trim() || "—" } : r)),
+    );
+    setToast(`Đã từ chối ${count} báo cáo`);
+    setSelectedIds(new Set());
+    setRejectReason("");
+    setRejectOpen(false);
+  };
+
   return (
     <>
-      <div className="flex items-center border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-        <h1 className="text-base font-semibold text-ink">Ký báo cáo</h1>
-      </div>
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#eff6ff]">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="1.5">
-            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-        </div>
-        <h2 className="mt-4 text-[16px] font-semibold text-ink">Tính năng đang phát triển</h2>
-        <p className="mt-2 text-[13.5px] text-muted">Chức năng Ký báo cáo chưa có thiết kế giao diện và sẽ được cập nhật trong phiên bản tiếp theo.</p>
-      </div>
+      <Toast message={toast} onDone={() => setToast(null)} />
+
+      {view === "list" ? (
+        <>
+          <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+            <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ ATVSLĐ</h1>
+            <select className={YEAR_SELECT} value={year} onChange={(e) => setYear(e.target.value)}>
+              <option>2022</option>
+              <option>2023</option>
+              <option>2024</option>
+            </select>
+          </div>
+
+          <div className="px-6 py-5">
+            <div className="overflow-hidden rounded-lg bg-white shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13.5px]">
+                  <thead>
+                    <tr>
+                      <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5">
+                        <TriCheckbox checked={allSelected} indeterminate={!allSelected && someSelected} onChange={toggleSelectAll} />
+                      </th>
+                      {["Thao tác", "Tên doanh nghiệp", "Mã số thuế", "Ngày nộp báo cáo", "Phường/xã", "Lý do từ chối", "Trạng thái"].map((h) => (
+                        <th key={h} className="whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">{h}</th>
+                      ))}
+                    </tr>
+                    <tr>
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                        <input className={FILTER_INPUT} value={fTen} onChange={(e) => setFTen(e.target.value)} />
+                      </th>
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                        <input className={FILTER_INPUT} value={fMST} onChange={(e) => setFMST(e.target.value)} />
+                      </th>
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                        <input className={FILTER_INPUT} placeholder="dd/MM/yyyy" disabled />
+                      </th>
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                        <input className={FILTER_INPUT} value={fPhuong} onChange={(e) => setFPhuong(e.target.value)} />
+                      </th>
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                        <select className={`${FILTER_INPUT} cursor-pointer bg-white`} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+                          <option value="">Tất cả</option>
+                          {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                        </select>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan={8} className="px-3.5 py-8 text-center text-[13.5px] text-muted">Không có dữ liệu</td></tr>
+                    ) : (
+                      filtered.map((r) => (
+                        <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
+                          <td className="px-3.5 py-2.5"><TriCheckbox checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
+                          <td className="px-3.5 py-2.5">
+                            <button type="button" onClick={() => { setViewingReport(r); setView("detail"); }} title="Xem" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                              </svg>
+                            </button>
+                          </td>
+                          <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
+                          <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.mst}</td>
+                          <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.ngayNop || "–"}</td>
+                          <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.ward}</td>
+                          <td className="px-3.5 py-2.5 text-[#374151]">{r.lyDoTuChoi || "–"}</td>
+                          <td className="whitespace-nowrap px-3.5 py-2.5"><StatusCell status={r.status} /></td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#6b7280]">
+                <span>1 - {filtered.length} of {filtered.length}</span>
+              </div>
+            </div>
+          </div>
+
+          {selectedIds.size > 0 ? (
+            <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.15)]">
+              <span className="flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-[12px] font-semibold text-white">{selectedIds.size}</span>
+              <span className="text-[13px] text-[#374151]">dữ liệu được chọn</span>
+              <button type="button" onClick={() => setRejectOpen(true)} className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626]">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 102.13-9.36L1 10" /></svg>
+                Từ chối
+              </button>
+              <button type="button" onClick={approveSelected} className="flex h-8 items-center gap-1.5 rounded-md bg-success px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#16a34a]">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                Duyệt báo cáo
+              </button>
+              <button type="button" onClick={() => setSelectedIds(new Set())} className="rounded p-1 text-muted hover:bg-body hover:text-ink">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+            <h1 className="text-base font-semibold text-ink">Báo cáo ATVSLĐ</h1>
+            <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151] hover:text-ink">Huỷ bỏ</button>
+          </div>
+          <div className="px-6 py-5">
+            <div className="rounded-lg bg-white p-8 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+              <PhuLucIIView values={SAMPLE_DECLARATION} report={viewingReport ?? undefined} />
+            </div>
+          </div>
+        </>
+      )}
+
+      <Modal
+        open={rejectOpen}
+        title="Từ chối báo cáo"
+        onClose={() => setRejectOpen(false)}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setRejectOpen(false)} className="h-9.5 rounded-md px-5 text-sm font-medium text-muted hover:bg-[#f9fafb] hover:text-[#374151]">Hủy bỏ</button>
+            <button type="button" onClick={confirmReject} className="h-9.5 rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626]">Xác nhận từ chối</button>
+          </div>
+        }
+      >
+        <label className="mb-1.5 block text-[12.5px] text-[#374151]">Lý do từ chối <span className="text-danger">*</span></label>
+        <textarea
+          className="min-h-22.5 w-full rounded-md border border-line px-3 py-2 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+          placeholder="Nhập lý do từ chối báo cáo..."
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+        />
+      </Modal>
     </>
   );
 }

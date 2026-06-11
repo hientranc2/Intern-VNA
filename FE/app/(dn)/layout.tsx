@@ -9,6 +9,7 @@ import { getToken, clearToken } from "@/libs/tts/auth/authApi";
 const PATH_ACTIVE: Record<string, string> = {
   "/enterprise-info": "Thông tin doanh nghiệp",
   "/enterprise-report": "TNLĐ theo HĐLĐ",
+  "/enterprise-sign-report": "Ký báo cáo",
 };
 
 export default function DnLayout({ children }: { children: React.ReactNode }) {

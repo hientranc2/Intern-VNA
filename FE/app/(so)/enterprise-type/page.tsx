@@ -5,7 +5,7 @@ import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
-import { SlidePanel } from "@/libs/shared/core/components/SlidePanel/SlidePanel";
+import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import { INITIAL_ENTERPRISE_TYPES, type EnterpriseType } from "@/libs/tts/enterprise-type/enterpriseTypeData";
 
 const FILTER_INPUT_CLASS =
@@ -35,6 +35,8 @@ export default function EnterpriseTypePage() {
   const [inputTen, setInputTen] = useState("");
   const [inputActive, setInputActive] = useState("1");
   const [panelErrors, setPanelErrors] = useState<{ ma?: string; ten?: string }>({});
+
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return items.filter(
@@ -112,6 +114,14 @@ export default function EnterpriseTypePage() {
     setToast(editId ? "Cập nhật thành công" : "Thêm mới thành công");
   };
 
+  const deleteSelected = () => {
+    const count = selectedIds.size;
+    setItems((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+    setSelectedIds(new Set());
+    setDeleteConfirmOpen(false);
+    setToast(`Đã xóa ${count} loại hình`);
+  };
+
   return (
     <>
       <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
@@ -142,7 +152,7 @@ export default function EnterpriseTypePage() {
               <thead>
                 <tr>
                   <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left">
-                    <TriCheckbox checked={allPageChecked} onChange={toggleAll} />
+                    <TriCheckbox checked={allPageChecked} indeterminate={selectedIds.size > 0 && !allPageChecked} onChange={toggleAll} />
                   </th>
                   <th className="w-12 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
                   <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Mã loại hình</th>
@@ -221,15 +231,15 @@ export default function EnterpriseTypePage() {
           </div>
         </div>
 
-      <SlidePanel
+      <Modal
         open={panelOpen}
         title={editId ? "Cập nhật loại hình kinh doanh" : "Thêm mới loại hình kinh doanh"}
         onClose={() => setPanelOpen(false)}
         footer={
-          <>
+          <div className="flex justify-end gap-3">
             <button type="button" onClick={() => setPanelOpen(false)} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">Huỷ bỏ</button>
             <button type="button" onClick={savePanel} className="h-9 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]">Lưu</button>
-          </>
+          </div>
         }
       >
         <div className="mb-4 flex flex-col gap-1.5">
@@ -260,7 +270,62 @@ export default function EnterpriseTypePage() {
             <option value="0">Ngừng sử dụng</option>
           </select>
         </div>
-      </SlidePanel>
+      </Modal>
+
+      {/* Thanh thao tác hàng loạt khi chọn checkbox */}
+      {selectedIds.size > 0 ? (
+        <div className="fixed bottom-6 left-1/2 z-300 -translate-x-1/2">
+          <div className="flex items-center gap-0 overflow-hidden rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.18)]">
+            <div className="flex h-10 min-w-9 items-center justify-center bg-primary px-3 text-sm font-bold text-white">
+              {selectedIds.size}
+            </div>
+            <div className="flex h-10 items-center bg-white px-3 text-[13px] font-medium text-ink">
+              dữ liệu được chọn
+            </div>
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(true)}
+              className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626]"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+              </svg>
+              Xoá
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              aria-label="Bỏ chọn"
+              className="flex h-10 w-10 items-center justify-center bg-white text-muted hover:bg-body hover:text-ink"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Modal xác nhận xóa */}
+      <Modal
+        open={deleteConfirmOpen}
+        title="Xác nhận xóa"
+        onClose={() => setDeleteConfirmOpen(false)}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setDeleteConfirmOpen(false)} className="h-9.5 rounded-md px-5 text-sm font-medium text-muted hover:bg-[#f9fafb] hover:text-[#374151]">Huỷ bỏ</button>
+            <button type="button" onClick={deleteSelected} className="h-9.5 rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626]">Xóa</button>
+          </div>
+        }
+      >
+        <p className="text-[13.5px] text-[#374151]">
+          Bạn có chắc muốn xóa <strong>{selectedIds.size}</strong> loại hình đã chọn? Hành động này không thể hoàn tác.
+        </p>
+      </Modal>
 
       <Toast message={toast} onDone={() => setToast(null)} />
     </>

@@ -50,6 +50,7 @@ export function DnSidebar({ active, userName = "Doanh nghiệp", initials = "DN"
         {openGroups["Tai nạn lao động"] ? (
           <div className="bg-black/15">
             <Link href="/enterprise-report" className={childClass("TNLĐ theo HĐLĐ")}>TNLĐ theo HĐLĐ</Link>
+            <Link href="/enterprise-sign-report" className={childClass("Ký báo cáo")}>Ký báo cáo</Link>
           </div>
         ) : null}
       </nav>

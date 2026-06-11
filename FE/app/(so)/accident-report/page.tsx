@@ -10,6 +10,8 @@ import {
   TONGHOP_II_GROUPS,
   type AccidentReport,
 } from "@/libs/tts/accident-report/accidentReportData";
+import { exportTonghopDocx } from "@/libs/tts/accident-report/exportTonghopDocx";
+import { exportDetailDocx } from "@/libs/tts/accident-report/exportDetailDocx";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 
 type ViewMode = "list" | "detail" | "tonghop";
@@ -247,13 +249,17 @@ export default function AccidentReportPage() {
             <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ Tai nạn lao động</h1>
             <div className="flex items-center gap-2.5">
               <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151]">Huỷ bỏ</button>
-              <button type="button" className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]">
+              <button
+                type="button"
+                onClick={() => exportDetailDocx()}
+                className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
+              >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6 9 6 2 18 2 18 9" />
-                  <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
-                  <rect x="6" y="14" width="12" height="8" />
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
-                In báo cáo
+                Xuất báo cáo
               </button>
             </div>
           </div>
@@ -374,7 +380,11 @@ export default function AccidentReportPage() {
             <h1 className="text-base font-semibold text-ink">Báo cáo tổng hợp</h1>
             <div className="flex items-center gap-2.5">
               <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151]">Huỷ bỏ</button>
-              <button type="button" className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f3f4f6]">
+              <button
+                type="button"
+                onClick={() => exportTonghopDocx(tonghopStats)}
+                className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-body"
+              >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
