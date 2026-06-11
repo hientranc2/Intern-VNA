@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
-import { SlidePanel } from "@/libs/shared/core/components/SlidePanel/SlidePanel";
+import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import {
   INITIAL_BUSINESS_SECTORS,
   CAP_LABELS,
@@ -217,14 +217,13 @@ export default function BusinessSectorPage() {
           </div>
         </div>
 
-      <SlidePanel
+      <Modal
         open={panelOpen}
         title={editId ? "Cập nhật ngành nghề kinh doanh" : "Thêm mới ngành nghề kinh doanh"}
         onClose={() => setPanelOpen(false)}
-        width={400}
         footer={
-          <>
-            <button type="button" onClick={() => setPanelOpen(false)} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">Huỷ bỏ</button>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setPanelOpen(false)} className="h-9 rounded-md border border-line px-4.5 text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">Huỷ bỏ</button>
             <button type="button" onClick={savePanel} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
@@ -233,7 +232,7 @@ export default function BusinessSectorPage() {
               </svg>
               Lưu
             </button>
-          </>
+          </div>
         }
       >
         <div className="mb-4 flex flex-col gap-1.5">
@@ -273,7 +272,7 @@ export default function BusinessSectorPage() {
             <option value="0">Ngừng sử dụng</option>
           </select>
         </div>
-      </SlidePanel>
+      </Modal>
 
       <Toast message={toast} onDone={() => setToast(null)} />
     </>

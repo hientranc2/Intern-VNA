@@ -25,7 +25,9 @@ import { ApiError } from "@/libs/tts/auth/apiClient";
 import { getProfile } from "@/libs/tts/auth/authApi";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
+import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
+import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
 
 type ViewMode = "list" | "detail";
 
@@ -220,7 +222,7 @@ export default function UserPage() {
     setEditingId(null);
     setEditingAvatarUrl(null);
     setForm(EMPTY_FORM);
-    setPassword("");
+    setPassword("12345678");
     setFieldErrors({});
     setView("detail");
   };
@@ -252,7 +254,13 @@ export default function UserPage() {
     const username = form.username.trim();
 
     const errors: FieldErrors = {};
-    if (!username) errors.username = "Tên đăng nhập không được để trống";
+    if (!username) {
+      errors.username = "Tên đăng nhập không được để trống";
+    } else if (/\s/.test(username)) {
+      errors.username = "Tên đăng nhập không được chứa khoảng trắng";
+    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      errors.username = "Tên đăng nhập chỉ được chứa chữ cái, chữ số và dấu gạch dưới (_)";
+    }
     if (!fullName) errors.fullName = "Họ và tên không được để trống";
     if (!email) errors.email = "Email không được để trống";
     else if (!isValidEmail(email)) errors.email = "Email không đúng định dạng";
@@ -552,7 +560,21 @@ export default function UserPage() {
               <div className="flex items-center gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#374151]">
                 <button
                   type="button"
-                  onClick={() => setToast({ message: "Xuất dữ liệu thành công", variant: "success" })}
+                  onClick={() => {
+                    exportToExcel(
+                      "danh-sach-nguoi-dung.xlsx",
+                      ["Họ và tên", "Tài khoản", "Email", "Vai trò", "Chức danh", "Tỉnh/Thành phố", "Trạng thái"],
+                      users.map((u) => [
+                        u.fullName,
+                        u.username,
+                        u.email,
+                        u.role,
+                        u.jobTitle ?? "",
+                        u.province ?? "",
+                        u.isActive ? "Kích hoạt" : "Ngừng",
+                      ]),
+                    );
+                  }}
                   className="flex items-center gap-1.5 text-muted hover:text-primary"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -774,33 +796,27 @@ export default function UserPage() {
                 <div className="grid grid-cols-2 gap-x-5 gap-y-4">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-muted">Tỉnh thành phố</label>
-                    <select
-                      className={SELECT_CLASS}
+                    <SearchableSelect
+                      dropUp
+                      options={PROVINCES}
                       value={form.province}
-                      onChange={(e) => {
-                        setField("province", e.target.value);
+                      placeholder="-- Chọn tỉnh --"
+                      onChange={(v) => {
+                        setField("province", v);
                         setField("ward", "");
                       }}
-                    >
-                      <option value="">-- Chọn tỉnh --</option>
-                      {PROVINCES.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-muted">Quận / Huyện</label>
-                    <select
-                      className={SELECT_CLASS}
+                    <SearchableSelect
+                      dropUp
+                      options={WARDS_BY_PROVINCE[form.province] ?? []}
                       value={form.ward}
-                      onChange={(e) => setField("ward", e.target.value)}
+                      placeholder="-- Chọn quận/huyện --"
                       disabled={!form.province}
-                    >
-                      <option value="">-- Chọn quận/huyện --</option>
-                      {(WARDS_BY_PROVINCE[form.province] ?? []).map((w) => (
-                        <option key={w} value={w}>{w}</option>
-                      ))}
-                    </select>
+                      onChange={(v) => setField("ward", v)}
+                    />
                   </div>
                   <div className="col-span-2 flex flex-col gap-1">
                     <label className="text-xs text-muted">Địa chỉ</label>

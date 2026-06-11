@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { FormHelperText } from "@mui/material";
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
-import {
-  LOAI_HINH_OPTIONS,
-  NGANH_OPTIONS,
-  TINH_OPTIONS,
-  PHUONG_DKKD_OPTIONS,
-} from "@/libs/tts/enterprise/enterpriseData";
+import { LOAI_HINH_OPTIONS } from "@/libs/tts/enterprise/enterpriseData";
+import { INITIAL_BUSINESS_SECTORS } from "@/libs/tts/business-sector/businessSectorData";
+import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
+
+const NGANH_CAP4_OPTIONS = INITIAL_BUSINESS_SECTORS
+  .filter((s) => s.cap === 4)
+  .map((s) => `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`);
 
 type PageMode = "view" | "edit1" | "edit2";
 
@@ -81,6 +82,8 @@ export default function EnterpriseInfoPage() {
   const [otpOpen, setOtpOpen] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState<string | null>(null);
+
+  const phuongOptions = useMemo(() => WARDS_BY_PROVINCE[editForm.tinh] ?? [], [editForm.tinh]);
 
   const setField = (key: keyof typeof DEMO_INFO, value: string) =>
     setEditForm((prev) => ({ ...prev, [key]: value }));
@@ -238,7 +241,8 @@ export default function EnterpriseInfoPage() {
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Ngành nghề kinh doanh chính <span className="text-danger">*</span></label>
                     <select className={SELECT_CONTROL_CLASS} value={editForm.nganh} onChange={(e) => setField("nganh", e.target.value)}>
-                      {NGANH_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      <option value="">-- Chọn ngành nghề --</option>
+                      {NGANH_CAP4_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -247,8 +251,9 @@ export default function EnterpriseInfoPage() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Tỉnh/Thành phố ĐKKD <span className="text-danger">*</span></label>
-                    <select className={SELECT_CONTROL_CLASS} value={editForm.tinh} onChange={(e) => setField("tinh", e.target.value)}>
-                      {TINH_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    <select className={SELECT_CONTROL_CLASS} value={editForm.tinh} onChange={(e) => { setField("tinh", e.target.value); setField("phuong", ""); }}>
+                      <option value="">-- Chọn tỉnh/thành phố --</option>
+                      {PROVINCES.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                 </div>
@@ -256,7 +261,8 @@ export default function EnterpriseInfoPage() {
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Phường/Xã ĐKKD <span className="text-danger">*</span></label>
                     <select className={SELECT_CONTROL_CLASS} value={editForm.phuong} onChange={(e) => setField("phuong", e.target.value)}>
-                      {PHUONG_DKKD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      <option value="">-- Chọn phường/xã --</option>
+                      {phuongOptions.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                   <div className="flex flex-col gap-1.5">

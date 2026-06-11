@@ -4,6 +4,24 @@ export type AccidentReport = {
   mst: string;
   ky: string;
   tt: "Đang báo cáo" | "Đã tiếp nhận";
+  province: string;
+  ward: string;
+  loaiHinh: string;
+  soLaoDong: number;
+  soLDCoBaoHiem: number;
+  soVu: number;
+  soVuCoNguoiChet: number;
+  soVuCo2NguoiBiNan: number;
+  soNguoiBiNan: number;
+  soLDNu: number;
+  soNguoiBiChet: number;
+  soNguoiBiThuongNang: number;
+  soNgayNghi: number;
+  tongSoTien: number;
+  chiPhiYTe: number;
+  chiPhiTraLuong: number;
+  boiThuongTroCap: number;
+  thiethaiTaiSan: number;
 };
 
 export type ReportRow =
@@ -14,10 +32,34 @@ export type ReportRow =
 export const EMPTY_VALS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 export const INITIAL_ACCIDENT_REPORTS: AccidentReport[] = [
-  { id: 1, ten: "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ VẬN TẢI PHẠM THIÊN ÂN", mst: "0317118106", ky: "6 tháng", tt: "Đang báo cáo" },
-  { id: 2, ten: "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ VẬN TẢI PHẠM THIÊN ÂN", mst: "0317118106", ky: "Cả năm", tt: "Đã tiếp nhận" },
-  { id: 3, ten: "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ VẬN TẢI PHẠM THIÊN", mst: "0317118107", ky: "Cả năm", tt: "Đã tiếp nhận" },
-  { id: 4, ten: "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ VẬN TẢI PHẠM THIÊN", mst: "0317118106", ky: "Cả năm", tt: "Đã tiếp nhận" },
+  {
+    id: 1, ten: "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ VẬN TẢI PHẠM THIÊN ÂN", mst: "0317118106", ky: "6 tháng", tt: "Đang báo cáo",
+    province: "Thành phố Hồ Chí Minh", ward: "Phường Bình Thọ", loaiHinh: "Công ty trách nhiệm hữu hạn",
+    soLaoDong: 50, soLDCoBaoHiem: 45, soVu: 2, soVuCoNguoiChet: 1, soVuCo2NguoiBiNan: 1,
+    soNguoiBiNan: 10, soLDNu: 5, soNguoiBiChet: 5, soNguoiBiThuongNang: 5,
+    soNgayNghi: 20, tongSoTien: 6_000_000, chiPhiYTe: 2_000_000, chiPhiTraLuong: 2_000_000, boiThuongTroCap: 2_000_000, thiethaiTaiSan: 20_000_000,
+  },
+  {
+    id: 2, ten: "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ VẬN TẢI PHẠM THIÊN ÂN", mst: "0317118106", ky: "Cả năm", tt: "Đã tiếp nhận",
+    province: "Thành phố Hồ Chí Minh", ward: "Phường Bình Thọ", loaiHinh: "Công ty trách nhiệm hữu hạn",
+    soLaoDong: 50, soLDCoBaoHiem: 45, soVu: 3, soVuCoNguoiChet: 1, soVuCo2NguoiBiNan: 2,
+    soNguoiBiNan: 15, soLDNu: 7, soNguoiBiChet: 3, soNguoiBiThuongNang: 8,
+    soNgayNghi: 30, tongSoTien: 9_000_000, chiPhiYTe: 3_000_000, chiPhiTraLuong: 3_000_000, boiThuongTroCap: 3_000_000, thiethaiTaiSan: 15_000_000,
+  },
+  {
+    id: 3, ten: "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ VẬN TẢI PHẠM THIÊN", mst: "0317118107", ky: "Cả năm", tt: "Đã tiếp nhận",
+    province: "Thành phố Hồ Chí Minh", ward: "Phường Tân Định", loaiHinh: "Công ty trách nhiệm hữu hạn",
+    soLaoDong: 80, soLDCoBaoHiem: 75, soVu: 1, soVuCoNguoiChet: 0, soVuCo2NguoiBiNan: 0,
+    soNguoiBiNan: 5, soLDNu: 2, soNguoiBiChet: 0, soNguoiBiThuongNang: 3,
+    soNgayNghi: 10, tongSoTien: 3_000_000, chiPhiYTe: 1_000_000, chiPhiTraLuong: 1_000_000, boiThuongTroCap: 1_000_000, thiethaiTaiSan: 5_000_000,
+  },
+  {
+    id: 4, ten: "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ VẬN TẢI PHẠM THIÊN", mst: "0317118106", ky: "Cả năm", tt: "Đã tiếp nhận",
+    province: "Thành phố Hà Nội", ward: "Phường Cầu Giấy", loaiHinh: "Công ty cổ phần",
+    soLaoDong: 100, soLDCoBaoHiem: 95, soVu: 4, soVuCoNguoiChet: 2, soVuCo2NguoiBiNan: 2,
+    soNguoiBiNan: 20, soLDNu: 8, soNguoiBiChet: 8, soNguoiBiThuongNang: 10,
+    soNgayNghi: 45, tongSoTien: 15_000_000, chiPhiYTe: 5_000_000, chiPhiTraLuong: 5_000_000, boiThuongTroCap: 5_000_000, thiethaiTaiSan: 30_000_000,
+  },
 ];
 
 export const DETAIL_REPORT_ROWS: ReportRow[] = [
@@ -57,8 +99,44 @@ export const TONGHOP_I_ROWS = [
   "Đơn vị hành chính sự nghiệp, đảng, đoàn thể, hiệp hội",
 ];
 
-export const TONGHOP_II_GROUPS = [
-  { category: "Phân theo ngành nghề", count: 8 },
-  { category: "Phân theo nguyên nhân", count: 8 },
-  { category: "Phân theo yếu tố gây chấn thương", count: 8 },
+export const TONGHOP_II_GROUPS: { category: string; items: { label: string; ma: string }[] }[] = [
+  {
+    category: "Phân theo ngành nghề",
+    items: [
+      { label: "Khai khoáng", ma: "1" },
+      { label: "Công nghiệp chế biến, chế tạo", ma: "2" },
+      { label: "Sản xuất và phân phối điện, khí đốt", ma: "3" },
+      { label: "Cung cấp nước, thoát nước, xử lý chất thải", ma: "4" },
+      { label: "Xây dựng", ma: "5" },
+      { label: "Vận tải, kho bãi", ma: "6" },
+      { label: "Nông nghiệp, lâm nghiệp và thủy sản", ma: "7" },
+      { label: "Ngành khác", ma: "8" },
+    ],
+  },
+  {
+    category: "Phân theo nguyên nhân",
+    items: [
+      { label: "Thiết bị không đảm bảo an toàn", ma: "9" },
+      { label: "Không có phương tiện bảo vệ cá nhân", ma: "10" },
+      { label: "Tổ chức lao động không hợp lý", ma: "11" },
+      { label: "Chưa huấn luyện ATVSLĐ đầy đủ", ma: "12" },
+      { label: "Vi phạm quy trình, quy chuẩn an toàn", ma: "13" },
+      { label: "Điều kiện làm việc không tốt", ma: "14" },
+      { label: "Không sử dụng phương tiện bảo vệ cá nhân", ma: "15" },
+      { label: "Nguyên nhân khác", ma: "16" },
+    ],
+  },
+  {
+    category: "Phân theo yếu tố gây chấn thương",
+    items: [
+      { label: "Ngã", ma: "17" },
+      { label: "Vật rơi, vật văng bắn", ma: "18" },
+      { label: "Máy, thiết bị", ma: "19" },
+      { label: "Phương tiện vận tải", ma: "20" },
+      { label: "Điện giật", ma: "21" },
+      { label: "Chất độc hại", ma: "22" },
+      { label: "Bỏng", ma: "23" },
+      { label: "Yếu tố khác", ma: "24" },
+    ],
+  },
 ];

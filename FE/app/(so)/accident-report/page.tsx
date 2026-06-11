@@ -10,6 +10,7 @@ import {
   TONGHOP_II_GROUPS,
   type AccidentReport,
 } from "@/libs/tts/accident-report/accidentReportData";
+import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 
 type ViewMode = "list" | "detail" | "tonghop";
 
@@ -21,6 +22,9 @@ const SELECT_TOP_CLASS =
 const CT_TH = "border border-line bg-[#f9fafb] px-2 py-1.5 text-center align-middle font-semibold text-[#374151]";
 const CT_TD = "border border-line px-2 py-1.5 text-center align-middle text-[#374151]";
 
+const fmtMoney = (n: number) => n.toLocaleString("vi-VN");
+const fmtRate = (n: number, d: number) => (d === 0 ? "0" : ((n / d) * 1000).toFixed(2));
+
 export default function AccidentReportPage() {
   const [view, setView] = useState<ViewMode>("list");
   const [reports] = useState<AccidentReport[]>(INITIAL_ACCIDENT_REPORTS);
@@ -30,6 +34,8 @@ export default function AccidentReportPage() {
   const [fMST, setFMST] = useState("");
   const [fKy, setFKy] = useState("");
   const [fTT, setFTT] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("Thành phố Hồ Chí Minh");
+  const [selectedWard, setSelectedWard] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -48,9 +54,41 @@ export default function AccidentReportPage() {
         r.ten.toLowerCase().includes(fTen.toLowerCase()) &&
         r.mst.toLowerCase().includes(fMST.toLowerCase()) &&
         (!fKy || r.ky === fKy) &&
-        (!fTT || r.tt === fTT),
+        (!fTT || r.tt === fTT) &&
+        (!selectedProvince || r.province === selectedProvince) &&
+        (!selectedWard || r.ward === selectedWard),
     );
-  }, [reports, fTen, fMST, fKy, fTT]);
+  }, [reports, fTen, fMST, fKy, fTT, selectedProvince, selectedWard]);
+
+  const tonghopStats = useMemo(() => {
+    const sum = (reps: AccidentReport[], key: keyof AccidentReport) =>
+      reps.reduce((acc, r) => acc + (r[key] as number), 0);
+
+    const toRow = (reps: AccidentReport[]) => ({
+      coSoTongSo: reps.length,
+      coSoThamGia: reps.filter((r) => r.soVu > 0).length,
+      soLaoDong: sum(reps, "soLaoDong"),
+      soLDCoBaoHiem: sum(reps, "soLDCoBaoHiem"),
+      soNguoiBiNan: sum(reps, "soNguoiBiNan"),
+      soNguoiBiChet: sum(reps, "soNguoiBiChet"),
+      soNguoiBiThuongNang: sum(reps, "soNguoiBiThuongNang"),
+      soVu: sum(reps, "soVu"),
+      soVuCoNguoiChet: sum(reps, "soVuCoNguoiChet"),
+      soVuCo2NguoiBiNan: sum(reps, "soVuCo2NguoiBiNan"),
+      soLDNu: sum(reps, "soLDNu"),
+      soNgayNghi: sum(reps, "soNgayNghi"),
+      tongSoTien: sum(reps, "tongSoTien"),
+      chiPhiYTe: sum(reps, "chiPhiYTe"),
+      chiPhiTraLuong: sum(reps, "chiPhiTraLuong"),
+      boiThuongTroCap: sum(reps, "boiThuongTroCap"),
+      thiethaiTaiSan: sum(reps, "thiethaiTaiSan"),
+    });
+
+    return {
+      total: toRow(filtered),
+      byLoaiHinh: TONGHOP_I_ROWS.map((name) => toRow(filtered.filter((r) => r.loaiHinh === name))),
+    };
+  }, [filtered]);
 
   const total = filtered.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -91,14 +129,26 @@ export default function AccidentReportPage() {
           </div>
 
           <div className="flex gap-3 border-b border-[#e5e7eb] bg-white px-6 py-3">
-            <select className={SELECT_TOP_CLASS} defaultValue="Hồ Chí Minh">
-              <option>Hồ Chí Minh</option>
-              <option>Hà Nội</option>
+            <select
+              className={SELECT_TOP_CLASS}
+              value={selectedProvince}
+              onChange={(e) => { setSelectedProvince(e.target.value); setSelectedWard(""); }}
+            >
+              <option value="">Tất cả</option>
+              {PROVINCES.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
             </select>
-            <select className={SELECT_TOP_CLASS} defaultValue="Tất cả">
-              <option>Tất cả</option>
-              <option>Phường Bình Thọ</option>
-              <option>Phường Tân Định</option>
+            <select
+              className={SELECT_TOP_CLASS}
+              value={selectedWard}
+              onChange={(e) => setSelectedWard(e.target.value)}
+              disabled={!selectedProvince}
+            >
+              <option value="">Tất cả</option>
+              {(WARDS_BY_PROVINCE[selectedProvince] ?? []).map((w) => (
+                <option key={w} value={w}>{w}</option>
+              ))}
             </select>
           </div>
 
@@ -368,21 +418,37 @@ export default function AccidentReportPage() {
                     <tr className="bg-[#f9fafb]">
                       <td className={`${CT_TD} text-left font-bold`}>Tổng số</td>
                       <td className={CT_TD} />
-                      {Array.from({ length: 9 }).map((_, i) => (
-                        <td key={i} className={CT_TD}>2</td>
-                      ))}
+                      <td className={CT_TD}>{tonghopStats.total.coSoTongSo}</td>
+                      <td className={CT_TD}>{tonghopStats.total.coSoThamGia}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soLaoDong}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soLDCoBaoHiem}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiNan}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiChet}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiThuongNang}</td>
+                      <td className={CT_TD}>{fmtRate(tonghopStats.total.soNguoiBiNan, tonghopStats.total.soLaoDong)}</td>
+                      <td className={CT_TD}>{fmtRate(tonghopStats.total.soNguoiBiChet, tonghopStats.total.soLaoDong)}</td>
                       <td className={CT_TD} />
                     </tr>
-                    {TONGHOP_I_ROWS.map((name) => (
-                      <tr key={name}>
-                        <td className={`${CT_TD} text-left`} style={{ paddingLeft: 16 }}>{name}</td>
-                        <td className={CT_TD} />
-                        {Array.from({ length: 9 }).map((_, i) => (
-                          <td key={i} className={CT_TD}>2</td>
-                        ))}
-                        <td className={CT_TD} />
-                      </tr>
-                    ))}
+                    {TONGHOP_I_ROWS.map((name, i) => {
+                      const row = tonghopStats.byLoaiHinh[i];
+                      const hasData = row.coSoTongSo > 0;
+                      return (
+                        <tr key={name}>
+                          <td className={`${CT_TD} text-left`} style={{ paddingLeft: 16 }}>{name}</td>
+                          <td className={CT_TD} />
+                          <td className={CT_TD}>{hasData ? row.coSoTongSo : ""}</td>
+                          <td className={CT_TD}>{hasData ? row.coSoThamGia : ""}</td>
+                          <td className={CT_TD}>{hasData ? row.soLaoDong : ""}</td>
+                          <td className={CT_TD}>{hasData ? row.soLDCoBaoHiem : ""}</td>
+                          <td className={CT_TD}>{hasData ? row.soNguoiBiNan : ""}</td>
+                          <td className={CT_TD}>{hasData ? row.soNguoiBiChet : ""}</td>
+                          <td className={CT_TD}>{hasData ? row.soNguoiBiThuongNang : ""}</td>
+                          <td className={CT_TD}>{hasData ? fmtRate(row.soNguoiBiNan, row.soLaoDong) : ""}</td>
+                          <td className={CT_TD}>{hasData ? fmtRate(row.soNguoiBiChet, row.soLaoDong) : ""}</td>
+                          <td className={CT_TD} />
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -424,23 +490,36 @@ export default function AccidentReportPage() {
                     <tr className="bg-[#f9fafb]">
                       <td className={`${CT_TD} text-left font-bold`}>Tổng số</td>
                       <td className={CT_TD} />
-                      {Array.from({ length: 13 }).map((_, i) => (
-                        <td key={i} className={CT_TD}>2</td>
-                      ))}
+                      <td className={CT_TD}>{tonghopStats.total.soVu}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soVuCoNguoiChet}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soVuCo2NguoiBiNan}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiNan}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soLDNu}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiChet}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiThuongNang}</td>
+                      <td className={CT_TD}>{tonghopStats.total.soNgayNghi}</td>
+                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.tongSoTien)}</td>
+                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.chiPhiYTe)}</td>
+                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.chiPhiTraLuong)}</td>
+                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.boiThuongTroCap)}</td>
+                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.thiethaiTaiSan)}</td>
                     </tr>
-                    {TONGHOP_II_GROUPS.map((group) =>
-                      Array.from({ length: group.count }).map((_, index) => (
-                        <tr key={`${group.category}-${index}`}>
-                          {index === 0 ? (
-                            <td className={`${CT_TD} text-left font-semibold align-middle`} rowSpan={group.count}>{group.category}</td>
-                          ) : null}
-                          <td className={CT_TD}>1</td>
-                          {Array.from({ length: 13 }).map((_, i) => (
-                            <td key={i} className={CT_TD}>2</td>
-                          ))}
+                    {TONGHOP_II_GROUPS.map((group) => (
+                      <>
+                        <tr key={`cat-${group.category}`} className="bg-[#f1f5f9]">
+                          <td className={`${CT_TD} text-left font-semibold`} colSpan={15}>{group.category}</td>
                         </tr>
-                      )),
-                    )}
+                        {group.items.map((item) => (
+                          <tr key={item.ma}>
+                            <td className={`${CT_TD} text-left`} style={{ paddingLeft: 20 }}>{item.label}</td>
+                            <td className={CT_TD}>{item.ma}</td>
+                            {Array.from({ length: 13 }).map((_, i) => (
+                              <td key={i} className={CT_TD} />
+                            ))}
+                          </tr>
+                        ))}
+                      </>
+                    ))}
                   </tbody>
                 </table>
               </div>
