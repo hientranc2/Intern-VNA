@@ -94,10 +94,14 @@ export default function ReportConfigPage() {
     if (!inputNam.trim()) errors.nam = "Năm không được để trống";
     else if (!/^\d{4}$/.test(inputNam.trim())) errors.nam = "Năm phải là 4 chữ số";
     if (!inputKy) errors.ky = "Vui lòng chọn kỳ báo cáo";
-    if (!inputBatDau) errors.batDau = "Ngày bắt đầu không được để trống";
-    if (!inputKetThuc) errors.ketThuc = "Ngày kết thúc không được để trống";
-    else if (inputBatDau && inputKetThuc < inputBatDau)
+    if (!editId) {
+      if (!inputBatDau) errors.batDau = "Ngày bắt đầu không được để trống";
+      if (!inputKetThuc) errors.ketThuc = "Ngày kết thúc không được để trống";
+      else if (inputBatDau && inputKetThuc < inputBatDau)
+        errors.ketThuc = "Ngày kết thúc phải sau ngày bắt đầu";
+    } else if (inputBatDau && inputKetThuc && inputKetThuc < inputBatDau) {
       errors.ketThuc = "Ngày kết thúc phải sau ngày bắt đầu";
+    }
     if (Object.keys(errors).length > 0) {
       setPanelErrors(errors);
       return;
