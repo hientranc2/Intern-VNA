@@ -6,7 +6,7 @@ import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
 import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
-import { login, setToken, ApiError } from "@/libs/tts/auth/authApi";
+import { loginBusiness, setToken, setBusinessId, ApiError } from "@/libs/tts/auth/authApi";
 
 export default function EnterpriseLoginPage() {
   const router = useRouter();
@@ -27,8 +27,9 @@ export default function EnterpriseLoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await login({ username: user, password: pass, rememberMe });
+      const res = await loginBusiness({ username: user, password: pass, rememberMe });
       setToken(res.accessToken);
+      setBusinessId(res.account.businessId);
       router.push("/enterprise-info");
     } catch (err) {
       setError(

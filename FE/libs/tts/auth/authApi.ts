@@ -5,6 +5,7 @@ export { ApiError } from "./apiClient";
 import { request, requestFormData } from "./apiClient";
 
 const TOKEN_KEY = "tts_access_token";
+const BUSINESS_ID_KEY = "tts_business_id";
 
 export type AuthUser = {
   id: string;
@@ -37,7 +38,26 @@ export function setToken(token: string): void {
 export function clearToken(): void {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(BUSINESS_ID_KEY);
 }
+
+export function setBusinessId(id: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(BUSINESS_ID_KEY, id);
+}
+
+export function getBusinessId(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(BUSINESS_ID_KEY);
+}
+
+export type BusinessAccount = {
+  id: string;
+  username: string;
+  role: string;
+  businessId: string;
+  businessName: string;
+};
 
 // --- API công khai (không cần token) ---
 
@@ -48,6 +68,17 @@ export function login(input: {
 }) {
   return request<{ message: string; accessToken: string; user: AuthUser }>(
     "/auth/login",
+    { method: "POST", body: input, auth: false },
+  );
+}
+
+export function loginBusiness(input: {
+  username: string;
+  password: string;
+  rememberMe?: boolean;
+}) {
+  return request<{ message: string; accessToken: string; account: BusinessAccount }>(
+    "/auth/business-login",
     { method: "POST", body: input, auth: false },
   );
 }

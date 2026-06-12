@@ -7,7 +7,7 @@ import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
-import { login, setToken, getToken, ApiError } from "@/libs/tts/auth/authApi";
+import { login, loginBusiness, setToken, setBusinessId, getToken, ApiError } from "@/libs/tts/auth/authApi";
 
 type FieldErrors = { username?: string; password?: string };
 
@@ -41,16 +41,27 @@ export default function LoginPage() {
     setApiError(null);
     setLoading(true);
     try {
-      const res = await login({ username: user, password: pass, rememberMe });
-      if (!res.user.isActive) {
-        setApiError(
-          "Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên.",
-        );
-        setPassword("");
+      // Thử đăng nhập tài khoản Sở trước
+      try {
+        const res = await login({ username: user, password: pass, rememberMe });
+        setToken(res.accessToken);
+        router.push("/account");
         return;
+      } catch (soErr) {
+        // Nếu tài khoản Sở bị khóa, dừng lại ngay — không thử tiếp
+        if (soErr instanceof ApiError && soErr.message.includes("vô hiệu hóa")) {
+          setApiError(soErr.message);
+          setPassword("");
+          return;
+        }
+        // Sai mật khẩu / không tồn tại → thử tiếp với tài khoản doanh nghiệp
       }
-      setToken(res.accessToken);
-      router.push("/account");
+
+      // Fallback: thử đăng nhập tài khoản doanh nghiệp
+      const bizRes = await loginBusiness({ username: user, password: pass, rememberMe });
+      setToken(bizRes.accessToken);
+      setBusinessId(bizRes.account.businessId);
+      router.push("/enterprise-info");
     } catch (err) {
       setApiError(
         err instanceof ApiError
@@ -153,14 +164,14 @@ export default function LoginPage() {
         {loading ? "Đang đăng nhập..." : "Đăng nhập"}
       </button>
 
-      <p className="text-center text-[13px] text-muted">
-        <a
-          href="/enterprise-register"
-          className="font-medium text-primary hover:underline"
-        >
+      <div className="flex flex-col items-center gap-2">
+        <a href="/enterprise-login" className="text-[13px] font-medium text-primary hover:underline">
+          Đăng nhập tài khoản doanh nghiệp
+        </a>
+        <a href="/enterprise-register" className="text-[13px] text-muted hover:text-[#374151]">
           Đăng ký tài khoản doanh nghiệp
         </a>
-      </p>
+      </div>
 
       <Toast
         message={apiError}

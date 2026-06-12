@@ -1,18 +1,26 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormHelperText } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import {
-  INITIAL_ENTERPRISES,
-  EMPTY_ENTERPRISE_FORM,
+  EMPTY_BUSINESS_FORM,
   LOAI_HINH_OPTIONS,
-  LOAI_FILTER_OPTIONS,
-  type Enterprise,
-  type EnterpriseForm,
+  type BusinessFormData,
 } from "@/libs/tts/enterprise/enterpriseData";
+import {
+  type Business,
+  type BusinessDetail,
+  getBusinessList,
+  getBusinessById,
+  createBusiness,
+  updateBusiness,
+  toggleBusinessStatus,
+  deleteBusiness,
+} from "@/libs/tts/enterprise/enterpriseApi";
+import { ApiError } from "@/libs/tts/auth/apiClient";
 import { INITIAL_BUSINESS_SECTORS } from "@/libs/tts/business-sector/businessSectorData";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
@@ -34,6 +42,7 @@ const FILE_NAMES = ["Giấy phép kinh doanh", "Giấy tờ khác"] as const;
 const NGANH_CAP4_OPTIONS = INITIAL_BUSINESS_SECTORS
   .filter((s) => s.cap === 4)
   .map((s) => ({ value: `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`, label: `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}` }));
+
 type AttachedFile = { file: File | null; displayName: string };
 const emptyAttachments = (): AttachedFile[] => FILE_NAMES.map(() => ({ file: null, displayName: "" }));
 
@@ -51,74 +60,115 @@ function FieldGroup({ label, required, error, children }: { label: string; requi
   );
 }
 
+function formatLicenseDate(iso?: string): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toISOString().split("T")[0];
+  } catch {
+    return "";
+  }
+}
+
 export default function EnterprisePage() {
-  const [enterprises, setEnterprises] = useState<Enterprise[]>(INITIAL_ENTERPRISES);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
-  const [fTen, setFTen] = useState("");
-  const [fMST, setFMST] = useState("");
-  const [fLoai, setFLoai] = useState("");
-  const [fNganh, setFNganh] = useState("");
-  const [fPhuong, setFPhuong] = useState("");
-  const [fTT, setFTT] = useState("");
+  const [fBusinessName, setFBusinessName] = useState("");
+  const [fTaxCode, setFTaxCode] = useState("");
+  const [fBusinessType, setFBusinessType] = useState("");
+  const [fMainIndustry, setFMainIndustry] = useState("");
+  const [fWard, setFWard] = useState("");
+  const [fStatus, setFStatus] = useState("");
 
-  const dFTen = useDebounce(fTen, 300);
-  const dFMST = useDebounce(fMST, 300);
-  const dFNganh = useDebounce(fNganh, 300);
+  const dBusinessName = useDebounce(fBusinessName, 300);
+  const dTaxCode = useDebounce(fTaxCode, 300);
+  const dMainIndustry = useDebounce(fMainIndustry, 300);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const hasTextFilter = Boolean(dBusinessName || fMainIndustry);
+  const filteredByText = useMemo(() => {
+    if (!fBusinessName && !fMainIndustry) return businesses;
+    const normName = fBusinessName.normalize("NFC").toLowerCase();
+    const normIndustry = fMainIndustry.normalize("NFC").toLowerCase();
+    return businesses.filter((b) => {
+      const nameOk = !normName || b.businessName.normalize("NFC").toLowerCase().includes(normName);
+      const industryOk = !normIndustry || (b.mainIndustry ?? "").normalize("NFC").toLowerCase().includes(normIndustry);
+      return nameOk && industryOk;
+    });
+  }, [businesses, fBusinessName, fMainIndustry]);
+  const displayTotal = hasTextFilter ? filteredByText.length : total;
+  const displayedRows = hasTextFilter
+    ? filteredByText.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : businesses;
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardMode, setWizardMode] = useState<WizardMode>("add");
   const [wizardStep, setWizardStep] = useState(1);
-  const [form, setForm] = useState<EnterpriseForm>(EMPTY_ENTERPRISE_FORM);
-  const [wizardFieldErrors, setWizardFieldErrors] = useState<{ ten?: string; mst?: string; loai?: string; email?: string; tinh?: string; phuong?: string }>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isWizardLoading, setIsWizardLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState<BusinessFormData>(EMPTY_BUSINESS_FORM);
+  const [wizardFieldErrors, setWizardFieldErrors] = useState<{
+    businessName?: string; taxCode?: string; businessType?: string;
+    email?: string; registeredProvince?: string; registeredWard?: string;
+  }>({});
   const [attachments, setAttachments] = useState<AttachedFile[]>(emptyAttachments());
   const fileRef0 = useRef<HTMLInputElement>(null);
   const fileRef1 = useRef<HTMLInputElement>(null);
   const fileRefs = [fileRef0, fileRef1];
 
-  const [accountPopup, setAccountPopup] = useState<string | null>(null);
-  const [viewEnterprise, setViewEnterprise] = useState<Enterprise | null>(null);
+  const [accountInfo, setAccountInfo] = useState<{ username: string; password: string } | null>(null);
 
-  const [resetTarget, setResetTarget] = useState<Enterprise | null>(null);
+  const [viewDetail, setViewDetail] = useState<BusinessDetail | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+
+  const [resetTarget, setResetTarget] = useState<Business | null>(null);
   const [resetPwd, setResetPwd] = useState("");
   const [resetPwdError, setResetPwdError] = useState<string | null>(null);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  const setField = <K extends keyof EnterpriseForm>(key: K, value: EnterpriseForm[K]) =>
+  const setField = <K extends keyof BusinessFormData>(key: K, value: BusinessFormData[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const phuongDKKDOptions = useMemo(() => WARDS_BY_PROVINCE[form.tinh] ?? [], [form.tinh]);
-  const phuongHDOptions = useMemo(() => WARDS_BY_PROVINCE[form.tinhHD] ?? [], [form.tinhHD]);
-  const phuongFilterOptions = useMemo(
-    () => WARDS_BY_PROVINCE["Thành phố Hồ Chí Minh"] ?? [],
-    [],
-  );
+  const phuongDKKDOptions = useMemo(() => WARDS_BY_PROVINCE[form.registeredProvince] ?? [], [form.registeredProvince]);
+  const phuongHDOptions = useMemo(() => WARDS_BY_PROVINCE[form.operatingProvince] ?? [], [form.operatingProvince]);
+  const phuongFilterOptions = useMemo(() => WARDS_BY_PROVINCE["Thành phố Hồ Chí Minh"] ?? [], []);
 
-  const filtered = useMemo(() => {
-    return enterprises.filter(
-      (e) =>
-        e.ten.toLowerCase().includes(dFTen.toLowerCase()) &&
-        e.mst.toLowerCase().includes(dFMST.toLowerCase()) &&
-        (!fLoai || e.loai === fLoai) &&
-        e.nganh.toLowerCase().includes(dFNganh.toLowerCase()) &&
-        (!fPhuong || e.phuong === fPhuong) &&
-        (fTT === "" || (fTT === "1" ? e.active : !e.active)),
-    );
-  }, [enterprises, dFTen, dFMST, fLoai, dFNganh, fPhuong, fTT]);
+  const lastPage = Math.max(1, Math.ceil(displayTotal / pageSize));
+  const start = (currentPage - 1) * pageSize;
+  const end = Math.min(start + pageSize, displayTotal);
+  const allPageChecked = displayedRows.length > 0 && displayedRows.every((b) => selectedIds.has(b.id));
 
-  const total = filtered.length;
-  const lastPage = Math.max(1, Math.ceil(total / pageSize));
-  const page = Math.min(currentPage, lastPage);
-  const start = (page - 1) * pageSize;
-  const end = Math.min(start + pageSize, total);
-  const paged = filtered.slice(start, end);
-  const allPageChecked = paged.length > 0 && paged.every((e) => selectedIds.has(e.id));
+  const fetchList = useCallback(async () => {
+    const isTextFilter = Boolean(dBusinessName || dMainIndustry);
+    setIsLoading(true);
+    try {
+      const res = await getBusinessList({
+        taxCode: dTaxCode || undefined,
+        businessType: fBusinessType || undefined,
+        registeredWard: fWard || undefined,
+        isActive: fStatus === "" ? undefined : fStatus === "1",
+        page: isTextFilter ? 1 : currentPage,
+        limit: isTextFilter ? 999 : pageSize,
+      });
+      setBusinesses(res.data);
+      setTotal(res.total);
+    } catch (err) {
+      setToast({ message: err instanceof ApiError ? err.message : "Không thể tải danh sách doanh nghiệp", variant: "error" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dBusinessName, dTaxCode, fBusinessType, dMainIndustry, fWard, fStatus, currentPage, pageSize]);
 
-  const toggleRow = (id: number, checked: boolean) =>
+  useEffect(() => { fetchList(); }, [fetchList]);
+
+  const toggleRow = (id: string, checked: boolean) =>
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (checked) next.add(id);
@@ -129,55 +179,140 @@ export default function EnterprisePage() {
   const toggleAll = (checked: boolean) =>
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      paged.forEach((e) => (checked ? next.add(e.id) : next.delete(e.id)));
+      displayedRows.forEach((b) => (checked ? next.add(b.id) : next.delete(b.id)));
       return next;
     });
 
-  const toggleStatus = (id: number, active: boolean) =>
-    setEnterprises((prev) => prev.map((e) => (e.id === id ? { ...e, active } : e)));
+  const handleToggleStatus = async (id: string, isActive: boolean) => {
+    try {
+      await toggleBusinessStatus(id, isActive);
+      setBusinesses((prev) => prev.map((b) => b.id === id ? { ...b, isActive } : b));
+    } catch (err) {
+      setToast({ message: err instanceof ApiError ? err.message : "Không thể cập nhật trạng thái", variant: "error" });
+    }
+  };
 
-  const openWizard = (mode: WizardMode, ent?: Enterprise) => {
+  const openViewModal = async (b: Business) => {
+    setViewLoading(true);
+    setViewDetail(null);
+    setViewModalOpen(true);
+    try {
+      const detail = await getBusinessById(b.id);
+      setViewDetail(detail);
+    } catch (err) {
+      setToast({ message: err instanceof ApiError ? err.message : "Không thể tải thông tin", variant: "error" });
+      setViewModalOpen(false);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const openWizard = async (mode: WizardMode, b?: Business) => {
     setWizardMode(mode);
     setWizardStep(1);
     setWizardFieldErrors({});
-    if (mode === "edit" && ent) {
-      setForm({
-        ...EMPTY_ENTERPRISE_FORM,
-        ten: ent.ten,
-        mst: ent.mst,
-        loai: ent.loai,
-        nganh: ent.nganh,
-        phuong: ent.phuong,
-        email: "vnagroup@gmail.com",
-      });
-    } else {
-      setForm(EMPTY_ENTERPRISE_FORM);
-    }
     setAttachments(emptyAttachments());
-    setWizardOpen(true);
+
+    if (mode === "edit" && b) {
+      setEditingId(b.id);
+      setIsWizardLoading(true);
+      setWizardOpen(true);
+      try {
+        const detail = await getBusinessById(b.id);
+        setForm({
+          businessName: detail.businessName ?? "",
+          taxCode: detail.taxCode ?? "",
+          businessType: detail.businessType ?? "",
+          mainIndustry: detail.mainIndustry ?? "",
+          licenseDate: formatLicenseDate(detail.licenseDate),
+          registeredProvince: detail.registeredProvince ?? "",
+          registeredWard: detail.registeredWard ?? "",
+          address: detail.address ?? "",
+          foreignName: detail.foreignName ?? "",
+          email: detail.email ?? "",
+          officePhone: detail.officePhone ?? "",
+          operatingProvince: detail.operatingProvince ?? "",
+          operatingWard: detail.operatingWard ?? "",
+          operatingAddress: detail.operatingAddress ?? "",
+          representative: detail.representative ?? "",
+          representativePhone: detail.representativePhone ?? "",
+        });
+      } catch (err) {
+        setToast({ message: err instanceof ApiError ? err.message : "Không thể tải thông tin doanh nghiệp", variant: "error" });
+        setWizardOpen(false);
+      } finally {
+        setIsWizardLoading(false);
+      }
+    } else {
+      setEditingId(null);
+      setForm(EMPTY_BUSINESS_FORM);
+      setWizardOpen(true);
+    }
   };
 
   const goStep2 = () => {
     const errors: typeof wizardFieldErrors = {};
-    if (!form.ten.trim()) errors.ten = "Tên doanh nghiệp không được để trống";
-    if (!form.mst.trim()) {
-      errors.mst = "Mã số thuế không được để trống";
-    } else if (!/^\d{10}(-\d{3})?$/.test(form.mst.trim())) {
-      errors.mst = "Mã số thuế phải có 10 chữ số hoặc định dạng XXXXXXXXXX-XXX";
-    } else if (enterprises.some((e) => e.mst === form.mst.trim())) {
-      errors.mst = "Mã số thuế này đã tồn tại trong hệ thống";
+    if (!form.businessName.trim()) errors.businessName = "Tên doanh nghiệp không được để trống";
+    if (!form.taxCode.trim()) {
+      errors.taxCode = "Mã số thuế không được để trống";
+    } else if (!/^\d{10}$/.test(form.taxCode.trim())) {
+      errors.taxCode = "Mã số thuế phải gồm đúng 10 chữ số";
     }
-    if (!form.loai) errors.loai = "Vui lòng chọn loại hình kinh doanh";
+    if (!form.businessType) errors.businessType = "Vui lòng chọn loại hình kinh doanh";
     if (!form.email.trim()) errors.email = "Email không được để trống";
     else if (!isValidEmail(form.email.trim())) errors.email = "Email không đúng định dạng";
-    if (!form.tinh) errors.tinh = "Vui lòng chọn tỉnh/thành phố ĐKKD";
-    if (!form.phuong) errors.phuong = "Vui lòng chọn phường/xã ĐKKD";
+    if (!form.registeredProvince) errors.registeredProvince = "Vui lòng chọn tỉnh/thành phố ĐKKD";
+    if (!form.registeredWard) errors.registeredWard = "Vui lòng chọn phường/xã ĐKKD";
     if (Object.keys(errors).length > 0) {
       setWizardFieldErrors(errors);
       return;
     }
     setWizardFieldErrors({});
     setWizardStep(2);
+  };
+
+  const buildFormData = (): FormData => {
+    const fd = new FormData();
+    fd.append("businessName", form.businessName);
+    if (wizardMode === "add") fd.append("taxCode", form.taxCode);
+    fd.append("businessType", form.businessType);
+    if (form.mainIndustry) fd.append("mainIndustry", form.mainIndustry);
+    if (form.licenseDate) fd.append("licenseDate", form.licenseDate);
+    fd.append("registeredProvince", form.registeredProvince);
+    fd.append("registeredWard", form.registeredWard);
+    if (form.address) fd.append("address", form.address);
+    if (form.foreignName) fd.append("foreignName", form.foreignName);
+    fd.append("email", form.email);
+    if (form.officePhone) fd.append("officePhone", form.officePhone);
+    if (form.operatingProvince) fd.append("operatingProvince", form.operatingProvince);
+    if (form.operatingWard) fd.append("operatingWard", form.operatingWard);
+    if (form.operatingAddress) fd.append("operatingAddress", form.operatingAddress);
+    if (form.representative) fd.append("representative", form.representative);
+    if (form.representativePhone) fd.append("representativePhone", form.representativePhone);
+    if (attachments[0].file) fd.append("licenseFile", attachments[0].file);
+    if (attachments[1].file) fd.append("otherFile", attachments[1].file);
+    return fd;
+  };
+
+  const confirmWizard = async () => {
+    setIsSubmitting(true);
+    try {
+      if (wizardMode === "add") {
+        const res = await createBusiness(buildFormData());
+        setWizardOpen(false);
+        setAccountInfo(res.account);
+        setToast({ message: "Thêm mới doanh nghiệp thành công", variant: "success" });
+      } else {
+        await updateBusiness(editingId!, buildFormData());
+        setWizardOpen(false);
+        setToast({ message: "Cập nhật thành công", variant: "success" });
+      }
+      fetchList();
+    } catch (err) {
+      setToast({ message: err instanceof ApiError ? err.message : "Đã có lỗi xảy ra", variant: "error" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const confirmResetPwd = () => {
@@ -190,19 +325,17 @@ export default function EnterprisePage() {
     setToast({ message: "Đặt lại mật khẩu thành công", variant: "success" });
   };
 
-  const deleteSelected = () => {
-    const count = selectedIds.size;
-    setEnterprises((prev) => prev.filter((e) => !selectedIds.has(e.id)));
-    setSelectedIds(new Set());
-    setDeleteConfirmOpen(false);
-    setToast({ message: `Đã xóa ${count} doanh nghiệp`, variant: "success" });
-  };
-
-  const confirmWizard = () => {
-    setWizardOpen(false);
-    setToast({ message: wizardMode === "add" ? "Thêm mới doanh nghiệp thành công" : "Cập nhật thành công", variant: "success" });
-    if (wizardMode === "add") {
-      setAccountPopup(form.mst);
+  const deleteSelected = async () => {
+    const ids = Array.from(selectedIds);
+    try {
+      await Promise.all(ids.map((id) => deleteBusiness(id)));
+      setSelectedIds(new Set());
+      setDeleteConfirmOpen(false);
+      setToast({ message: `Đã xóa ${ids.length} doanh nghiệp`, variant: "success" });
+      fetchList();
+    } catch (err) {
+      setToast({ message: err instanceof ApiError ? err.message : "Không thể xóa doanh nghiệp", variant: "error" });
+      setDeleteConfirmOpen(false);
     }
   };
 
@@ -234,17 +367,19 @@ export default function EnterprisePage() {
   };
 
   const reviewRows: [string, string][] = [
-    ["Mã số thuế :", form.mst || "210987802"],
-    ["Tên doanh nghiệp :", form.ten],
-    ["Tên viết bằng tiếng nước ngoài :", form.tenNN || "VNA Group"],
-    ["Email :", form.email || "vna@gmail.com"],
-    ["Ngày cấp GPKD:", form.ngayCap || ""],
-    ["Loại hình kinh doanh:", form.loai || "Công ty TNHH"],
-    ["Ngành nghề kinh doanh", form.nganh || "4669 - Bán buôn chuyên doanh khác chưa được phân vào đâu"],
-    ["Địa chỉ đăng ký giấy phép kinh doanh :", "Vạn phúc City, Phường Tân Định, Thành phố Hồ Chí Minh"],
-    ["Địa điểm kinh doanh :", form.diaDiem || "Vạn phúc City, Phường Tân Định, Thành phố Hồ Chí Minh"],
-    ["Người đứng đầu doanh nghiệp", form.nguoiDD || "111111"],
-    ["SDT người đứng đầu", form.sdtDD || "0932768093"],
+    ["Mã số thuế :", form.taxCode],
+    ["Tên doanh nghiệp :", form.businessName],
+    ["Tên viết bằng tiếng nước ngoài :", form.foreignName],
+    ["Email :", form.email],
+    ["Ngày cấp GPKD :", form.licenseDate],
+    ["Loại hình kinh doanh :", form.businessType],
+    ["Ngành nghề kinh doanh :", form.mainIndustry],
+    ["Tỉnh/Thành phố ĐKKD :", form.registeredProvince],
+    ["Phường/Xã ĐKKD :", form.registeredWard],
+    ["Địa chỉ ĐKKD :", form.address],
+    ["Địa điểm kinh doanh :", form.operatingAddress],
+    ["Người đứng đầu doanh nghiệp :", form.representative],
+    ["SĐT người đứng đầu :", form.representativePhone],
   ];
 
   const thBase =
@@ -302,34 +437,34 @@ export default function EnterprisePage() {
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fTen} onChange={(e) => { setFTen(e.target.value); setCurrentPage(1); }} />
+                      <input className={FILTER_INPUT_CLASS} value={fBusinessName} onChange={(e) => { setFBusinessName(e.target.value); setCurrentPage(1); }} />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fMST} onChange={(e) => { setFMST(e.target.value); setCurrentPage(1); }} />
+                      <input className={FILTER_INPUT_CLASS} value={fTaxCode} onChange={(e) => { setFTaxCode(e.target.value); setCurrentPage(1); }} />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
-                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fLoai} onChange={(e) => { setFLoai(e.target.value); setCurrentPage(1); }}>
+                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fBusinessType} onChange={(e) => { setFBusinessType(e.target.value); setCurrentPage(1); }}>
                         <option value="">Tất cả</option>
-                        {LOAI_FILTER_OPTIONS.map((o) => (
+                        {LOAI_HINH_OPTIONS.map((o) => (
                           <option key={o} value={o}>{o}</option>
                         ))}
                       </select>
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fNganh} onChange={(e) => { setFNganh(e.target.value); setCurrentPage(1); }} />
+                      <input className={FILTER_INPUT_CLASS} value={fMainIndustry} onChange={(e) => { setFMainIndustry(e.target.value); setCurrentPage(1); }} />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
                       <SearchableSelect
                         fixed
                         compact
                         options={phuongFilterOptions}
-                        value={fPhuong}
-                        onChange={(v) => { setFPhuong(v); setCurrentPage(1); }}
+                        value={fWard}
+                        onChange={(v) => { setFWard(v); setCurrentPage(1); }}
                         placeholder="Tất cả"
                       />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
-                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fTT} onChange={(e) => { setFTT(e.target.value); setCurrentPage(1); }}>
+                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fStatus} onChange={(e) => { setFStatus(e.target.value); setCurrentPage(1); }}>
                         <option value="">Tất cả</option>
                         <option value="1">Hoạt động</option>
                         <option value="0">Ngừng</option>
@@ -338,25 +473,31 @@ export default function EnterprisePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paged.length === 0 ? (
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={8} className="px-3 py-8 text-center text-[13px] text-muted">
+                        Đang tải...
+                      </td>
+                    </tr>
+                  ) : displayedRows.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-3 py-8 text-center text-[13px] text-muted">
                         Không có dữ liệu
                       </td>
                     </tr>
                   ) : (
-                    paged.map((e) => {
-                      const selected = selectedIds.has(e.id);
+                    displayedRows.map((b) => {
+                      const selected = selectedIds.has(b.id);
                       return (
-                        <tr key={e.id} className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}>
+                        <tr key={b.id} className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}>
                           <td className="px-3 py-2.5">
-                            <TriCheckbox checked={selected} onChange={(c) => toggleRow(e.id, c)} />
+                            <TriCheckbox checked={selected} onChange={(c) => toggleRow(b.id, c)} />
                           </td>
                           <td className="px-3 py-2.5">
                             <div className="flex gap-0.5">
                               <button
                                 type="button"
-                                onClick={() => setViewEnterprise(e)}
+                                onClick={() => openViewModal(b)}
                                 title="Xem"
                                 className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                               >
@@ -367,7 +508,7 @@ export default function EnterprisePage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => openWizard("edit", e)}
+                                onClick={() => openWizard("edit", b)}
                                 title="Chỉnh sửa"
                                 className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                               >
@@ -378,7 +519,7 @@ export default function EnterprisePage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => { setResetTarget(e); setResetPwd(""); setResetPwdError(null); }}
+                                onClick={() => { setResetTarget(b); setResetPwd(""); setResetPwdError(null); }}
                                 title="Đặt lại mật khẩu"
                                 className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                               >
@@ -388,14 +529,14 @@ export default function EnterprisePage() {
                               </button>
                             </div>
                           </td>
-                          <td className="px-3 py-2.5 text-[#374151]">{e.ten}</td>
-                          <td className="px-3 py-2.5 text-[#374151]">{e.mst}</td>
-                          <td className="px-3 py-2.5 text-[#374151]">{e.loai}</td>
-                          <td className="px-3 py-2.5 text-[#374151]">{e.nganh}</td>
-                          <td className="px-3 py-2.5 text-[#374151]">{e.phuong}</td>
+                          <td className="px-3 py-2.5 text-[#374151]">{b.businessName}</td>
+                          <td className="px-3 py-2.5 text-[#374151]">{b.taxCode}</td>
+                          <td className="px-3 py-2.5 text-[#374151]">{b.businessType}</td>
+                          <td className="px-3 py-2.5 text-[#374151]">{b.mainIndustry}</td>
+                          <td className="px-3 py-2.5 text-[#374151]">{b.registeredWard}</td>
                           <td className="px-3 py-2.5">
                             <div className="flex justify-center">
-                              <Switch checked={e.active} onChange={(c) => toggleStatus(e.id, c)} />
+                              <Switch checked={b.isActive} onChange={(c) => handleToggleStatus(b.id, c)} />
                             </div>
                           </td>
                         </tr>
@@ -413,13 +554,13 @@ export default function EnterprisePage() {
                   exportToExcel(
                     "danh-sach-doanh-nghiep.xlsx",
                     ["Tên doanh nghiệp", "Mã số thuế", "Loại hình kinh doanh", "Ngành nghề kinh doanh", "Phường/xã", "Trạng thái"],
-                    filtered.map((e) => [
-                      e.ten,
-                      e.mst,
-                      e.loai,
-                      e.nganh,
-                      e.phuong,
-                      e.active ? "Hoạt động" : "Ngừng",
+                    businesses.map((b) => [
+                      b.businessName,
+                      b.taxCode,
+                      b.businessType,
+                      b.mainIndustry,
+                      b.registeredWard,
+                      b.isActive ? "Hoạt động" : "Ngừng",
                     ]),
                   );
                 }}
@@ -433,42 +574,42 @@ export default function EnterprisePage() {
                 Export Data
               </button>
               <div className="ml-auto flex items-center gap-3">
-              <select
-                className="h-[30px] cursor-pointer rounded-[5px] border border-line px-1.5 text-[13px] outline-none"
-                value={pageSize}
-                onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-              <span className="text-[#6b7280]">{total === 0 ? "0 of 0" : `${start + 1} - ${end} of ${total}`}</span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
+                <select
+                  className="h-[30px] cursor-pointer rounded-[5px] border border-line px-1.5 text-[13px] outline-none"
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M15 18l-6-6 6-6" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
-                  disabled={end >= total}
-                  className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
-                </button>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="text-[#6b7280]">{displayTotal === 0 ? "0 of 0" : `${start + 1} - ${end} of ${displayTotal}`}</span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage <= 1}
+                    className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
+                    disabled={currentPage >= lastPage}
+                    className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
       </>
 
       {/* Wizard */}
@@ -520,7 +661,9 @@ export default function EnterprisePage() {
             </div>
           </div>
 
-          {wizardStep === 1 ? (
+          {isWizardLoading ? (
+            <div className="flex items-center justify-center py-16 text-[13px] text-muted">Đang tải...</div>
+          ) : wizardStep === 1 ? (
             <>
               <div className="px-7 pb-6">
                 <div className="mb-4 text-[15px] font-bold text-ink">
@@ -528,29 +671,29 @@ export default function EnterprisePage() {
                 </div>
                 <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                    <FieldGroup label="Tên doanh nghiệp" required error={wizardFieldErrors.ten}>
+                    <FieldGroup label="Tên doanh nghiệp" required error={wizardFieldErrors.businessName}>
                       <input
-                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.ten ? " border-danger" : ""}`}
-                        value={form.ten}
-                        onChange={(e) => { setField("ten", e.target.value); if (wizardFieldErrors.ten) setWizardFieldErrors((p) => ({ ...p, ten: undefined })); }}
+                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.businessName ? " border-danger" : ""}`}
+                        value={form.businessName}
+                        onChange={(e) => { setField("businessName", e.target.value); if (wizardFieldErrors.businessName) setWizardFieldErrors((p) => ({ ...p, businessName: undefined })); }}
                         placeholder="VD: Công ty cổ phần ABC"
                       />
                     </FieldGroup>
-                    <FieldGroup label="Mã số thuế" required error={wizardFieldErrors.mst}>
+                    <FieldGroup label="Mã số thuế" required error={wizardFieldErrors.taxCode}>
                       <input
-                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.mst ? " border-danger" : ""}${wizardMode === "edit" ? " bg-[#f9fafb] cursor-not-allowed" : ""}`}
-                        value={form.mst}
+                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.taxCode ? " border-danger" : ""}${wizardMode === "edit" ? " bg-[#f9fafb] cursor-not-allowed" : ""}`}
+                        value={form.taxCode}
                         disabled={wizardMode === "edit"}
-                        maxLength={14}
-                        onChange={(e) => { setField("mst", e.target.value); if (wizardFieldErrors.mst) setWizardFieldErrors((p) => ({ ...p, mst: undefined })); }}
-                        placeholder="VD: 0310000888 hoặc 0310000888-001"
+                        maxLength={10}
+                        onChange={(e) => { setField("taxCode", e.target.value); if (wizardFieldErrors.taxCode) setWizardFieldErrors((p) => ({ ...p, taxCode: undefined })); }}
+                        placeholder="VD: 0310000888"
                       />
                     </FieldGroup>
-                    <FieldGroup label="Loại hình kinh doanh" required error={wizardFieldErrors.loai}>
+                    <FieldGroup label="Loại hình kinh doanh" required error={wizardFieldErrors.businessType}>
                       <select
-                        className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.loai ? " border-danger" : ""}`}
-                        value={form.loai}
-                        onChange={(e) => { setField("loai", e.target.value); if (wizardFieldErrors.loai) setWizardFieldErrors((p) => ({ ...p, loai: undefined })); }}
+                        className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.businessType ? " border-danger" : ""}`}
+                        value={form.businessType}
+                        onChange={(e) => { setField("businessType", e.target.value); if (wizardFieldErrors.businessType) setWizardFieldErrors((p) => ({ ...p, businessType: undefined })); }}
                       >
                         <option value="">-- Chọn loại hình --</option>
                         {LOAI_HINH_OPTIONS.map((o) => (
@@ -561,7 +704,7 @@ export default function EnterprisePage() {
                   </div>
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                     <FieldGroup label="Ngành nghề kinh doanh, chính" required>
-                      <select className={SELECT_CONTROL_CLASS} value={form.nganh} onChange={(e) => setField("nganh", e.target.value)}>
+                      <select className={SELECT_CONTROL_CLASS} value={form.mainIndustry} onChange={(e) => setField("mainIndustry", e.target.value)}>
                         <option value="">-- Chọn ngành nghề --</option>
                         {NGANH_CAP4_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>{o.label}</option>
@@ -569,16 +712,16 @@ export default function EnterprisePage() {
                       </select>
                     </FieldGroup>
                     <FieldGroup label="Ngày cấp GPKD">
-                      <input type="date" className={FORM_CONTROL_CLASS} value={form.ngayCap} max={localISODate(new Date())} onChange={(e) => setField("ngayCap", e.target.value)} />
+                      <input type="date" className={FORM_CONTROL_CLASS} value={form.licenseDate} max={localISODate(new Date())} onChange={(e) => setField("licenseDate", e.target.value)} />
                     </FieldGroup>
-                    <FieldGroup label="Tỉnh/Thành phố ĐKKD" required error={wizardFieldErrors.tinh}>
+                    <FieldGroup label="Tỉnh/Thành phố ĐKKD" required error={wizardFieldErrors.registeredProvince}>
                       <select
-                        className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.tinh ? " border-danger" : ""}`}
-                        value={form.tinh}
+                        className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.registeredProvince ? " border-danger" : ""}`}
+                        value={form.registeredProvince}
                         onChange={(e) => {
-                          setField("tinh", e.target.value);
-                          setField("phuong", "");
-                          if (wizardFieldErrors.tinh) setWizardFieldErrors((p) => ({ ...p, tinh: undefined }));
+                          setField("registeredProvince", e.target.value);
+                          setField("registeredWard", "");
+                          if (wizardFieldErrors.registeredProvince) setWizardFieldErrors((p) => ({ ...p, registeredProvince: undefined }));
                         }}
                       >
                         <option value="">-- Chọn tỉnh/thành phố --</option>
@@ -589,13 +732,13 @@ export default function EnterprisePage() {
                     </FieldGroup>
                   </div>
                   <div className="grid grid-cols-2 gap-3.5">
-                    <FieldGroup label="Phường/Xã ĐKKD" required error={wizardFieldErrors.phuong}>
+                    <FieldGroup label="Phường/Xã ĐKKD" required error={wizardFieldErrors.registeredWard}>
                       <select
-                        className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.phuong ? " border-danger" : ""}`}
-                        value={form.phuong}
+                        className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.registeredWard ? " border-danger" : ""}`}
+                        value={form.registeredWard}
                         onChange={(e) => {
-                          setField("phuong", e.target.value);
-                          if (wizardFieldErrors.phuong) setWizardFieldErrors((p) => ({ ...p, phuong: undefined }));
+                          setField("registeredWard", e.target.value);
+                          if (wizardFieldErrors.registeredWard) setWizardFieldErrors((p) => ({ ...p, registeredWard: undefined }));
                         }}
                       >
                         <option value="">-- Chọn phường/xã --</option>
@@ -605,7 +748,7 @@ export default function EnterprisePage() {
                       </select>
                     </FieldGroup>
                     <FieldGroup label="Địa chỉ">
-                      <input className={FORM_CONTROL_CLASS} value={form.diaChi} onChange={(e) => setField("diaChi", e.target.value)} placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc" />
+                      <input className={FORM_CONTROL_CLASS} value={form.address} onChange={(e) => setField("address", e.target.value)} placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc" />
                     </FieldGroup>
                   </div>
                 </div>
@@ -614,7 +757,7 @@ export default function EnterprisePage() {
                 <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                     <FieldGroup label="Tên viết bằng tiếng nước ngoài">
-                      <input className={FORM_CONTROL_CLASS} value={form.tenNN} onChange={(e) => setField("tenNN", e.target.value)} placeholder="VD: VNA Group" />
+                      <input className={FORM_CONTROL_CLASS} value={form.foreignName} onChange={(e) => setField("foreignName", e.target.value)} placeholder="VD: VNA Group" />
                     </FieldGroup>
                     <FieldGroup label="Email" required error={wizardFieldErrors.email}>
                       <input
@@ -626,17 +769,17 @@ export default function EnterprisePage() {
                       />
                     </FieldGroup>
                     <FieldGroup label="Số điện thoại cơ quan">
-                      <input className={FORM_CONTROL_CLASS} value={form.sdt} onChange={(e) => setField("sdt", e.target.value)} placeholder="VD: 0283xxxxxxx" />
+                      <input className={FORM_CONTROL_CLASS} value={form.officePhone} onChange={(e) => setField("officePhone", e.target.value)} placeholder="VD: 0283xxxxxxx" />
                     </FieldGroup>
                   </div>
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                     <FieldGroup label="Tỉnh/TP hoạt động KD">
                       <select
                         className={SELECT_CONTROL_CLASS}
-                        value={form.tinhHD}
+                        value={form.operatingProvince}
                         onChange={(e) => {
-                          setField("tinhHD", e.target.value);
-                          setField("phuongHD", "");
+                          setField("operatingProvince", e.target.value);
+                          setField("operatingWard", "");
                         }}
                       >
                         <option value="">-- Chọn tỉnh --</option>
@@ -646,7 +789,7 @@ export default function EnterprisePage() {
                       </select>
                     </FieldGroup>
                     <FieldGroup label="Phường/xã hoạt động KD">
-                      <select className={SELECT_CONTROL_CLASS} value={form.phuongHD} onChange={(e) => setField("phuongHD", e.target.value)}>
+                      <select className={SELECT_CONTROL_CLASS} value={form.operatingWard} onChange={(e) => setField("operatingWard", e.target.value)}>
                         <option value="">-- Chọn phường/xã --</option>
                         {phuongHDOptions.map((o) => (
                           <option key={o} value={o}>{o}</option>
@@ -657,13 +800,13 @@ export default function EnterprisePage() {
                   </div>
                   <div className="grid grid-cols-3 gap-3.5">
                     <FieldGroup label="Địa điểm kinh doanh">
-                      <input className={FORM_CONTROL_CLASS} value={form.diaDiem} onChange={(e) => setField("diaDiem", e.target.value)} />
+                      <input className={FORM_CONTROL_CLASS} value={form.operatingAddress} onChange={(e) => setField("operatingAddress", e.target.value)} />
                     </FieldGroup>
                     <FieldGroup label="Người đứng đầu doanh nghiệp">
-                      <input className={FORM_CONTROL_CLASS} value={form.nguoiDD} onChange={(e) => setField("nguoiDD", e.target.value)} />
+                      <input className={FORM_CONTROL_CLASS} value={form.representative} onChange={(e) => setField("representative", e.target.value)} />
                     </FieldGroup>
                     <FieldGroup label="SĐT liên hệ người đứng đầu">
-                      <input className={FORM_CONTROL_CLASS} value={form.sdtDD} onChange={(e) => setField("sdtDD", e.target.value)} />
+                      <input className={FORM_CONTROL_CLASS} value={form.representativePhone} onChange={(e) => setField("representativePhone", e.target.value)} />
                     </FieldGroup>
                   </div>
                 </div>
@@ -797,11 +940,22 @@ export default function EnterprisePage() {
                 <button type="button" onClick={() => setWizardStep(1)} className="h-[38px] rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">
                   Trở về
                 </button>
-                <button type="button" onClick={confirmWizard} className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Xác nhận
+                <button
+                  type="button"
+                  onClick={confirmWizard}
+                  disabled={isSubmitting}
+                  className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+                >
+                  {isSubmitting ? (
+                    "Đang xử lý..."
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Xác nhận
+                    </>
+                  )}
                 </button>
               </div>
             </>
@@ -811,50 +965,52 @@ export default function EnterprisePage() {
 
       {/* View enterprise modal */}
       <div
-        onClick={(ev) => { if (ev.target === ev.currentTarget) setViewEnterprise(null); }}
-        className={`fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/50 pt-10 transition-opacity duration-200 ${viewEnterprise ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        onClick={(ev) => { if (ev.target === ev.currentTarget) setViewModalOpen(false); }}
+        className={`fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/50 pt-10 transition-opacity duration-200 ${viewModalOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
       >
-        <div className={`mb-10 w-[760px] max-w-[96vw] overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)] transition-transform duration-200 ${viewEnterprise ? "translate-y-0" : "translate-y-3"}`}>
+        <div className={`mb-10 w-[760px] max-w-[96vw] overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)] transition-transform duration-200 ${viewModalOpen ? "translate-y-0" : "translate-y-3"}`}>
           <div className="flex items-center justify-between bg-primary px-7 py-4">
             <h3 className="text-[15px] font-semibold text-white">Thông tin doanh nghiệp</h3>
-            <button type="button" onClick={() => setViewEnterprise(null)} className="text-white/70 hover:text-white">
+            <button type="button" onClick={() => setViewModalOpen(false)} className="text-white/70 hover:text-white">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M18 6L6 18M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          {viewEnterprise && (
+          {viewLoading ? (
+            <div className="flex items-center justify-center py-16 text-[13px] text-muted">Đang tải...</div>
+          ) : viewDetail ? (
             <div className="px-7 py-6">
               <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                   <FieldGroup label="Tên doanh nghiệp">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewEnterprise.ten} readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.businessName} readOnly />
                   </FieldGroup>
                   <FieldGroup label="Mã số thuế">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewEnterprise.mst} readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.taxCode} readOnly />
                   </FieldGroup>
                   <FieldGroup label="Loại hình kinh doanh">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewEnterprise.loai} readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.businessType} readOnly />
                   </FieldGroup>
                 </div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                   <FieldGroup label="Ngành nghề kinh doanh, chính">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewEnterprise.nganh} readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.mainIndustry} readOnly />
                   </FieldGroup>
                   <FieldGroup label="Ngày cấp GPKD">
-                    <input disabled type="date" className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled type="date" className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={formatLicenseDate(viewDetail.licenseDate)} readOnly />
                   </FieldGroup>
                   <FieldGroup label="Tỉnh/Thành phố ĐKKD">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.registeredProvince ?? ""} readOnly />
                   </FieldGroup>
                 </div>
                 <div className="grid grid-cols-2 gap-3.5">
                   <FieldGroup label="Phường/Xã ĐKKD">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewEnterprise.phuong} readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.registeredWard} readOnly />
                   </FieldGroup>
                   <FieldGroup label="Địa chỉ">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.address ?? ""} readOnly />
                   </FieldGroup>
                 </div>
               </div>
@@ -863,43 +1019,43 @@ export default function EnterprisePage() {
               <div className="rounded-lg border border-[#e5e7eb] p-5">
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                   <FieldGroup label="Tên viết bằng tiếng nước ngoài">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.foreignName ?? ""} readOnly />
                   </FieldGroup>
                   <FieldGroup label="Email">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.email ?? ""} readOnly />
                   </FieldGroup>
                   <FieldGroup label="Số điện thoại cơ quan">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.officePhone ?? ""} readOnly />
                   </FieldGroup>
                 </div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                   <FieldGroup label="Tỉnh/TP hoạt động KD">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.operatingProvince ?? ""} readOnly />
                   </FieldGroup>
                   <FieldGroup label="Phường/xã hoạt động KD">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.operatingWard ?? ""} readOnly />
                   </FieldGroup>
                   <div />
                 </div>
                 <div className="grid grid-cols-3 gap-3.5">
                   <FieldGroup label="Địa điểm kinh doanh">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.operatingAddress ?? ""} readOnly />
                   </FieldGroup>
                   <FieldGroup label="Người đứng đầu doanh nghiệp">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.representative ?? ""} readOnly />
                   </FieldGroup>
                   <FieldGroup label="SĐT liên hệ người đứng đầu">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value="" readOnly />
+                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.representativePhone ?? ""} readOnly />
                   </FieldGroup>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
           <div className="flex justify-end border-t border-[#e5e7eb] px-7 py-4">
             <button
               type="button"
-              onClick={() => setViewEnterprise(null)}
+              onClick={() => setViewModalOpen(false)}
               className="h-[38px] rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
             >
               Đóng
@@ -909,23 +1065,23 @@ export default function EnterprisePage() {
       </div>
 
       {/* Account popup */}
-      {accountPopup ? (
+      {accountInfo ? (
         <>
-          <div className="fixed inset-0 z-[399] bg-black/50" onClick={() => setAccountPopup(null)} />
+          <div className="fixed inset-0 z-[399] bg-black/50" onClick={() => setAccountInfo(null)} />
           <div className="fixed left-1/2 top-1/2 z-[400] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
             <div className="rounded-t-[10px] bg-primary px-5 py-3.5">
               <h3 className="text-center text-[15px] font-bold text-white">Thông tin tài khoản</h3>
             </div>
             <div className="px-5 pb-3 pt-4">
               <p className="mb-2 text-[13.5px] text-ink">
-                • Tài khoản: <strong>{accountPopup}</strong>
+                • Tài khoản: <strong>{accountInfo.username}</strong>
               </p>
               <p className="mb-2 text-[13.5px] text-ink">
-                • Mật khẩu: <strong>12345678</strong>
+                • Mật khẩu: <strong>{accountInfo.password}</strong>
               </p>
             </div>
             <div className="px-5 pb-3.5 text-right">
-              <button type="button" onClick={() => setAccountPopup(null)} className="text-[13px] text-muted hover:text-[#374151]">
+              <button type="button" onClick={() => setAccountInfo(null)} className="text-[13px] text-muted hover:text-[#374151]">
                 Huỷ bỏ
               </button>
             </div>
@@ -950,7 +1106,7 @@ export default function EnterprisePage() {
           </div>
           <div className="px-6 py-5">
             <p className="mb-3.5 text-[13.5px] text-[#374151]">
-              Khởi tạo mật khẩu cho tài khoản <strong>{resetTarget?.mst}</strong>
+              Khởi tạo mật khẩu cho tài khoản <strong>{resetTarget?.taxCode}</strong>
             </p>
             <input
               className={`h-[42px] w-full rounded-md border px-3.5 text-sm outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] ${resetPwdError ? "border-danger" : "border-line"}`}
@@ -1063,8 +1219,8 @@ export default function EnterprisePage() {
         </div>
       </div>
 
-      <input ref={fileRef0} type="file" accept=".pdf,.doc,.docx,.jpg,.png" className="hidden" onChange={(e) => handleFileSelect(0, e)} />
-      <input ref={fileRef1} type="file" accept=".pdf,.doc,.docx,.jpg,.png" className="hidden" onChange={(e) => handleFileSelect(1, e)} />
+      <input ref={fileRef0} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => handleFileSelect(0, e)} />
+      <input ref={fileRef1} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => handleFileSelect(1, e)} />
 
       <Toast message={toast?.message ?? null} variant={toast?.variant} onDone={() => setToast(null)} />
     </>

@@ -72,7 +72,7 @@ export async function request<T>(
   return data as T;
 }
 
-export async function requestFormData<T>(path: string, formData: FormData): Promise<T> {
+export async function requestFormData<T>(path: string, formData: FormData, method: "POST" | "PUT" = "POST"): Promise<T> {
   const headers: Record<string, string> = {};
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -80,7 +80,7 @@ export async function requestFormData<T>(path: string, formData: FormData): Prom
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
-      method: "POST",
+      method,
       headers,
       body: formData,
     });

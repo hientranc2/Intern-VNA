@@ -15,6 +15,10 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) { return this.authService.login(dto); }
 
+  @HttpCode(HttpStatus.OK)
+  @Post('business-login')
+  loginBusiness(@Body() dto: LoginDto) { return this.authService.loginBusiness(dto); }
+
   @Post('forgot-password')
   forgotPassword(@Body() dto: ForgotPasswordDto) { return this.authService.forgotPassword(dto); }
 

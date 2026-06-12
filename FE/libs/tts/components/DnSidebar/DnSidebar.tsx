@@ -93,25 +93,37 @@ export function DnSidebar({
         ) : null}
       </nav>
 
-      {onLogout ? (
-        <div className="mx-3 mb-2 overflow-hidden rounded-lg bg-white shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
-          <button type="button" onClick={onLogout} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[13px] text-danger hover:bg-[#f9fafb]">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Đăng xuất
-          </button>
-        </div>
-      ) : null}
+      <div ref={menuRef} className="relative shrink-0">
+        {showMenu && (
+          <div className="absolute bottom-full left-3 right-3 mb-1 overflow-hidden rounded-lg bg-white shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
+            {onLogout ? (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[13px] text-danger transition-colors hover:bg-[#f9fafb]"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Đăng xuất
+              </button>
+            ) : null}
+          </div>
+        )}
 
-      <div className="flex items-center gap-2.5 border-t border-white/10 px-4 py-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#93c5fd] text-sm font-bold text-dark">{initials}</div>
-        <span className="flex-1 text-[13px] font-medium text-white">{userName}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeOpacity="0.6">
-          <path d="M9 18l6-6-6-6" />
-        </svg>
+        <button
+          type="button"
+          onClick={() => setShowMenu((prev) => !prev)}
+          className="flex w-full items-center gap-2.5 border-t border-white/10 px-4 py-3 transition-colors hover:bg-white/10"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#93c5fd] text-sm font-bold text-dark">{initials}</div>
+          <span className="flex-1 text-left text-[13px] font-medium text-white">{userName}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeOpacity="0.6">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
       </div>
     </aside>
   );

@@ -1,58 +1,90 @@
-import { request } from "@/libs/tts/auth/apiClient";
-import type { Enterprise, EnterpriseForm } from "./enterpriseData";
+import { request, requestFormData } from "@/libs/tts/auth/apiClient";
 
-export type EnterpriseListResponse = {
-  data: Enterprise[];
+export type Business = {
+  id: string;
+  businessName: string;
+  taxCode: string;
+  businessType: string;
+  mainIndustry: string;
+  registeredWard: string;
+  isActive: boolean;
+};
+
+export type BusinessDetail = Business & {
+  licenseDate?: string;
+  registeredProvince?: string;
+  address?: string;
+  foreignName?: string;
+  email?: string;
+  officePhone?: string;
+  operatingProvince?: string;
+  operatingWard?: string;
+  operatingAddress?: string;
+  representative?: string;
+  representativePhone?: string;
+  licenseFile?: string;
+  otherFile?: string;
+};
+
+export type BusinessListResponse = {
+  data: Business[];
   total: number;
   page: number;
-  pageSize: number;
+  limit: number;
 };
 
-export type CreateEnterpriseInput = EnterpriseForm & {
-  accountUsername?: string;
-  accountPassword?: string;
+export type BusinessCreateResponse = {
+  message: string;
+  business: BusinessDetail;
+  account: { username: string; password: string };
 };
 
-export function getEnterpriseList(params?: {
+export function getBusinessList(params?: {
+  businessName?: string;
+  taxCode?: string;
+  businessType?: string;
+  mainIndustry?: string;
+  registeredWard?: string;
+  isActive?: boolean;
   page?: number;
-  pageSize?: number;
-  ten?: string;
-  mst?: string;
-  loai?: string;
-  phuong?: string;
-  active?: boolean;
+  limit?: number;
 }) {
   const query = new URLSearchParams();
+  if (params?.businessName) query.set("businessName", params.businessName);
+  if (params?.taxCode) query.set("taxCode", params.taxCode);
+  if (params?.businessType) query.set("businessType", params.businessType);
+  if (params?.mainIndustry) query.set("mainIndustry", params.mainIndustry);
+  if (params?.registeredWard) query.set("registeredWard", params.registeredWard);
+  if (params?.isActive !== undefined) query.set("isActive", String(params.isActive));
   if (params?.page) query.set("page", String(params.page));
-  if (params?.pageSize) query.set("pageSize", String(params.pageSize));
-  if (params?.ten) query.set("ten", params.ten);
-  if (params?.mst) query.set("mst", params.mst);
-  if (params?.loai) query.set("loai", params.loai);
-  if (params?.phuong) query.set("phuong", params.phuong);
-  if (params?.active !== undefined) query.set("active", String(params.active));
+  if (params?.limit) query.set("limit", String(params.limit));
   const qs = query.toString();
-  return request<EnterpriseListResponse>(`/enterprises${qs ? `?${qs}` : ""}`);
+  return request<BusinessListResponse>(`/businesses${qs ? `?${qs}` : ""}`);
 }
 
-export function getEnterpriseById(id: number) {
-  return request<Enterprise & { form: EnterpriseForm }>(`/enterprises/${id}`);
+export function getBusinessById(id: string) {
+  return request<BusinessDetail>(`/businesses/${id}`);
 }
 
-export function createEnterprise(input: CreateEnterpriseInput) {
-  return request<Enterprise>("/enterprises", { method: "POST", body: input });
+export function getBusinessAccount(id: string) {
+  return request<{ username: string }>(`/businesses/${id}/account`);
 }
 
-export function updateEnterprise(id: number, input: Partial<EnterpriseForm>) {
-  return request<Enterprise>(`/enterprises/${id}`, { method: "PUT", body: input });
+export function createBusiness(formData: FormData) {
+  return requestFormData<BusinessCreateResponse>("/businesses", formData);
 }
 
-export function deleteEnterprise(id: number) {
-  return request<{ message: string }>(`/enterprises/${id}`, { method: "DELETE" });
+export function updateBusiness(id: string, formData: FormData) {
+  return requestFormData<BusinessDetail>(`/businesses/${id}`, formData, "PUT");
 }
 
-export function toggleEnterpriseActive(id: number, active: boolean) {
-  return request<Enterprise>(`/enterprises/${id}/active`, {
+export function toggleBusinessStatus(id: string, isActive: boolean) {
+  return request<{ id: string; isActive: boolean }>(`/businesses/${id}/status`, {
     method: "PATCH",
-    body: { active },
+    body: { isActive },
   });
+}
+
+export function deleteBusiness(id: string) {
+  return request<{ message: string }>(`/businesses/${id}`, { method: "DELETE" });
 }
