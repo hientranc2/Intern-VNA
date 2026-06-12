@@ -8,6 +8,11 @@ import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
 import { JwtStrategy } from './services/jwt.strategy';
 import { UsersService } from './services/users.service';
+import { Business } from './entities/business.entity';
+import { Account } from './entities/business_account.entity';
+import { BusinessController } from './controllers/business.controller';
+import { BusinessService } from './services/business.service';
+
 
 @Module({
   imports: [
@@ -15,13 +20,13 @@ import { UsersService } from './services/users.service';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User],
-      synchronize: false,
+      entities: [User, Business, Account],
+      synchronize: false, // Chổ này chỉnh true có thể để TypeORM tự động tạo Database
       ssl: {
         rejectUnauthorized: false,
       },
     }),
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Business, Account]),
     JwtModule.register({
       secret: 'thu_thap_bi_mat_vna_123',
       signOptions: { expiresIn: '1h' },
@@ -29,12 +34,14 @@ import { UsersService } from './services/users.service';
   ],
  controllers: [
     AuthController, 
-    UsersController 
+    UsersController,
+    BusinessController, 
   ],
   providers: [
     AuthService, 
     JwtStrategy, 
-    UsersService    
+    UsersService,
+    BusinessService,    
   ],
 })
 export class AppModule {}
