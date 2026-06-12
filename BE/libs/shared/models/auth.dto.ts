@@ -77,3 +77,16 @@ export class UpdateProfileDto {
   @IsOptional() @IsString() ward?: string;
   @IsOptional() @IsString() address?: string;
 }
+
+export class SendRegisterOtpDto {
+  @IsEmail({}, { message: 'Email không hợp lệ' })
+  email: string;
+}
+
+export class VerifyRegisterOtpDto {
+  @IsEmail({}, { message: 'Email không hợp lệ' })
+  email: string;
+
+  @IsNotEmpty({ message: 'Vui lòng nhập mã OTP' })
+  otpCode: string;
+}

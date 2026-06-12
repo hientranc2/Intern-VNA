@@ -9,7 +9,7 @@ import * as WebSocket from 'ws';
 (global as any).WebSocket = WebSocket;
 import { User } from '../entities/user.entity';
 import { Account } from '../entities/business_account.entity';
-import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, UpdateProfileDto, ChangePasswordDto, ChangeEmailDto } from '../../libs/shared/models/auth.dto';
+import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, UpdateProfileDto, ChangePasswordDto, ChangeEmailDto, SendRegisterOtpDto, VerifyRegisterOtpDto } from '../../libs/shared/models/auth.dto';
 import 'multer';
 
 @Injectable()
@@ -43,6 +43,8 @@ export class AuthService {
       },
     }
   );
+
+  private registerOtpStore = new Map<string, { code: string; expiresAt: Date }>();
 
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
@@ -322,6 +324,57 @@ export class AuthService {
     await this.userRepository.save(user);
 
     return { message: 'Thay đổi Email thành công!' };
+  }
+
+  async sendRegisterOtp(dto: SendRegisterOtpDto) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 5);
+    this.registerOtpStore.set(dto.email, { code: otp, expiresAt });
+
+    console.log(`[OTP ĐĂNG KÝ DN cho ${dto.email}]: ${otp}`);
+
+    const htmlTemplate = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
+  <div style="text-align: center; border-bottom: 2px solid #f4f4f4; padding-bottom: 20px;">
+    <img src="https://ziroujfjpyvswzjjsorf.supabase.co/storage/v1/object/public/assets/khong%20nen%20_%20sang.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
+  </div>
+  <div style="padding: 20px 0; color: #333; line-height: 1.6;">
+    <h2 style="color: #002b5e;">Xác thực email đăng ký doanh nghiệp</h2>
+    <p>Bạn vừa yêu cầu đăng ký tài khoản doanh nghiệp. Dưới đây là mã OTP xác thực:</p>
+    <div style="font-size: 32px; font-weight: bold; color: #000; margin: 20px 0;">${otp}</div>
+    <p><strong>Lưu ý:</strong> Mã OTP có hiệu lực trong <strong>5 phút</strong></p>
+    <p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
+  </div>
+  <div style="border-top: 2px solid #f4f4f4; padding-top: 20px; font-size: 13px; color: #777;">
+    <p style="margin: 0;">© 2026 VNA GROUP. Tất cả các quyền được bảo lưu.</p>
+  </div>
+</div>`;
+
+    try {
+      await this.transporter.sendMail({
+        from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
+        to: dto.email,
+        subject: 'Mã OTP xác thực đăng ký doanh nghiệp - VNA GROUP',
+        html: htmlTemplate,
+      });
+    } catch (error) {
+      console.log('Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.');
+    }
+
+    return { message: 'Mã OTP đã được gửi đến email của bạn!' };
+  }
+
+  async verifyRegisterOtp(dto: VerifyRegisterOtpDto) {
+    const stored = this.registerOtpStore.get(dto.email);
+    if (!stored) throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    if (new Date() > stored.expiresAt) {
+      this.registerOtpStore.delete(dto.email);
+      throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng yêu cầu gửi lại');
+    }
+    if (stored.code !== dto.otpCode) throw new BadRequestException('Mã OTP không đúng');
+    this.registerOtpStore.delete(dto.email);
+    return { message: 'Xác thực OTP thành công' };
   }
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {

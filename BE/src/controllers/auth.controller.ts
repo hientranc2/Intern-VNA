@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get, Put, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, Request, BadRequestException, ParseFilePipeBuilder } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../services/auth.service';
-import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, UpdateProfileDto, ChangePasswordDto, ChangeEmailDto } from '../../libs/shared/models/auth.dto';
+import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, UpdateProfileDto, ChangePasswordDto, ChangeEmailDto, SendRegisterOtpDto, VerifyRegisterOtpDto } from '../../libs/shared/models/auth.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('auth')
@@ -24,6 +24,12 @@ export class AuthController {
 
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) { return this.authService.resetPassword(dto); }
+
+  @Post('register/send-otp')
+  sendRegisterOtp(@Body() dto: SendRegisterOtpDto) { return this.authService.sendRegisterOtp(dto); }
+
+  @Post('register/verify-otp')
+  verifyRegisterOtp(@Body() dto: VerifyRegisterOtpDto) { return this.authService.verifyRegisterOtp(dto); }
 
   // --- CÁC API KHÓA BẢO MẬT (PHẢI CÓ TOKEN) ---
 

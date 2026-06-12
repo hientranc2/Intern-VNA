@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { FormHelperText } from "@mui/material";
 import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
-import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
-import { login, loginBusiness, setToken, setBusinessId, getToken, ApiError } from "@/libs/tts/auth/authApi";
+import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { login, loginBusiness, setToken, setBusinessId, getToken, getBusinessId, ApiError } from "@/libs/tts/auth/authApi";
 
 type FieldErrors = { username?: string; password?: string };
+
+const isEnterpriseUsername = (username: string) => /^\d+$/.test(username);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,15 +23,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (getToken()) router.replace("/account");
+    const token = getToken();
+    if (!token) return;
+    if (getBusinessId()) router.replace("/enterprise-info");
+    else router.replace("/account");
   }, [router]);
 
   const handleLogin = async () => {
     if (loading) return;
-
     const user = username.trim();
     const pass = password.trim();
-
     const errors: FieldErrors = {};
     if (!user) errors.username = "Vui lòng nhập tên đăng nhập";
     if (!pass) errors.password = "Vui lòng nhập mật khẩu";
@@ -41,32 +44,19 @@ export default function LoginPage() {
     setApiError(null);
     setLoading(true);
     try {
-      // Thử đăng nhập tài khoản Sở trước
-      try {
+      if (isEnterpriseUsername(user)) {
+        const res = await loginBusiness({ username: user, password: pass, rememberMe });
+        setToken(res.accessToken);
+        setBusinessId(res.account.businessId);
+        router.push("/enterprise-info");
+      } else {
         const res = await login({ username: user, password: pass, rememberMe });
         setToken(res.accessToken);
         router.push("/account");
-        return;
-      } catch (soErr) {
-        // Nếu tài khoản Sở bị khóa, dừng lại ngay — không thử tiếp
-        if (soErr instanceof ApiError && soErr.message.includes("vô hiệu hóa")) {
-          setApiError(soErr.message);
-          setPassword("");
-          return;
-        }
-        // Sai mật khẩu / không tồn tại → thử tiếp với tài khoản doanh nghiệp
       }
-
-      // Fallback: thử đăng nhập tài khoản doanh nghiệp
-      const bizRes = await loginBusiness({ username: user, password: pass, rememberMe });
-      setToken(bizRes.accessToken);
-      setBusinessId(bizRes.account.businessId);
-      router.push("/enterprise-info");
     } catch (err) {
       setApiError(
-        err instanceof ApiError
-          ? err.message
-          : "Đã có lỗi xảy ra. Vui lòng thử lại.",
+        err instanceof ApiError ? err.message : "Đã có lỗi xảy ra. Vui lòng thử lại.",
       );
       setPassword("");
     } finally {
@@ -87,6 +77,10 @@ export default function LoginPage() {
       <div className="mb-3.5 w-full text-[13px] font-semibold tracking-wide text-[#374151]">
         ĐĂNG NHẬP
       </div>
+
+      {apiError ? (
+        <Alert variant="error" message={apiError} onClose={() => setApiError(null)} />
+      ) : null}
 
       <div className="mb-3.5 w-full">
         <label className="mb-1 block text-xs text-muted" htmlFor="username">
@@ -164,20 +158,12 @@ export default function LoginPage() {
         {loading ? "Đang đăng nhập..." : "Đăng nhập"}
       </button>
 
-      <div className="flex flex-col items-center gap-2">
-        <a href="/enterprise-login" className="text-[13px] font-medium text-primary hover:underline">
-          Đăng nhập tài khoản doanh nghiệp
-        </a>
-        <a href="/enterprise-register" className="text-[13px] text-muted hover:text-[#374151]">
-          Đăng ký tài khoản doanh nghiệp
-        </a>
-      </div>
-
-      <Toast
-        message={apiError}
-        variant="error"
-        onDone={() => setApiError(null)}
-      />
+      <a
+        href="/enterprise-register"
+        className="block text-center text-[13px] text-muted hover:text-[#374151]"
+      >
+        Đăng ký tài khoản doanh nghiệp
+      </a>
     </AuthShell>
   );
 }

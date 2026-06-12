@@ -3,10 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FormHelperText } from "@mui/material";
-import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
-import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
-import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail, isValidPhone } from "@/libs/tts/auth/authValidation";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
@@ -14,10 +11,11 @@ import { type EnterpriseForm, EMPTY_ENTERPRISE_FORM } from "@/libs/tts/enterpris
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { getEnterpriseTypeList } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
 import { getBusinessSectorList } from "@/libs/tts/business-sector/businessSectorApi";
+import { sendRegisterOtp, verifyRegisterOtp } from "@/libs/tts/auth/authApi";
+import { createBusiness } from "@/libs/tts/enterprise/enterpriseApi";
 
 const FILE_NAMES = ["Giấy phép kinh doanh", "Giấy tờ khác"];
 
-type AppView = "login" | "wizard";
 type WizardStep = 1 | 2;
 type AttachedFile = { file: File | null; displayName: string };
 
@@ -57,14 +55,7 @@ export default function EnterpriseRegisterPage() {
   const router = useRouter();
   const countdown = useCountdown(300);
 
-  const [appView, setAppView] = useState<AppView>("login");
   const [wizardStep, setWizardStep] = useState<WizardStep>(1);
-  const [loginUsername, setLoginUsername] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginFieldErrors, setLoginFieldErrors] = useState<{
-    username?: string;
-    password?: string;
-  }>({});
 
   const [loaiHinhOptions, setLoaiHinhOptions] = useState<string[]>([]);
   const [nganhCap4Options, setNganhCap4Options] = useState<string[]>([]);
@@ -104,7 +95,12 @@ export default function EnterpriseRegisterPage() {
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState<string | null>(null);
 
-  const [accountPopup, setAccountPopup] = useState<string | null>(null);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [accountPopup, setAccountPopup] = useState<{ username: string; password: string } | null>(null);
 
   const phuongDKKDOptions = useMemo(() => WARDS_BY_PROVINCE[form.tinh] ?? [], [form.tinh]);
   const phuongHDOptions = useMemo(() => WARDS_BY_PROVINCE[form.tinhHD] ?? [], [form.tinhHD]);
@@ -112,25 +108,12 @@ export default function EnterpriseRegisterPage() {
   const setField = <K extends keyof EnterpriseForm>(key: K, value: EnterpriseForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const handleLogin = () => {
-    const errors: { username?: string; password?: string } = {};
-    if (!loginUsername.trim()) errors.username = "Vui lòng nhập tên đăng nhập";
-    if (!loginPassword.trim()) errors.password = "Vui lòng nhập mật khẩu";
-    if (Object.keys(errors).length > 0) {
-      setLoginFieldErrors(errors);
-      return;
-    }
-    setLoginFieldErrors({});
-    setAppView("wizard");
-    setWizardStep(1);
-  };
-
-  const validateAndOtp = () => {
+  const validateAndOtp = async () => {
     const errors: typeof wizardFieldErrors = {};
     if (!form.ten.trim()) errors.ten = "Tên doanh nghiệp không được để trống";
     if (!form.mst.trim()) errors.mst = "Mã số thuế không được để trống";
-    else if (!/^\d{10}(-\d{3})?$/.test(form.mst.trim()))
-      errors.mst = "Mã số thuế phải có 10 chữ số hoặc định dạng XXXXXXXXXX-XXX";
+    else if (!/^\d{10}$/.test(form.mst.trim()))
+      errors.mst = "Mã số thuế phải gồm đúng 10 chữ số";
     if (!form.loai) errors.loai = "Vui lòng chọn loại hình kinh doanh";
     if (!form.nganh) errors.nganh = "Vui lòng chọn ngành nghề kinh doanh";
     if (!form.email.trim()) errors.email = "Email không được để trống";
@@ -146,24 +129,74 @@ export default function EnterpriseRegisterPage() {
       return;
     }
     setWizardFieldErrors({});
-    setOtp("");
-    setOtpError(null);
-    setOtpOpen(true);
-    countdown.start();
+    setIsSendingOtp(true);
+    try {
+      await sendRegisterOtp(form.email.trim());
+      setOtp("");
+      setOtpError(null);
+      setOtpOpen(true);
+      countdown.start();
+    } catch (e) {
+      setWizardFieldErrors((prev) => ({
+        ...prev,
+        email: e instanceof Error ? e.message : "Không thể gửi OTP, thử lại",
+      }));
+    } finally {
+      setIsSendingOtp(false);
+    }
   };
 
-  const confirmOtp = () => {
+  const confirmOtp = async () => {
     if (!otp.trim()) {
       setOtpError("Vui lòng nhập mã OTP");
       return;
     }
-    setOtpOpen(false);
-    countdown.stop();
-    setWizardStep(2);
+    setIsVerifyingOtp(true);
+    try {
+      await verifyRegisterOtp(form.email.trim(), otp.trim());
+      setOtpOpen(false);
+      countdown.stop();
+      setWizardStep(2);
+    } catch (e) {
+      setOtpError(e instanceof Error ? e.message : "Xác thực OTP thất bại");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
   };
 
-  const confirmWizard = () => {
-    setAccountPopup(form.mst);
+  const confirmWizard = async () => {
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append("businessName", form.ten.trim());
+      fd.append("taxCode", form.mst.trim());
+      fd.append("businessType", form.loai);
+      fd.append("mainIndustry", form.nganh);
+      if (form.ngayCap) fd.append("licenseDate", form.ngayCap);
+      fd.append("registeredProvince", form.tinh);
+      fd.append("registeredWard", form.phuong);
+      if (form.diaChi.trim()) fd.append("address", form.diaChi.trim());
+      if (form.tenNN.trim()) fd.append("foreignName", form.tenNN.trim());
+      fd.append("email", form.email.trim());
+      if (form.sdt.trim()) fd.append("officePhone", form.sdt.trim());
+      if (form.tinhHD) fd.append("operatingProvince", form.tinhHD);
+      if (form.phuongHD) fd.append("operatingWard", form.phuongHD);
+      if (form.diaDiem.trim()) fd.append("operatingAddress", form.diaDiem.trim());
+      if (form.nguoiDD.trim()) fd.append("representative", form.nguoiDD.trim());
+      if (form.sdtDD.trim()) fd.append("representativePhone", form.sdtDD.trim());
+      const licenseFile = attachments[0].file;
+      const otherFile = attachments[1].file;
+      if (licenseFile) fd.append("licenseFile", licenseFile);
+      if (otherFile) fd.append("otherFile", otherFile);
+
+      const result = await createBusiness(fd);
+      setAccountPopup({ username: result.account.username, password: result.account.password });
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Đã có lỗi xảy ra. Vui lòng thử lại.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleFileSelect = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,91 +240,6 @@ export default function EnterpriseRegisterPage() {
     ["SĐT người đứng đầu", form.sdtDD],
   ];
 
-  if (appView === "login") {
-    return (
-      <AuthShell>
-        <GovSeal size={72} className="mb-4" />
-        <h1 className="mb-7 text-center text-[15px] font-bold leading-relaxed text-dark">
-          Phần Mềm Quản Lý - Tạo Lập Cơ Sở Dữ Liệu
-          <br />
-          An Toàn Vệ Sinh Lao Động
-        </h1>
-        <div className="mb-3.5 w-full text-[13px] font-bold uppercase tracking-widest text-primary">
-          Đăng nhập
-        </div>
-
-        <div className="mb-3.5 w-full">
-          <label className="mb-1 block text-xs text-muted">Tên đăng nhập *</label>
-          <input
-            type="text"
-            value={loginUsername}
-            onChange={(e) => {
-              setLoginUsername(e.target.value);
-              if (loginFieldErrors.username)
-                setLoginFieldErrors((p) => ({ ...p, username: undefined }));
-            }}
-            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            autoComplete="username"
-            className={`h-10 w-full rounded-md border bg-white px-3 text-sm text-ink outline-none transition-colors ${loginFieldErrors.username ? "border-danger" : "border-line focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"}`}
-          />
-          {loginFieldErrors.username && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-              {loginFieldErrors.username}
-            </FormHelperText>
-          )}
-        </div>
-        <div className="mb-3.5 w-full">
-          <label className="mb-1 block text-xs text-muted">Mật khẩu *</label>
-          <PasswordField
-            value={loginPassword}
-            onChange={(v) => {
-              setLoginPassword(v);
-              if (loginFieldErrors.password)
-                setLoginFieldErrors((p) => ({ ...p, password: undefined }));
-            }}
-            hasError={!!loginFieldErrors.password}
-          />
-          {loginFieldErrors.password && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-              {loginFieldErrors.password}
-            </FormHelperText>
-          )}
-        </div>
-
-        <div className="mb-5 flex w-full items-center justify-between">
-          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[#374151]">
-            <input type="checkbox" className="h-4 w-4 cursor-pointer accent-primary" defaultChecked />
-            Nhớ đăng nhập
-          </label>
-          <a href="/forgot-password" className="text-[13px] font-medium text-primary hover:underline">
-            Quên mật khẩu
-          </a>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleLogin}
-          className="mb-3 h-11 w-full rounded-md bg-primary text-[14.5px] font-semibold text-white hover:bg-[#1e40af]"
-        >
-          Đăng nhập
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setAppView("wizard");
-            setWizardStep(1);
-            setForm(EMPTY_ENTERPRISE_FORM);
-            setAttachments(emptyAttachments());
-            setWizardFieldErrors({});
-          }}
-          className="h-11 w-full rounded-md border border-line bg-white text-[14px] font-medium text-[#374151] hover:bg-[#f9fafb]"
-        >
-          Đăng ký tài khoản doanh nghiệp
-        </button>
-      </AuthShell>
-    );
-  }
-
   return (
     <div className="min-h-screen overflow-y-auto bg-black/50 pb-10 pt-8">
       <div className="mx-auto w-[780px] max-w-[96vw] rounded-xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
@@ -300,7 +248,7 @@ export default function EnterpriseRegisterPage() {
           <div />
           <button
             type="button"
-            onClick={() => setAppView("login")}
+            onClick={() => router.push("/login")}
             className="text-muted hover:text-ink"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -640,7 +588,7 @@ export default function EnterpriseRegisterPage() {
             <div className="flex justify-end gap-2.5 border-t border-[#e5e7eb] px-7 py-4">
               <button
                 type="button"
-                onClick={() => setAppView("login")}
+                onClick={() => router.push("/login")}
                 className="h-[38px] rounded-md border border-line px-4.5 text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
               >
                 Huỷ bỏ
@@ -648,12 +596,15 @@ export default function EnterpriseRegisterPage() {
               <button
                 type="button"
                 onClick={validateAndOtp}
-                className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]"
+                disabled={isSendingOtp}
+                className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
               >
-                Tiếp tục
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
+                {isSendingOtp ? "Đang gửi OTP..." : "Tiếp tục"}
+                {!isSendingOtp && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                )}
               </button>
             </div>
           </>
@@ -705,23 +656,30 @@ export default function EnterpriseRegisterPage() {
                 </table>
               </div>
             </div>
+            {saveError ? (
+              <div className="px-7 pb-2">
+                <Alert variant="error" message={saveError} />
+              </div>
+            ) : null}
             <div className="flex justify-end gap-2.5 border-t border-[#e5e7eb] px-7 py-4">
               <button
                 type="button"
-                onClick={() => setWizardStep(1)}
-                className="h-[38px] rounded-md border border-line px-4.5 text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
+                onClick={() => { setWizardStep(1); setSaveError(null); }}
+                disabled={isSaving}
+                className="h-[38px] rounded-md border border-line px-4.5 text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-60"
               >
                 Trở về
               </button>
               <button
                 type="button"
                 onClick={confirmWizard}
-                className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]"
+                disabled={isSaving}
+                className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                Xác nhận
+                {isSaving ? "Đang xử lý..." : "Xác nhận"}
               </button>
             </div>
           </>
@@ -753,16 +711,33 @@ export default function EnterpriseRegisterPage() {
           <div className="mb-1 text-center text-sm font-bold text-primary">{countdown.formatted}</div>
           <div className="mb-4 text-[12.5px] text-muted">
             Chưa nhận được mã?{" "}
-            <button type="button" onClick={() => countdown.start()} className="text-primary hover:underline">
-              Gửi lại
+            <button
+              type="button"
+              disabled={isSendingOtp || countdown.seconds > 0}
+              onClick={async () => {
+                setIsSendingOtp(true);
+                try {
+                  await sendRegisterOtp(form.email.trim());
+                  countdown.start();
+                  setOtpError(null);
+                } catch (e) {
+                  setOtpError(e instanceof Error ? e.message : "Không thể gửi lại OTP");
+                } finally {
+                  setIsSendingOtp(false);
+                }
+              }}
+              className="text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSendingOtp ? "Đang gửi..." : "Gửi lại"}
             </button>
           </div>
           <button
             type="button"
             onClick={confirmOtp}
-            className="mb-2 h-10.5 w-full rounded-md bg-primary text-sm font-semibold text-white hover:bg-[#1e40af]"
+            disabled={isVerifyingOtp}
+            className="mb-2 h-10.5 w-full rounded-md bg-primary text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
           >
-            Xác nhận
+            {isVerifyingOtp ? "Đang xác thực..." : "Xác nhận"}
           </button>
           <button
             type="button"
@@ -790,10 +765,10 @@ export default function EnterpriseRegisterPage() {
             </div>
             <div className="px-5 pb-3 pt-4">
               <p className="mb-2 text-[13.5px] text-ink">
-                • Tài khoản: <strong>{accountPopup}</strong>
+                • Tài khoản: <strong>{accountPopup?.username}</strong>
               </p>
               <p className="mb-2 text-[13.5px] text-ink">
-                • Mật khẩu: <strong>12345678</strong>
+                • Mật khẩu: <strong>{accountPopup?.password}</strong>
               </p>
             </div>
             <div className="px-5 pb-3.5 text-right">

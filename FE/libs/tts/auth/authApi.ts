@@ -83,6 +83,22 @@ export function loginBusiness(input: {
   );
 }
 
+export function sendRegisterOtp(email: string) {
+  return request<{ message: string }>("/auth/register/send-otp", {
+    method: "POST",
+    body: { email },
+    auth: false,
+  });
+}
+
+export function verifyRegisterOtp(email: string, otpCode: string) {
+  return request<{ message: string }>("/auth/register/verify-otp", {
+    method: "POST",
+    body: { email, otpCode },
+    auth: false,
+  });
+}
+
 export function forgotPassword(email: string) {
   return request<{ message: string }>("/auth/forgot-password", {
     method: "POST",
