@@ -8,7 +8,7 @@ import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
-import { isValidEmail } from "@/libs/tts/auth/authValidation";
+import { isValidEmail, isValidPhone } from "@/libs/tts/auth/authValidation";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import {
   LOAI_HINH_OPTIONS,
@@ -78,9 +78,12 @@ export default function EnterpriseRegisterPage() {
     ten?: string;
     mst?: string;
     loai?: string;
+    nganh?: string;
     email?: string;
     tinh?: string;
     phuong?: string;
+    sdt?: string;
+    sdtDD?: string;
   }>({});
 
   const [attachments, setAttachments] = useState<AttachedFile[]>(emptyAttachments());
@@ -120,10 +123,15 @@ export default function EnterpriseRegisterPage() {
     else if (!/^\d{10}(-\d{3})?$/.test(form.mst.trim()))
       errors.mst = "Mã số thuế phải có 10 chữ số hoặc định dạng XXXXXXXXXX-XXX";
     if (!form.loai) errors.loai = "Vui lòng chọn loại hình kinh doanh";
+    if (!form.nganh) errors.nganh = "Vui lòng chọn ngành nghề kinh doanh";
     if (!form.email.trim()) errors.email = "Email không được để trống";
     else if (!isValidEmail(form.email.trim())) errors.email = "Email không đúng định dạng";
     if (!form.tinh) errors.tinh = "Vui lòng chọn tỉnh/thành phố ĐKKD";
     if (!form.phuong) errors.phuong = "Vui lòng chọn phường/xã ĐKKD";
+    if (form.sdt.trim() && !isValidPhone(form.sdt))
+      errors.sdt = "Số điện thoại không hợp lệ";
+    if (form.sdtDD.trim() && !isValidPhone(form.sdtDD))
+      errors.sdtDD = "Số điện thoại không hợp lệ";
     if (Object.keys(errors).length > 0) {
       setWizardFieldErrors(errors);
       return;
@@ -328,15 +336,20 @@ export default function EnterpriseRegisterPage() {
         </div>
 
         {/* Hidden file inputs */}
-        {fileRefs.map((ref, idx) => (
-          <input
-            key={idx}
-            ref={ref}
-            type="file"
-            className="hidden"
-            onChange={(e) => handleFileSelect(idx, e)}
-          />
-        ))}
+        <input
+          ref={fileRef0}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={(e) => handleFileSelect(0, e)}
+        />
+        <input
+          ref={fileRef1}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={(e) => handleFileSelect(1, e)}
+        />
 
         {wizardStep === 1 ? (
           <>
@@ -386,11 +399,14 @@ export default function EnterpriseRegisterPage() {
                   </FieldGroup>
                 </div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Ngành nghề kinh doanh chính" required>
+                  <FieldGroup label="Ngành nghề kinh doanh chính" required error={wizardFieldErrors.nganh}>
                     <select
-                      className={SELECT_CONTROL_CLASS}
+                      className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.nganh ? " border-danger" : ""}`}
                       value={form.nganh}
-                      onChange={(e) => setField("nganh", e.target.value)}
+                      onChange={(e) => {
+                        setField("nganh", e.target.value);
+                        if (wizardFieldErrors.nganh) setWizardFieldErrors((p) => ({ ...p, nganh: undefined }));
+                      }}
                     >
                       <option value="">-- Chọn ngành nghề --</option>
                       {NGANH_CAP4_OPTIONS.map((o) => (
@@ -475,11 +491,14 @@ export default function EnterpriseRegisterPage() {
                       placeholder="vna@gmail.com"
                     />
                   </FieldGroup>
-                  <FieldGroup label="Số điện thoại cơ quan">
+                  <FieldGroup label="Số điện thoại cơ quan" error={wizardFieldErrors.sdt}>
                     <input
-                      className={FORM_CONTROL_CLASS}
+                      className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.sdt ? " border-danger" : ""}`}
                       value={form.sdt}
-                      onChange={(e) => setField("sdt", e.target.value)}
+                      onChange={(e) => {
+                        setField("sdt", e.target.value);
+                        if (wizardFieldErrors.sdt) setWizardFieldErrors((p) => ({ ...p, sdt: undefined }));
+                      }}
                       placeholder="VD: 0283xxxxxxx"
                     />
                   </FieldGroup>
@@ -492,11 +511,14 @@ export default function EnterpriseRegisterPage() {
                       onChange={(e) => setField("nguoiDD", e.target.value)}
                     />
                   </FieldGroup>
-                  <FieldGroup label="SĐT liên hệ người đứng đầu">
+                  <FieldGroup label="SĐT liên hệ người đứng đầu" error={wizardFieldErrors.sdtDD}>
                     <input
-                      className={FORM_CONTROL_CLASS}
+                      className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.sdtDD ? " border-danger" : ""}`}
                       value={form.sdtDD}
-                      onChange={(e) => setField("sdtDD", e.target.value)}
+                      onChange={(e) => {
+                        setField("sdtDD", e.target.value);
+                        if (wizardFieldErrors.sdtDD) setWizardFieldErrors((p) => ({ ...p, sdtDD: undefined }));
+                      }}
                     />
                   </FieldGroup>
                   <FieldGroup label="Tỉnh/TP hoạt động KD">

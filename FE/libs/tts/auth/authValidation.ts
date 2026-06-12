@@ -23,3 +23,10 @@ export function validateLogin(
 export function isValidEmail(email: string): boolean {
   return EMAIL_REGEX.test(email);
 }
+
+// SĐT Việt Nam: 10–11 chữ số bắt đầu bằng 0, hoặc +84... (bỏ qua dấu cách/chấm/gạch).
+export const PHONE_REGEX = /^(0|\+84)\d{9,10}$/;
+
+export function isValidPhone(phone: string): boolean {
+  return PHONE_REGEX.test(phone.replace(/[\s.-]/g, ""));
+}

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 
 type DnSidebarProps = {
+  orgName?: string;
   active?: string;
   userName?: string;
   initials?: string;
@@ -12,8 +14,27 @@ type DnSidebarProps = {
   onLogout?: () => void;
 };
 
-export function DnSidebar({ active, userName = "Doanh nghiệp", initials = "DN", collapsed = false, onLogout }: DnSidebarProps) {
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ "Hệ thống": true, "Tai nạn lao động": false });
+export function DnSidebar({
+  orgName = "Ủy ban nhân dân thành phố Hồ Chí Minh",
+  active,
+  userName = "Doanh nghiệp",
+  initials = "DN",
+  collapsed = false,
+  onToggle,
+  onLogout,
+}: DnSidebarProps) {
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ "Hệ thống": true, "Tai nạn lao động": true });
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showMenu]);
 
   const toggle = (label: string) => setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
 
@@ -25,8 +46,25 @@ export function DnSidebar({ active, userName = "Doanh nghiệp", initials = "DN"
     }`;
 
   return (
-    <aside className={`fixed bottom-0 left-0 top-[52px] z-50 flex w-[220px] flex-col overflow-y-auto bg-dark transition-transform duration-300 ${collapsed ? "-translate-x-full" : "translate-x-0"}`}>
-      <nav>
+    <aside className={`fixed bottom-0 left-0 top-0 z-50 flex w-[220px] flex-col bg-dark transition-transform duration-300 ${collapsed ? "-translate-x-full" : "translate-x-0"}`}>
+      <div className="flex h-[52px] shrink-0 items-center gap-2.5 border-b border-white/10 px-4">
+        <GovSeal size={32} className="shrink-0" />
+        <span className="flex-1 text-[11.5px] font-semibold leading-tight text-white">{orgName}</span>
+        {onToggle ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex shrink-0 flex-col gap-[5px] p-1 opacity-70 hover:opacity-100"
+            aria-label="Đóng menu"
+          >
+            <span className="block h-0.5 w-[18px] rounded bg-white" />
+            <span className="block h-0.5 w-[18px] rounded bg-white" />
+            <span className="block h-0.5 w-[18px] rounded bg-white" />
+          </button>
+        ) : null}
+      </div>
+
+      <nav className="flex-1 overflow-y-auto">
         <button type="button" onClick={() => toggle("Hệ thống")} className="flex w-full items-center gap-2.5 px-4 py-[11px] text-left text-[13px] text-white/80 hover:bg-white/10 hover:text-white">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
           <span className="flex-1">Hệ thống</span>
@@ -54,8 +92,6 @@ export function DnSidebar({ active, userName = "Doanh nghiệp", initials = "DN"
           </div>
         ) : null}
       </nav>
-
-      <div className="flex-1" />
 
       {onLogout ? (
         <div className="mx-3 mb-2 overflow-hidden rounded-lg bg-white shadow-[0_4px_20px_rgba(0,0,0,0.15)]">

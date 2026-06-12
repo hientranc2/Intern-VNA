@@ -1,19 +1,20 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { FormHelperText } from "@mui/material";
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
-import { isValidEmail } from "@/libs/tts/auth/authValidation";
+import { isValidEmail, isValidPhone } from "@/libs/tts/auth/authValidation";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { LOAI_HINH_OPTIONS } from "@/libs/tts/enterprise/enterpriseData";
 import { INITIAL_BUSINESS_SECTORS } from "@/libs/tts/business-sector/businessSectorData";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
+import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 
-const NGANH_CAP4_OPTIONS = INITIAL_BUSINESS_SECTORS
-  .filter((s) => s.cap === 4)
-  .map((s) => `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`);
+const NGANH_CAP4_OPTIONS = INITIAL_BUSINESS_SECTORS.filter(
+  (s) => s.cap === 4,
+).map((s) => `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`);
 
 type PageMode = "view" | "edit1" | "edit2";
 
@@ -42,15 +43,44 @@ function Stepper({ step }: { step: number }) {
   return (
     <div className="flex items-center justify-center gap-0 border-b border-[#e5e7eb] bg-white py-4">
       <div className="flex items-center gap-2">
-        <div className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[12px] font-bold ${step >= 1 ? "border-primary bg-primary text-white" : "border-[#d1d5db] bg-white text-[#9ca3af]"}`}>
-          {step > 1 ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg> : "1"}
+        <div
+          className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[12px] font-bold ${step >= 1 ? "border-primary bg-primary text-white" : "border-[#d1d5db] bg-white text-[#9ca3af]"}`}
+        >
+          {step > 1 ? (
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth="3"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          ) : (
+            "1"
+          )}
         </div>
-        <span className={`text-[13px] ${step >= 1 ? "font-medium text-ink" : "text-[#9ca3af]"}`}>Thông tin doanh nghiệp</span>
+        <span
+          className={`text-[13px] ${step >= 1 ? "font-medium text-ink" : "text-[#9ca3af]"}`}
+        >
+          Thông tin doanh nghiệp
+        </span>
       </div>
-      <div className={`mx-2 h-0.5 w-[60px] ${step >= 2 ? "bg-primary" : "bg-[#e5e7eb]"}`} />
+      <div
+        className={`mx-2 h-0.5 w-[60px] ${step >= 2 ? "bg-primary" : "bg-[#e5e7eb]"}`}
+      />
       <div className="flex items-center gap-2">
-        <div className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[12px] font-bold ${step >= 2 ? "border-primary bg-white text-primary" : "border-[#d1d5db] bg-white text-[#9ca3af]"}`}>2</div>
-        <span className={`text-[13px] ${step >= 2 ? "font-medium text-ink" : "text-[#9ca3af]"}`}>Xác nhận chỉnh sửa</span>
+        <div
+          className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[12px] font-bold ${step >= 2 ? "border-primary bg-white text-primary" : "border-[#d1d5db] bg-white text-[#9ca3af]"}`}
+        >
+          2
+        </div>
+        <span
+          className={`text-[13px] ${step >= 2 ? "font-medium text-ink" : "text-[#9ca3af]"}`}
+        >
+          Xác nhận chỉnh sửa
+        </span>
       </div>
     </div>
   );
@@ -59,15 +89,20 @@ function Stepper({ step }: { step: number }) {
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex border-b border-[#f3f4f6] py-3 last:border-b-0">
-      <span className="w-[300px] shrink-0 text-[13.5px] font-semibold text-[#374151]">{label}</span>
+      <span className="w-[300px] shrink-0 text-[13.5px] font-semibold text-[#374151]">
+        {label}
+      </span>
       <span className="text-[13.5px] text-ink">{value}</span>
     </div>
   );
 }
 
-const FILE_ROWS = [
-  { name: "Giấy phép kinh doanh", info: "GPKD.pdf" },
-  { name: "Giấy tờ khác", info: "GTK1.pdf" },
+const FILE_NAMES = ["Giấy phép kinh doanh", "Giấy tờ khác"] as const;
+type AttachedFile = { file: File | null; displayName: string };
+// Hồ sơ đang tồn tại của DN — file thật chưa có (mock), chỉ hiển thị tên.
+const initialAttachments = (): AttachedFile[] => [
+  { file: null, displayName: "Không có file" },
+  { file: null, displayName: "Không có file" },
 ];
 
 export default function EnterpriseInfoPage() {
@@ -76,14 +111,68 @@ export default function EnterpriseInfoPage() {
   const [mode, setMode] = useState<PageMode>("view");
   const [info, setInfo] = useState({ ...DEMO_INFO });
   const [editForm, setEditForm] = useState({ ...DEMO_INFO });
-  const [editErrors, setEditErrors] = useState<{ ten?: string; mst?: string; email?: string }>({});
+  const [editErrors, setEditErrors] = useState<{
+    ten?: string;
+    mst?: string;
+    email?: string;
+    nganh?: string;
+    tinh?: string;
+    phuong?: string;
+    sdt?: string;
+    sdtDD?: string;
+  }>({});
   const [toast, setToast] = useState<string | null>(null);
 
   const [otpOpen, setOtpOpen] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState<string | null>(null);
 
-  const phuongOptions = useMemo(() => WARDS_BY_PROVINCE[editForm.tinh] ?? [], [editForm.tinh]);
+  const [attachments, setAttachments] =
+    useState<AttachedFile[]>(initialAttachments());
+  const fileRef0 = useRef<HTMLInputElement>(null);
+  const fileRef1 = useRef<HTMLInputElement>(null);
+  const fileRefs = [fileRef0, fileRef1];
+
+  const phuongOptions = useMemo(
+    () => WARDS_BY_PROVINCE[editForm.tinh] ?? [],
+    [editForm.tinh],
+  );
+
+  const handleFileSelect = (
+    idx: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    const isPdf =
+      file.type === "application/pdf" ||
+      file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      setToast("Chỉ cho phép tải lên file PDF");
+      e.target.value = "";
+      return;
+    }
+    setAttachments((prev) => {
+      const next = [...prev];
+      next[idx] = { file, displayName: file.name };
+      return next;
+    });
+    e.target.value = "";
+  };
+
+  const handleFileView = (idx: number) => {
+    const { file } = attachments[idx];
+    if (!file) return;
+    window.open(URL.createObjectURL(file), "_blank");
+  };
+
+  const handleFileDelete = (idx: number) => {
+    setAttachments((prev) => {
+      const next = [...prev];
+      next[idx] = { file: null, displayName: "" };
+      return next;
+    });
+  };
 
   const setField = (key: keyof typeof DEMO_INFO, value: string) =>
     setEditForm((prev) => ({ ...prev, [key]: value }));
@@ -91,14 +180,24 @@ export default function EnterpriseInfoPage() {
   const goEdit1 = () => {
     setEditForm({ ...info });
     setEditErrors({});
+    setAttachments(initialAttachments());
     setMode("edit1");
   };
 
   const goEdit2 = () => {
-    const errors: { ten?: string; mst?: string; email?: string } = {};
-    if (!editForm.ten.trim()) errors.ten = "Tên doanh nghiệp không được để trống";
-    if (!editForm.mst.trim()) errors.mst = "Mã số thuế không được để trống";
-    if (editForm.email && !isValidEmail(editForm.email)) errors.email = "Email không hợp lệ";
+    const errors: typeof editErrors = {};
+    if (!editForm.ten.trim())
+      errors.ten = "Tên doanh nghiệp không được để trống";
+    if (!editForm.email.trim()) errors.email = "Email không được để trống";
+    else if (!isValidEmail(editForm.email.trim()))
+      errors.email = "Email không đúng định dạng";
+    if (!editForm.nganh) errors.nganh = "Vui lòng chọn ngành nghề kinh doanh";
+    if (!editForm.tinh) errors.tinh = "Vui lòng chọn tỉnh/thành phố ĐKKD";
+    if (!editForm.phuong) errors.phuong = "Vui lòng chọn phường/xã ĐKKD";
+    if (editForm.sdt.trim() && !isValidPhone(editForm.sdt))
+      errors.sdt = "Số điện thoại không hợp lệ";
+    if (editForm.sdtDD.trim() && !isValidPhone(editForm.sdtDD))
+      errors.sdtDD = "Số điện thoại không hợp lệ";
     if (Object.keys(errors).length > 0) {
       setEditErrors(errors);
       return;
@@ -121,7 +220,10 @@ export default function EnterpriseInfoPage() {
   };
 
   const confirmOtp = () => {
-    if (!otp.trim()) { setOtpError("Vui lòng nhập mã OTP"); return; }
+    if (!otp.trim()) {
+      setOtpError("Vui lòng nhập mã OTP");
+      return;
+    }
     setOtpOpen(false);
     countdown.stop();
     setInfo({ ...editForm });
@@ -137,7 +239,10 @@ export default function EnterpriseInfoPage() {
     ["Ngày cấp GPKD:", editForm.ngayCap],
     ["Loại hình kinh doanh:", editForm.loai],
     ["Ngành nghề kinh doanh:", editForm.nganh],
-    ["Địa chỉ đăng ký GPKD:", `${editForm.diaChi}, ${editForm.phuong}, ${editForm.tinh}`],
+    [
+      "Địa chỉ đăng ký GPKD:",
+      `${editForm.diaChi}, ${editForm.phuong}, ${editForm.tinh}`,
+    ],
     ["Địa điểm kinh doanh:", editForm.diaDiem],
     ["Người đứng đầu doanh nghiệp:", editForm.nguoiDD],
     ["SĐT người đứng đầu:", editForm.sdtDD],
@@ -149,9 +254,25 @@ export default function EnterpriseInfoPage() {
         {mode === "view" ? (
           <>
             <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-              <h1 className="text-base font-semibold text-ink">Thông tin doanh nghiệp</h1>
-              <button type="button" onClick={goEdit1} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+              <h1 className="text-base font-semibold text-ink">
+                Thông tin doanh nghiệp
+              </h1>
+              <button
+                type="button"
+                onClick={goEdit1}
+                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
                 Chỉnh sửa
               </button>
             </div>
@@ -159,17 +280,28 @@ export default function EnterpriseInfoPage() {
             <div className="px-6 py-5">
               <Toast message={toast} onDone={() => setToast(null)} />
               <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-                <div className="mb-4 border-b border-[#f3f4f6] pb-3.5 text-[14px] font-semibold text-[#374151]">Thông tin về hồ sơ</div>
+                <div className="mb-4 border-b border-[#f3f4f6] pb-3.5 text-[14px] font-semibold text-[#374151]">
+                  Thông tin về hồ sơ
+                </div>
                 <ReviewRow label="Mã số thuế :" value={info.mst} />
                 <ReviewRow label="Tên doanh nghiệp :" value={info.ten} />
-                <ReviewRow label="Tên viết bằng tiếng nước ngoài :" value={info.tenNN} />
+                <ReviewRow
+                  label="Tên viết bằng tiếng nước ngoài :"
+                  value={info.tenNN}
+                />
                 <ReviewRow label="Email:" value={info.email} />
                 <ReviewRow label="Ngày cấp GPKD:" value={info.ngayCap} />
                 <ReviewRow label="Loại hình kinh doanh:" value={info.loai} />
                 <ReviewRow label="Ngành nghề kinh doanh:" value={info.nganh} />
-                <ReviewRow label="Địa chỉ đăng ký GPKD:" value={`${info.diaChi}, ${info.phuong}, ${info.tinh}`} />
+                <ReviewRow
+                  label="Địa chỉ đăng ký GPKD:"
+                  value={`${info.diaChi}, ${info.phuong}, ${info.tinh}`}
+                />
                 <ReviewRow label="Địa điểm kinh doanh:" value={info.diaDiem} />
-                <ReviewRow label="Người đứng đầu doanh nghiệp:" value={info.nguoiDD} />
+                <ReviewRow
+                  label="Người đứng đầu doanh nghiệp:"
+                  value={info.nguoiDD}
+                />
                 <ReviewRow label="SĐT người đứng đầu:" value={info.sdtDD} />
               </div>
 
@@ -177,19 +309,54 @@ export default function EnterpriseInfoPage() {
                 <table className="w-full border-collapse text-[13.5px]">
                   <thead>
                     <tr>
-                      <th className="w-[200px] border-b border-[#e5e7eb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-primary">Tên file</th>
-                      <th className="border-b border-[#e5e7eb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-primary">Thông tin file</th>
-                      <th className="w-24 border-b border-[#e5e7eb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-primary">Thao tác</th>
+                      <th className="w-[200px] border-b border-[#e5e7eb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-primary">
+                        Tên file
+                      </th>
+                      <th className="border-b border-[#e5e7eb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-primary">
+                        Thông tin file
+                      </th>
+                      <th className="w-24 border-b border-[#e5e7eb] px-3.5 py-2.5 text-center text-[13px] font-semibold text-primary">
+                        Thao tác
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {FILE_ROWS.map((f) => (
-                      <tr key={f.name} className="border-b border-[#f3f4f6] last:border-b-0">
-                        <td className="px-3.5 py-2.5 text-[#374151]">{f.name}</td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">{f.info}</td>
-                        <td className="px-3.5 py-2.5">
-                          <button type="button" title="Xem" className="text-muted hover:text-primary">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                    {FILE_NAMES.map((name, idx) => (
+                      <tr
+                        key={name}
+                        className="border-b border-[#f3f4f6] last:border-b-0"
+                      >
+                        <td className="px-3.5 py-2.5 text-[#374151]">{name}</td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">
+                          {attachments[idx].file ? (
+                            attachments[idx].displayName
+                          ) : (
+                            <span className="text-muted">Không có file</span>
+                          )}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-center">
+                          <button
+                            type="button"
+                            title="Xem"
+                            onClick={() => handleFileView(idx)}
+                            disabled={!attachments[idx].file}
+                            className={
+                              attachments[idx].file
+                                ? "text-muted hover:text-primary"
+                                : "cursor-not-allowed text-muted opacity-40"
+                            }
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
                           </button>
                         </td>
                       </tr>
@@ -202,100 +369,398 @@ export default function EnterpriseInfoPage() {
         ) : mode === "edit1" ? (
           <>
             <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-              <h1 className="text-base font-semibold text-ink">Thông tin doanh nghiệp</h1>
+              <h1 className="text-base font-semibold text-ink">
+                Thông tin doanh nghiệp
+              </h1>
               <div className="flex gap-2.5">
-                <button type="button" onClick={() => { setMode("view"); setEditErrors({}); }} className="h-9 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">Trở về</button>
-                <button type="button" onClick={goEdit2} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
-                  Tiếp tục <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6" /></svg>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("view");
+                    setEditErrors({});
+                  }}
+                  className="h-9 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
+                >
+                  Trở về
+                </button>
+                <button
+                  type="button"
+                  onClick={goEdit2}
+                  className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+                >
+                  Tiếp tục{" "}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
                 </button>
               </div>
             </div>
             <Stepper step={1} />
             <div className="px-6 py-5">
               <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-                <div className="mb-3.5 text-[13.5px] font-semibold text-[#374151]">Thông tin doanh nghiệp</div>
+                <div className="mb-3.5 text-[13.5px] font-semibold text-[#374151]">
+                  Thông tin doanh nghiệp
+                </div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  {([
-                    { label: "Tên doanh nghiệp", key: "ten", required: true, error: editErrors.ten },
-                    { label: "Mã số thuế", key: "mst", required: true, error: editErrors.mst },
-                    { label: "Loại hình kinh doanh", key: "loai", required: true },
-                  ] as { label: string; key: keyof typeof DEMO_INFO; required?: boolean; error?: string }[]).map(({ label, key, required, error }) => (
+                  {(
+                    [
+                      {
+                        label: "Tên doanh nghiệp",
+                        key: "ten",
+                        required: true,
+                        error: editErrors.ten,
+                      },
+                      {
+                        label: "Mã số thuế",
+                        key: "mst",
+                        required: true,
+                        error: editErrors.mst,
+                      },
+                      {
+                        label: "Loại hình kinh doanh",
+                        key: "loai",
+                        required: true,
+                      },
+                    ] as {
+                      label: string;
+                      key: keyof typeof DEMO_INFO;
+                      required?: boolean;
+                      error?: string;
+                    }[]
+                  ).map(({ label, key, required, error }) => (
                     <div key={key} className="flex flex-col gap-1">
-                      <label className="text-[12.5px] font-medium text-[#374151]">{label} {required ? <span className="text-danger">*</span> : null}</label>
+                      <label className="text-[12.5px] font-medium text-[#374151]">
+                        {label}{" "}
+                        {required ? (
+                          <span className="text-danger">*</span>
+                        ) : null}
+                      </label>
                       {key === "loai" ? (
-                        <select className={SELECT_CONTROL_CLASS} value={editForm[key]} onChange={(e) => setField(key, e.target.value)}>
-                          {LOAI_HINH_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                        <select
+                          className={SELECT_CONTROL_CLASS}
+                          value={editForm[key]}
+                          onChange={(e) => setField(key, e.target.value)}
+                        >
+                          {LOAI_HINH_OPTIONS.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
                         </select>
                       ) : (
                         <input
-                          className={`${FORM_CONTROL_CLASS}${error ? " border-danger" : ""}`}
+                          className={`${FORM_CONTROL_CLASS}${error ? " border-danger" : ""}${key === "mst" ? " cursor-not-allowed bg-[#f9fafb] text-muted" : ""}`}
                           value={editForm[key]}
-                          onChange={(e) => { setField(key, e.target.value); if (error) setEditErrors((p) => ({ ...p, [key]: undefined })); }}
+                          disabled={key === "mst"}
+                          onChange={(e) => {
+                            setField(key, e.target.value);
+                            if (error)
+                              setEditErrors((p) => ({
+                                ...p,
+                                [key]: undefined,
+                              }));
+                          }}
                         />
                       )}
-                      {error && <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>{error}</FormHelperText>}
+                      {error && (
+                        <FormHelperText
+                          error
+                          sx={{ mt: 0, mx: 0, fontSize: "11px" }}
+                        >
+                          {error}
+                        </FormHelperText>
+                      )}
                     </div>
                   ))}
                 </div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">Ngành nghề kinh doanh chính <span className="text-danger">*</span></label>
-                    <select className={SELECT_CONTROL_CLASS} value={editForm.nganh} onChange={(e) => setField("nganh", e.target.value)}>
+                    <label className="text-[12.5px] font-medium text-[#374151]">
+                      Ngành nghề kinh doanh chính{" "}
+                      <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className={`${SELECT_CONTROL_CLASS}${editErrors.nganh ? " border-danger" : ""}`}
+                      value={editForm.nganh}
+                      onChange={(e) => {
+                        setField("nganh", e.target.value);
+                        if (editErrors.nganh)
+                          setEditErrors((p) => ({ ...p, nganh: undefined }));
+                      }}
+                    >
                       <option value="">-- Chọn ngành nghề --</option>
-                      {NGANH_CAP4_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      {NGANH_CAP4_OPTIONS.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
                     </select>
+                    {editErrors.nganh && (
+                      <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>
+                        {editErrors.nganh}
+                      </FormHelperText>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">Ngày cấp GPKD</label>
-                    <input type="date" className={FORM_CONTROL_CLASS} value={editForm.ngayCap} max={localISODate(new Date())} onChange={(e) => setField("ngayCap", e.target.value)} />
+                    <label className="text-[12.5px] font-medium text-[#374151]">
+                      Ngày cấp GPKD
+                    </label>
+                    <input
+                      type="date"
+                      className={FORM_CONTROL_CLASS}
+                      value={editForm.ngayCap}
+                      max={localISODate(new Date())}
+                      onChange={(e) => setField("ngayCap", e.target.value)}
+                    />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">Tỉnh/Thành phố ĐKKD <span className="text-danger">*</span></label>
-                    <select className={SELECT_CONTROL_CLASS} value={editForm.tinh} onChange={(e) => { setField("tinh", e.target.value); setField("phuong", ""); }}>
-                      <option value="">-- Chọn tỉnh/thành phố --</option>
-                      {PROVINCES.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
+                    <label className="text-[12.5px] font-medium text-[#374151]">
+                      Tỉnh/Thành phố ĐKKD <span className="text-danger">*</span>
+                    </label>
+                    <SearchableSelect
+                      fixed
+                      options={PROVINCES}
+                      value={editForm.tinh}
+                      placeholder="-- Chọn tỉnh/thành phố --"
+                      onChange={(v) => {
+                        setField("tinh", v);
+                        setField("phuong", "");
+                        if (editErrors.tinh)
+                          setEditErrors((p) => ({ ...p, tinh: undefined }));
+                      }}
+                    />
+                    {editErrors.tinh && (
+                      <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>
+                        {editErrors.tinh}
+                      </FormHelperText>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3.5">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">Phường/Xã ĐKKD <span className="text-danger">*</span></label>
-                    <select className={SELECT_CONTROL_CLASS} value={editForm.phuong} onChange={(e) => setField("phuong", e.target.value)}>
-                      <option value="">-- Chọn phường/xã --</option>
-                      {phuongOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
+                    <label className="text-[12.5px] font-medium text-[#374151]">
+                      Phường/Xã ĐKKD <span className="text-danger">*</span>
+                    </label>
+                    <SearchableSelect
+                      fixed
+                      options={phuongOptions}
+                      value={editForm.phuong}
+                      placeholder="-- Chọn phường/xã --"
+                      disabled={!editForm.tinh}
+                      onChange={(v) => {
+                        setField("phuong", v);
+                        if (editErrors.phuong)
+                          setEditErrors((p) => ({ ...p, phuong: undefined }));
+                      }}
+                    />
+                    {editErrors.phuong && (
+                      <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>
+                        {editErrors.phuong}
+                      </FormHelperText>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">Địa chỉ</label>
-                    <input className={FORM_CONTROL_CLASS} value={editForm.diaChi} onChange={(e) => setField("diaChi", e.target.value)} />
+                    <label className="text-[12.5px] font-medium text-[#374151]">
+                      Địa chỉ
+                    </label>
+                    <input
+                      className={FORM_CONTROL_CLASS}
+                      value={editForm.diaChi}
+                      onChange={(e) => setField("diaChi", e.target.value)}
+                    />
                   </div>
                 </div>
 
-                <div className="mt-4 mb-2 text-[13.5px] font-semibold text-[#374151]">Thông tin liên hệ</div>
+                <div className="mt-4 mb-2 text-[13.5px] font-semibold text-[#374151]">
+                  Thông tin liên hệ
+                </div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  {([
-                    { label: "Tên tiếng nước ngoài", key: "tenNN" },
-                    { label: "Email", key: "email", error: editErrors.email },
-                    { label: "SĐT cơ quan", key: "sdt" },
-                  ] as { label: string; key: keyof typeof DEMO_INFO; error?: string }[]).map(({ label, key, error }) => (
+                  {(
+                    [
+                      { label: "Tên tiếng nước ngoài", key: "tenNN" },
+                      {
+                        label: "Email",
+                        key: "email",
+                        required: true,
+                        error: editErrors.email,
+                      },
+                      { label: "SĐT cơ quan", key: "sdt", error: editErrors.sdt },
+                    ] as {
+                      label: string;
+                      key: keyof typeof DEMO_INFO;
+                      required?: boolean;
+                      error?: string;
+                    }[]
+                  ).map(({ label, key, required, error }) => (
                     <div key={key} className="flex flex-col gap-1">
-                      <label className="text-[12.5px] font-medium text-[#374151]">{label}</label>
+                      <label className="text-[12.5px] font-medium text-[#374151]">
+                        {label}{" "}
+                        {required ? <span className="text-danger">*</span> : null}
+                      </label>
                       <input
                         className={`${FORM_CONTROL_CLASS}${error ? " border-danger" : ""}`}
                         value={editForm[key]}
-                        onChange={(e) => { setField(key, e.target.value); if (error) setEditErrors((p) => ({ ...p, [key]: undefined })); }}
+                        onChange={(e) => {
+                          setField(key, e.target.value);
+                          if (error)
+                            setEditErrors((p) => ({ ...p, [key]: undefined }));
+                        }}
                       />
-                      {error && <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>{error}</FormHelperText>}
+                      {error && (
+                        <FormHelperText
+                          error
+                          sx={{ mt: 0, mx: 0, fontSize: "11px" }}
+                        >
+                          {error}
+                        </FormHelperText>
+                      )}
                     </div>
                   ))}
                 </div>
                 <div className="grid grid-cols-3 gap-3.5">
-                  {[["Địa điểm kinh doanh", "diaDiem"], ["Người đứng đầu DN", "nguoiDD"], ["SĐT người đứng đầu", "sdtDD"]].map(([label, key]) => (
-                    <div key={key as string} className="flex flex-col gap-1.5">
-                      <label className="text-[12.5px] font-medium text-[#374151]">{label as string}</label>
-                      <input className={FORM_CONTROL_CLASS} value={editForm[key as keyof typeof DEMO_INFO]} onChange={(e) => setField(key as keyof typeof DEMO_INFO, e.target.value)} />
-                    </div>
-                  ))}
+                  {[
+                    ["Địa điểm kinh doanh", "diaDiem"],
+                    ["Người đứng đầu DN", "nguoiDD"],
+                    ["SĐT người đứng đầu", "sdtDD"],
+                  ].map(([label, key]) => {
+                    const err = key === "sdtDD" ? editErrors.sdtDD : undefined;
+                    return (
+                      <div key={key as string} className="flex flex-col gap-1.5">
+                        <label className="text-[12.5px] font-medium text-[#374151]">
+                          {label as string}
+                        </label>
+                        <input
+                          className={`${FORM_CONTROL_CLASS}${err ? " border-danger" : ""}`}
+                          value={editForm[key as keyof typeof DEMO_INFO]}
+                          onChange={(e) => {
+                            setField(key as keyof typeof DEMO_INFO, e.target.value);
+                            if (err) setEditErrors((p) => ({ ...p, sdtDD: undefined }));
+                          }}
+                        />
+                        {err && (
+                          <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>
+                            {err}
+                          </FormHelperText>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-5 mb-2 text-[13.5px] font-semibold text-[#374151]">
+                  File đính kèm
+                </div>
+                <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
+                  <table className="w-full border-collapse text-[13px]">
+                    <thead>
+                      <tr>
+                        <th className="w-[200px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                          Tên file
+                        </th>
+                        <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                          Thông tin file
+                        </th>
+                        <th className="w-[120px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {FILE_NAMES.map((name, idx) => (
+                        <tr
+                          key={name}
+                          className="border-b border-[#f3f4f6] last:border-b-0"
+                        >
+                          <td className="px-3 py-2 text-[#374151]">{name}</td>
+                          <td className="px-3 py-2 text-[13px] text-[#374151]">
+                            {attachments[idx].file ? (
+                              attachments[idx].displayName
+                            ) : (
+                              <span className="text-muted">Không có file</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex gap-1.5 text-muted">
+                              <button
+                                type="button"
+                                title="Xem"
+                                onClick={() => handleFileView(idx)}
+                                disabled={!attachments[idx].file}
+                                className={
+                                  attachments[idx].file
+                                    ? "hover:text-primary"
+                                    : "cursor-not-allowed opacity-40"
+                                }
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                  <circle cx="12" cy="12" r="3" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                title="Tải lên"
+                                onClick={() => fileRefs[idx]?.current?.click()}
+                                className="hover:text-primary"
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                  <polyline points="17 8 12 3 7 8" />
+                                  <line x1="12" y1="3" x2="12" y2="15" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                title="Xóa"
+                                onClick={() => handleFileDelete(idx)}
+                                disabled={!attachments[idx].file}
+                                className={
+                                  attachments[idx].file
+                                    ? "hover:text-danger"
+                                    : "cursor-not-allowed opacity-40"
+                                }
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6l-1 14H6L5 6" />
+                                  <path d="M10 11v6M14 11v6" />
+                                  <path d="M9 6V4h6v2" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -303,11 +768,32 @@ export default function EnterpriseInfoPage() {
         ) : (
           <>
             <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-              <h1 className="text-base font-semibold text-ink">Thông tin doanh nghiệp</h1>
+              <h1 className="text-base font-semibold text-ink">
+                Thông tin doanh nghiệp
+              </h1>
               <div className="flex gap-2.5">
-                <button type="button" onClick={() => setMode("edit1")} className="h-9 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">Trở về</button>
-                <button type="button" onClick={confirmEdit2} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                <button
+                  type="button"
+                  onClick={() => setMode("edit1")}
+                  className="h-9 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
+                >
+                  Trở về
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmEdit2}
+                  className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   Xác nhận
                 </button>
               </div>
@@ -324,22 +810,75 @@ export default function EnterpriseInfoPage() {
         )}
       </>
 
+      <input
+        ref={fileRef0}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(e) => handleFileSelect(0, e)}
+      />
+      <input
+        ref={fileRef1}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(e) => handleFileSelect(1, e)}
+      />
+
       {/* OTP modal for email change */}
-      <div className={`fixed inset-0 z-[300] flex items-center justify-center bg-black/50 transition-opacity duration-200 ${otpOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}>
-        <div className={`w-[340px] rounded-[12px] bg-white px-7 py-7 text-center shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-transform duration-200 ${otpOpen ? "translate-y-0" : "translate-y-2.5"}`}>
-          <div className="mb-2 text-[16px] font-bold text-primary">XÁC THỰC EMAIL</div>
-          <p className="mb-1 text-[13px] text-muted">Mã xác minh đã gửi về email</p>
+      <div
+        className={`fixed inset-0 z-[300] flex items-center justify-center bg-black/50 transition-opacity duration-200 ${otpOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+      >
+        <div
+          className={`w-[340px] rounded-[12px] bg-white px-7 py-7 text-center shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-transform duration-200 ${otpOpen ? "translate-y-0" : "translate-y-2.5"}`}
+        >
+          <div className="mb-2 text-[16px] font-bold text-primary">
+            XÁC THỰC EMAIL
+          </div>
+          <p className="mb-1 text-[13px] text-muted">
+            Mã xác minh đã gửi về email
+          </p>
           <p className="mb-4 text-[13.5px] font-bold text-ink">{info.email}</p>
           {otpError ? <Alert variant="error" message={otpError} /> : null}
-          <label className="mb-1.5 block text-left text-[12.5px] font-medium text-[#374151]">OTP <span className="text-danger">*</span></label>
-          <input className="mb-2 h-10 w-full rounded-md border border-line px-3 text-sm outline-none focus:border-[#3b82f6]" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Nhập mã OTP" />
-          <div className="mb-1 text-sm font-bold text-primary">{countdown.formatted}</div>
+          <label className="mb-1.5 block text-left text-[12.5px] font-medium text-[#374151]">
+            OTP <span className="text-danger">*</span>
+          </label>
+          <input
+            className="mb-2 h-10 w-full rounded-md border border-line px-3 text-sm outline-none focus:border-[#3b82f6]"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            placeholder="Nhập mã OTP"
+          />
+          <div className="mb-1 text-sm font-bold text-primary">
+            {countdown.formatted}
+          </div>
           <div className="mb-4 text-[12.5px] text-muted">
             Chưa nhận được mã?{" "}
-            <button type="button" onClick={() => countdown.start()} className="text-primary hover:underline">Gửi lại</button>
+            <button
+              type="button"
+              onClick={() => countdown.start()}
+              className="text-primary hover:underline"
+            >
+              Gửi lại
+            </button>
           </div>
-          <button type="button" onClick={confirmOtp} className="mb-2 h-[42px] w-full rounded-md bg-primary text-sm font-semibold text-white hover:bg-[#1e40af]">Xác nhận</button>
-          <button type="button" onClick={() => { setOtpOpen(false); countdown.stop(); }} className="text-[13px] text-muted hover:text-[#374151]">Huỷ bỏ</button>
+          <button
+            type="button"
+            onClick={confirmOtp}
+            className="mb-2 h-[42px] w-full rounded-md bg-primary text-sm font-semibold text-white hover:bg-[#1e40af]"
+          >
+            Xác nhận
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOtpOpen(false);
+              countdown.stop();
+            }}
+            className="text-[13px] text-muted hover:text-[#374151]"
+          >
+            Huỷ bỏ
+          </button>
         </div>
       </div>
 

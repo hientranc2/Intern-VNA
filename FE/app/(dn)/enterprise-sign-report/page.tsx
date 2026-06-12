@@ -41,10 +41,12 @@ function DeclarationField({
   field,
   value,
   onChange,
+  invalid,
 }: {
   field: FieldDef;
   value: string;
   onChange: (v: string) => void;
+  invalid?: boolean;
 }) {
   return (
     <div className={`flex flex-col gap-1.5 ${field.fullWidth ? "col-span-3" : ""}`}>
@@ -55,7 +57,8 @@ function DeclarationField({
       <div className="relative">
         <input
           type={field.type === "number" || !field.type ? "number" : "text"}
-          className={`${FIELD} ${field.unit ? "pr-24" : ""}`}
+          min={0}
+          className={`${FIELD} ${field.unit ? "pr-24" : ""}${invalid ? " border-danger" : ""}`}
           value={value}
           placeholder={field.type === "month" ? "MM/YYYY" : undefined}
           onChange={(e) => onChange(e.target.value)}
@@ -79,6 +82,7 @@ export default function EnterpriseSignReportPage() {
   const [reports, setReports] = useState<AtvsldReport[]>(INITIAL_ATVSLD_REPORTS);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [values, setValues] = useState<DeclarationValues>(SAMPLE_DECLARATION);
+  const [triedSubmit, setTriedSubmit] = useState(false);
 
   const [fStatus, setFStatus] = useState("");
   const [fTen, setFTen] = useState("");
@@ -112,6 +116,19 @@ export default function EnterpriseSignReportPage() {
   const setField = (key: string, v: string) =>
     setValues((prev) => ({ ...prev, [key]: v }));
 
+  const validateDeclaration = (): boolean => {
+    const missing = DECLARATION_SECTIONS.flatMap((s) => s.fields).filter(
+      (f) => f.required && !(values[f.key] ?? "").trim(),
+    );
+    if (missing.length > 0) {
+      setTriedSubmit(true);
+      setToast(`Vui lòng nhập: ${missing.map((f) => f.label).join(", ")}`);
+      setStep("khaibao");
+      return false;
+    }
+    return true;
+  };
+
   const saveDraft = () => {
     if (editingId != null) {
       setReports((prev) =>
@@ -123,6 +140,7 @@ export default function EnterpriseSignReportPage() {
   };
 
   const sendReport = () => {
+    if (!validateDeclaration()) return;
     if (editingId != null) {
       setReports((prev) =>
         prev.map((r) => (r.id === editingId ? { ...r, status: "Chờ tiếp nhận" } : r)),
@@ -254,7 +272,7 @@ export default function EnterpriseSignReportPage() {
             <div className="flex items-center gap-2.5">
               <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151] hover:text-ink">Huỷ bỏ</button>
               {step === "khaibao" ? (
-                <button type="button" onClick={() => setStep("xembaocao")} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
+                <button type="button" onClick={() => { if (validateDeclaration()) setStep("xembaocao"); }} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
                   Tiếp tục <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6" /></svg>
                 </button>
               ) : (
@@ -285,7 +303,7 @@ export default function EnterpriseSignReportPage() {
                     </div>
                     <div className="grid grid-cols-3 gap-x-3.5 gap-y-3.5">
                       {section.fields.map((f) => (
-                        <DeclarationField key={f.key} field={f} value={values[f.key] ?? ""} onChange={(v) => setField(f.key, v)} />
+                        <DeclarationField key={f.key} field={f} value={values[f.key] ?? ""} onChange={(v) => setField(f.key, v)} invalid={triedSubmit && !!f.required && !(values[f.key] ?? "").trim()} />
                       ))}
                     </div>
                   </div>

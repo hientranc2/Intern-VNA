@@ -38,7 +38,7 @@ export default function DnLayout({ children }: { children: React.ReactNode }) {
         onToggle={toggle}
       />
       <main
-        className={`min-h-screen pt-[52px] transition-[margin] duration-300 ${sidebarOpen ? "ml-[220px]" : "ml-0"}`}
+        className={`min-h-screen transition-[margin,padding] duration-300 ${sidebarOpen ? "ml-55" : "ml-0 pt-13"}`}
       >
         {children}
       </main>

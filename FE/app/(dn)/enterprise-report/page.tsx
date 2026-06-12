@@ -97,12 +97,60 @@ export default function EnterpriseReportPage() {
     if (idx < SECTION_OPTIONS.length - 1) setSection(SECTION_OPTIONS[idx + 1].value);
   };
 
+  const validateReport = (): boolean => {
+    const ttctFields: [string, string][] = [
+      ["Tổng số lao động của cơ sở", totalLao],
+      ["Tổng số lao động nữ", totalNu],
+      ["Tổng quỹ lương", tongLuong],
+    ];
+    const tnldFields: [string, string][] = [
+      ["Tổng số vụ", tongVu],
+      ["Số vụ có người chết", vuChet],
+      ["Số vụ ≥ 2 người bị nạn", vuNhieu],
+      ["Tổng số người bị nạn", tongNan],
+      ["Tổng số lao động nữ bị nạn", tongNanNu],
+      ["Tổng số người bị chết", tongChetNN],
+      ["Tổng số người bị thương nặng", tongThuongNang],
+      ["Số người bị nạn không QL", nanKhongQL],
+      ["Lao động nữ bị nạn không QL", nuKhongQL],
+      ["Số người chết không QL", chetKhongQL],
+      ["Người bị thương nặng không QL", thuongKhongQL],
+      ["Chi phí y tế", chiPhiYTe],
+      ["Chi phí trả lương trong thời gian điều trị", chiPhiLuong],
+      ["Chi phí bồi thường trợ cấp", chiPhiBTTC],
+      ["Tổng số tiền chi phí", tongChiPhi],
+      ["Tổng số ngày nghỉ vì TNLĐ", soNgayNghi],
+    ];
+
+    const emptyTtct = ttctFields.find(([, v]) => !v.trim());
+    if (emptyTtct) {
+      setSection("ttct");
+      setToast(`Vui lòng nhập: ${emptyTtct[0]}`);
+      return false;
+    }
+    const emptyTnld = tnldFields.find(([, v]) => !v.trim());
+    if (emptyTnld) {
+      setSection("tnld");
+      setSubTab("tongSo");
+      setToast(`Vui lòng nhập: ${emptyTnld[0]}`);
+      return false;
+    }
+    const negative = [...ttctFields, ...tnldFields].find(([, v]) => v.trim().startsWith("-"));
+    if (negative) {
+      setToast(`${negative[0]} không được là số âm`);
+      return false;
+    }
+    return true;
+  };
+
   const saveReport = () => {
+    if (!validateReport()) return;
     setView("list");
     setToast("Lưu báo cáo thành công");
   };
 
   const sendReport = () => {
+    if (!validateReport()) return;
     setView("list");
     setToast("Gửi báo cáo thành công");
   };
@@ -278,15 +326,15 @@ export default function EnterpriseReportPage() {
                 <div className="grid grid-cols-3 gap-3.5">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Tổng số lao động của cơ sở <span className="text-danger">*</span></label>
-                    <input type="number" className={FC} value={totalLao} onChange={(e) => setTotalLao(e.target.value)} />
+                    <input type="number" min={0} className={FC} value={totalLao} onChange={(e) => setTotalLao(e.target.value)} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Tổng số lao động nữ <span className="text-danger">*</span></label>
-                    <input type="number" className={FC} value={totalNu} onChange={(e) => setTotalNu(e.target.value)} />
+                    <input type="number" min={0} className={FC} value={totalNu} onChange={(e) => setTotalNu(e.target.value)} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[12.5px] font-medium text-[#374151]">Tổng quỹ lương <span className="text-danger">*</span></label>
-                    <input type="number" className={FC} value={tongLuong} onChange={(e) => setTongLuong(e.target.value)} />
+                    <input type="number" min={0} className={FC} value={tongLuong} onChange={(e) => setTongLuong(e.target.value)} />
                     <span className="text-xs text-muted">(1.000đ)</span>
                   </div>
                 </div>
@@ -331,7 +379,7 @@ export default function EnterpriseReportPage() {
                         label ? (
                           <div key={i} className="flex flex-col gap-1.5">
                             <label className="text-[12.5px] font-medium text-[#374151]">{label}</label>
-                            <input type="number" className={FC} value={val ?? ""} onChange={(e) => setter?.(e.target.value)} />
+                            <input type="number" min={0} className={FC} value={val ?? ""} onChange={(e) => setter?.(e.target.value)} />
                           </div>
                         ) : <div key={i} />
                       )}
@@ -346,7 +394,7 @@ export default function EnterpriseReportPage() {
                       ] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
                         <div key={label} className="flex flex-col gap-1.5">
                           <label className="text-[12.5px] font-medium text-[#374151]">{label}</label>
-                          <input type="number" className={FC} value={val} onChange={(e) => setter(e.target.value)} />
+                          <input type="number" min={0} className={FC} value={val} onChange={(e) => setter(e.target.value)} />
                         </div>
                       ))}
                     </div>
@@ -360,7 +408,7 @@ export default function EnterpriseReportPage() {
                       ] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
                         <div key={label} className="flex flex-col gap-1.5">
                           <label className="text-[12.5px] font-medium text-[#374151]">{label}</label>
-                          <input type="number" className={FC} value={val} onChange={(e) => setter(e.target.value)} />
+                          <input type="number" min={0} className={FC} value={val} onChange={(e) => setter(e.target.value)} />
                         </div>
                       ))}
                     </div>
@@ -385,7 +433,7 @@ export default function EnterpriseReportPage() {
                     <div className="grid grid-cols-4 gap-3">
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[12.5px] font-medium text-[#374151]">Tổng số ngày nghỉ vì TNLĐ *</label>
-                        <input type="number" className={FC} value={soNgayNghi} onChange={(e) => setSoNgayNghi(e.target.value)} />
+                        <input type="number" min={0} className={FC} value={soNgayNghi} onChange={(e) => setSoNgayNghi(e.target.value)} />
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[12.5px] font-medium text-[#374151]">Thiệt hại tài sản</label>
