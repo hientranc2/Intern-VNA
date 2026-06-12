@@ -1,12 +1,19 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
-import { INITIAL_ENTERPRISE_TYPES, type EnterpriseType } from "@/libs/tts/enterprise-type/enterpriseTypeData";
+import { type EnterpriseType } from "@/libs/tts/enterprise-type/enterpriseTypeData";
+import {
+  getEnterpriseTypeList,
+  createEnterpriseType,
+  updateEnterpriseType,
+  deleteEnterpriseType,
+  toggleEnterpriseTypeActive,
+} from "@/libs/tts/enterprise-type/enterpriseTypeApi";
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
@@ -16,9 +23,14 @@ const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-no
 
 export default function EnterpriseTypePage() {
   const importRef = useRef<HTMLInputElement>(null);
-  const [items, setItems] = useState<EnterpriseType[]>(INITIAL_ENTERPRISE_TYPES);
+  const [items, setItems] = useState<EnterpriseType[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getEnterpriseTypeList().then(setItems).catch(() => {});
+  }, []);
 
   const [fMa, setFMa] = useState("");
   const [fTen, setFTen] = useState("");
@@ -72,7 +84,12 @@ export default function EnterpriseTypePage() {
 
   const toggleStatus = (id: number, active: boolean) => {
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, active } : r)));
-    setToast("Cập nhật trạng thái thành công");
+    toggleEnterpriseTypeActive(id, active)
+      .then(() => setToast("Cập nhật trạng thái thành công"))
+      .catch(() => {
+        setItems((prev) => prev.map((r) => (r.id === id ? { ...r, active: !active } : r)));
+        setToast("Cập nhật thất bại");
+      });
   };
 
   const openAdd = () => {
@@ -93,33 +110,45 @@ export default function EnterpriseTypePage() {
     setPanelOpen(true);
   };
 
-  const savePanel = () => {
+  const savePanel = async () => {
     const ma = inputMa.trim();
     const ten = inputTen.trim();
     const errors: { ma?: string; ten?: string } = {};
     if (!ma) errors.ma = "Mã loại hình không được để trống";
     if (!ten) errors.ten = "Tên loại hình không được để trống";
-    if (Object.keys(errors).length > 0) {
-      setPanelErrors(errors);
-      return;
-    }
+    if (Object.keys(errors).length > 0) { setPanelErrors(errors); return; }
     setPanelErrors({});
     const active = inputActive === "1";
-    if (editId) {
-      setItems((prev) => prev.map((r) => (r.id === editId ? { ...r, ten, active } : r)));
-    } else {
-      setItems((prev) => [{ id: Date.now(), ma, ten, active }, ...prev]);
+    setSaving(true);
+    try {
+      if (editId) {
+        const updated = await updateEnterpriseType(editId, { ten, active });
+        setItems((prev) => prev.map((r) => (r.id === editId ? updated : r)));
+      } else {
+        const created = await createEnterpriseType({ ma, ten, active });
+        setItems((prev) => [created, ...prev]);
+      }
+      setPanelOpen(false);
+      setToast(editId ? "Cập nhật thành công" : "Thêm mới thành công");
+    } catch {
+      setToast("Lưu thất bại. Vui lòng thử lại.");
+    } finally {
+      setSaving(false);
     }
-    setPanelOpen(false);
-    setToast(editId ? "Cập nhật thành công" : "Thêm mới thành công");
   };
 
-  const deleteSelected = () => {
-    const count = selectedIds.size;
-    setItems((prev) => prev.filter((r) => !selectedIds.has(r.id)));
-    setSelectedIds(new Set());
-    setDeleteConfirmOpen(false);
-    setToast(`Đã xóa ${count} loại hình`);
+  const deleteSelected = async () => {
+    const ids = [...selectedIds];
+    try {
+      await Promise.all(ids.map((id) => deleteEnterpriseType(id)));
+      setItems((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+      setSelectedIds(new Set());
+      setDeleteConfirmOpen(false);
+      setToast(`Đã xóa ${ids.length} loại hình`);
+    } catch {
+      setDeleteConfirmOpen(false);
+      setToast("Xóa thất bại. Vui lòng thử lại.");
+    }
   };
 
   return (
@@ -237,8 +266,8 @@ export default function EnterpriseTypePage() {
         onClose={() => setPanelOpen(false)}
         footer={
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setPanelOpen(false)} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">Huỷ bỏ</button>
-            <button type="button" onClick={savePanel} className="h-9 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]">Lưu</button>
+            <button type="button" onClick={() => setPanelOpen(false)} disabled={saving} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50">Huỷ bỏ</button>
+            <button type="button" onClick={savePanel} disabled={saving} className="h-9 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60">{saving ? "Đang lưu..." : "Lưu"}</button>
           </div>
         }
       >

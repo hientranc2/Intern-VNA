@@ -8,16 +8,12 @@ import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail, isValidPhone } from "@/libs/tts/auth/authValidation";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
-import { LOAI_HINH_OPTIONS } from "@/libs/tts/enterprise/enterpriseData";
-import { INITIAL_BUSINESS_SECTORS } from "@/libs/tts/business-sector/businessSectorData";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 import { getBusinessId, ApiError } from "@/libs/tts/auth/authApi";
 import { getBusinessById, updateBusiness, type BusinessDetail } from "@/libs/tts/enterprise/enterpriseApi";
-
-const NGANH_CAP4_OPTIONS = INITIAL_BUSINESS_SECTORS.filter(
-  (s) => s.cap === 4,
-).map((s) => `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`);
+import { getEnterpriseTypeList } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
+import { getBusinessSectorList } from "@/libs/tts/business-sector/businessSectorApi";
 
 type PageMode = "view" | "edit1" | "edit2";
 
@@ -156,6 +152,22 @@ export default function EnterpriseInfoPage() {
     sdtDD?: string;
   }>({});
   const [toast, setToast] = useState<string | null>(null);
+
+  const [loaiHinhOptions, setLoaiHinhOptions] = useState<string[]>([]);
+  const [nganhCap4Options, setNganhCap4Options] = useState<string[]>([]);
+
+  useEffect(() => {
+    getEnterpriseTypeList()
+      .then((types) => setLoaiHinhOptions(types.filter((t) => t.active).map((t) => t.ten)))
+      .catch(() => {});
+    getBusinessSectorList()
+      .then((sectors) =>
+        setNganhCap4Options(
+          sectors.filter((s) => s.cap === 4).map((s) => `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`),
+        ),
+      )
+      .catch(() => {});
+  }, []);
 
   const [otpOpen, setOtpOpen] = useState(false);
   const [otp, setOtp] = useState("");
@@ -467,7 +479,7 @@ export default function EnterpriseInfoPage() {
                           value={editForm[key]}
                           onChange={(e) => setField(key, e.target.value)}
                         >
-                          {LOAI_HINH_OPTIONS.map((o) => (
+                          {loaiHinhOptions.map((o) => (
                             <option key={o} value={o}>{o}</option>
                           ))}
                         </select>
@@ -502,7 +514,7 @@ export default function EnterpriseInfoPage() {
                       }}
                     >
                       <option value="">-- Chọn ngành nghề --</option>
-                      {NGANH_CAP4_OPTIONS.map((o) => (
+                      {nganhCap4Options.map((o) => (
                         <option key={o} value={o}>{o}</option>
                       ))}
                     </select>

@@ -12,36 +12,46 @@ import { Business } from './entities/business.entity';
 import { Account } from './entities/business_account.entity';
 import { BusinessController } from './controllers/business.controller';
 import { BusinessService } from './services/business.service';
+import { EnterpriseType } from './entities/enterprise-type.entity';
+import { EnterpriseTypeController } from './controllers/enterprise-type.controller';
+import { EnterpriseTypeService } from './services/enterprise-type.service';
+import { BusinessSector } from './entities/business-sector.entity';
+import { BusinessSectorController } from './controllers/business-sector.controller';
+import { BusinessSectorService } from './services/business-sector.service';
 
 
 @Module({
   imports: [
-    ConfigModule.forRoot(), 
+    ConfigModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User, Business, Account],
+      entities: [User, Business, Account, EnterpriseType, BusinessSector],
       synchronize: false, // Chổ này chỉnh true có thể để TypeORM tự động tạo Database
       ssl: {
         rejectUnauthorized: false,
       },
     }),
-    TypeOrmModule.forFeature([User, Business, Account]),
+    TypeOrmModule.forFeature([User, Business, Account, EnterpriseType, BusinessSector]),
     JwtModule.register({
       secret: 'thu_thap_bi_mat_vna_123',
       signOptions: { expiresIn: '1h' },
     }),
   ],
- controllers: [
-    AuthController, 
+  controllers: [
+    AuthController,
     UsersController,
-    BusinessController, 
+    BusinessController,
+    EnterpriseTypeController,
+    BusinessSectorController,
   ],
   providers: [
-    AuthService, 
-    JwtStrategy, 
+    AuthService,
+    JwtStrategy,
     UsersService,
-    BusinessService,    
+    BusinessService,
+    EnterpriseTypeService,
+    BusinessSectorService,
   ],
 })
 export class AppModule {}

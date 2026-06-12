@@ -5,11 +5,7 @@ import { FormHelperText } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
-import {
-  EMPTY_BUSINESS_FORM,
-  LOAI_HINH_OPTIONS,
-  type BusinessFormData,
-} from "@/libs/tts/enterprise/enterpriseData";
+import { EMPTY_BUSINESS_FORM, type BusinessFormData } from "@/libs/tts/enterprise/enterpriseData";
 import {
   type Business,
   type BusinessDetail,
@@ -21,7 +17,8 @@ import {
   deleteBusiness,
 } from "@/libs/tts/enterprise/enterpriseApi";
 import { ApiError } from "@/libs/tts/auth/apiClient";
-import { INITIAL_BUSINESS_SECTORS } from "@/libs/tts/business-sector/businessSectorData";
+import { getEnterpriseTypeList } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
+import { getBusinessSectorList } from "@/libs/tts/business-sector/businessSectorApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
@@ -39,9 +36,6 @@ const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-no
 
 const FILE_NAMES = ["Giấy phép kinh doanh", "Giấy tờ khác"] as const;
 
-const NGANH_CAP4_OPTIONS = INITIAL_BUSINESS_SECTORS
-  .filter((s) => s.cap === 4)
-  .map((s) => ({ value: `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`, label: `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}` }));
 
 type AttachedFile = { file: File | null; displayName: string };
 const emptyAttachments = (): AttachedFile[] => FILE_NAMES.map(() => ({ file: null, displayName: "" }));
@@ -75,6 +69,23 @@ export default function EnterprisePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+
+  const [loaiHinhOptions, setLoaiHinhOptions] = useState<string[]>([]);
+  const [nganhCap4Options, setNganhCap4Options] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    getEnterpriseTypeList()
+      .then((types) => setLoaiHinhOptions(types.filter((t) => t.active).map((t) => t.ten)))
+      .catch(() => {});
+    getBusinessSectorList()
+      .then((sectors) => {
+        const cap4 = sectors
+          .filter((s) => s.cap === 4)
+          .map((s) => { const label = `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`; return { value: label, label }; });
+        setNganhCap4Options(cap4);
+      })
+      .catch(() => {});
+  }, []);
 
   const [fBusinessName, setFBusinessName] = useState("");
   const [fTaxCode, setFTaxCode] = useState("");
@@ -445,7 +456,7 @@ export default function EnterprisePage() {
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
                       <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fBusinessType} onChange={(e) => { setFBusinessType(e.target.value); setCurrentPage(1); }}>
                         <option value="">Tất cả</option>
-                        {LOAI_HINH_OPTIONS.map((o) => (
+                        {loaiHinhOptions.map((o) => (
                           <option key={o} value={o}>{o}</option>
                         ))}
                       </select>
@@ -696,7 +707,7 @@ export default function EnterprisePage() {
                         onChange={(e) => { setField("businessType", e.target.value); if (wizardFieldErrors.businessType) setWizardFieldErrors((p) => ({ ...p, businessType: undefined })); }}
                       >
                         <option value="">-- Chọn loại hình --</option>
-                        {LOAI_HINH_OPTIONS.map((o) => (
+                        {loaiHinhOptions.map((o) => (
                           <option key={o} value={o}>{o}</option>
                         ))}
                       </select>
@@ -706,7 +717,7 @@ export default function EnterprisePage() {
                     <FieldGroup label="Ngành nghề kinh doanh, chính" required>
                       <select className={SELECT_CONTROL_CLASS} value={form.mainIndustry} onChange={(e) => setField("mainIndustry", e.target.value)}>
                         <option value="">-- Chọn ngành nghề --</option>
-                        {NGANH_CAP4_OPTIONS.map((o) => (
+                        {nganhCap4Options.map((o) => (
                           <option key={o.value} value={o.value}>{o.label}</option>
                         ))}
                       </select>

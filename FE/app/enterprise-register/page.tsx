@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FormHelperText } from "@mui/material";
 import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
@@ -10,17 +10,10 @@ import { PasswordField } from "@/libs/shared/core/components/PasswordField/Passw
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail, isValidPhone } from "@/libs/tts/auth/authValidation";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
-import {
-  LOAI_HINH_OPTIONS,
-  type EnterpriseForm,
-  EMPTY_ENTERPRISE_FORM,
-} from "@/libs/tts/enterprise/enterpriseData";
-import { INITIAL_BUSINESS_SECTORS } from "@/libs/tts/business-sector/businessSectorData";
+import { type EnterpriseForm, EMPTY_ENTERPRISE_FORM } from "@/libs/tts/enterprise/enterpriseData";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
-
-const NGANH_CAP4_OPTIONS = INITIAL_BUSINESS_SECTORS
-  .filter((s) => s.cap === 4)
-  .map((s) => `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`);
+import { getEnterpriseTypeList } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
+import { getBusinessSectorList } from "@/libs/tts/business-sector/businessSectorApi";
 
 const FILE_NAMES = ["Giấy phép kinh doanh", "Giấy tờ khác"];
 
@@ -72,6 +65,22 @@ export default function EnterpriseRegisterPage() {
     username?: string;
     password?: string;
   }>({});
+
+  const [loaiHinhOptions, setLoaiHinhOptions] = useState<string[]>([]);
+  const [nganhCap4Options, setNganhCap4Options] = useState<string[]>([]);
+
+  useEffect(() => {
+    getEnterpriseTypeList()
+      .then((types) => setLoaiHinhOptions(types.filter((t) => t.active).map((t) => t.ten)))
+      .catch(() => {});
+    getBusinessSectorList()
+      .then((sectors) =>
+        setNganhCap4Options(
+          sectors.filter((s) => s.cap === 4).map((s) => `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`),
+        ),
+      )
+      .catch(() => {});
+  }, []);
 
   const [form, setForm] = useState<EnterpriseForm>(EMPTY_ENTERPRISE_FORM);
   const [wizardFieldErrors, setWizardFieldErrors] = useState<{
@@ -392,7 +401,7 @@ export default function EnterpriseRegisterPage() {
                       }}
                     >
                       <option value="">-- Chọn loại hình --</option>
-                      {LOAI_HINH_OPTIONS.map((o) => (
+                      {loaiHinhOptions.map((o) => (
                         <option key={o} value={o}>{o}</option>
                       ))}
                     </select>
@@ -409,7 +418,7 @@ export default function EnterpriseRegisterPage() {
                       }}
                     >
                       <option value="">-- Chọn ngành nghề --</option>
-                      {NGANH_CAP4_OPTIONS.map((o) => (
+                      {nganhCap4Options.map((o) => (
                         <option key={o} value={o}>{o}</option>
                       ))}
                     </select>

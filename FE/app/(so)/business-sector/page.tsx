@@ -1,16 +1,16 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
+import { CAP_LABELS, type BusinessSector } from "@/libs/tts/business-sector/businessSectorData";
 import {
-  INITIAL_BUSINESS_SECTORS,
-  CAP_LABELS,
-  PARENT_OPTIONS,
-  type BusinessSector,
-} from "@/libs/tts/business-sector/businessSectorData";
+  getBusinessSectorList,
+  createBusinessSector,
+  updateBusinessSector,
+} from "@/libs/tts/business-sector/businessSectorApi";
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
@@ -23,9 +23,19 @@ const INDENT_PX = ["0", "0", "14px", "28px", "42px"];
 
 export default function BusinessSectorPage() {
   const importRef = useRef<HTMLInputElement>(null);
-  const [items, setItems] = useState<BusinessSector[]>(INITIAL_BUSINESS_SECTORS);
+  const [items, setItems] = useState<BusinessSector[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getBusinessSectorList().then(setItems).catch(() => {});
+  }, []);
+
+  const parentOptions = useMemo(
+    () => items.filter((s) => s.cap < 4).map((s) => ({ value: s.ma, label: `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}` })),
+    [items],
+  );
 
   const [fMa, setFMa] = useState("");
   const [fTen, setFTen] = useState("");
@@ -92,26 +102,32 @@ export default function BusinessSectorPage() {
     setPanelOpen(true);
   };
 
-  const savePanel = () => {
+  const savePanel = async () => {
     const ma = inputMa.trim();
     const ten = inputTen.trim();
     const errors: { ma?: string; ten?: string } = {};
     if (!ma) errors.ma = "Mã ngành không được để trống";
     if (!ten) errors.ten = "Tên ngành không được để trống";
-    if (Object.keys(errors).length > 0) {
-      setPanelErrors(errors);
-      return;
-    }
+    if (Object.keys(errors).length > 0) { setPanelErrors(errors); return; }
     setPanelErrors({});
-    if (editId) {
-      setItems((prev) => prev.map((r) => (r.id === editId ? { ...r, ten } : r)));
-    } else {
-      const parent = items.find((x) => x.ma === inputCha);
-      const cap = inputCha ? Math.min((parent?.cap ?? 0) + 1, 4) : 1;
-      setItems((prev) => [...prev, { id: Date.now(), ma, ten, cap, cha: inputCha }]);
+    setSaving(true);
+    try {
+      if (editId) {
+        const updated = await updateBusinessSector(editId, { ten });
+        setItems((prev) => prev.map((r) => (r.id === editId ? updated : r)));
+      } else {
+        const parent = items.find((x) => x.ma === inputCha);
+        const cap = inputCha ? Math.min((parent?.cap ?? 0) + 1, 4) : 1;
+        const created = await createBusinessSector({ ma, ten, cap, cha: inputCha || undefined });
+        setItems((prev) => [...prev, created]);
+      }
+      setPanelOpen(false);
+      setToast(editId ? "Cập nhật thành công" : "Thêm mới thành công");
+    } catch {
+      setToast("Lưu thất bại. Vui lòng thử lại.");
+    } finally {
+      setSaving(false);
     }
-    setPanelOpen(false);
-    setToast(editId ? "Cập nhật thành công" : "Thêm mới thành công");
   };
 
   return (
@@ -223,8 +239,8 @@ export default function BusinessSectorPage() {
         onClose={() => setPanelOpen(false)}
         footer={
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setPanelOpen(false)} className="h-9 rounded-md border border-line px-4.5 text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">Huỷ bỏ</button>
-            <button type="button" onClick={savePanel} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]">
+            <button type="button" onClick={() => setPanelOpen(false)} disabled={saving} className="h-9 rounded-md border border-line px-4.5 text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50">Huỷ bỏ</button>
+            <button type="button" onClick={savePanel} disabled={saving} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                 <polyline points="17 21 17 13 7 13 7 21" />
@@ -260,7 +276,7 @@ export default function BusinessSectorPage() {
           <label className="text-[12.5px] font-medium text-[#374151]">Nhóm ngành cha</label>
           <select className={SELECT_CONTROL_CLASS} value={inputCha} onChange={(e) => setInputCha(e.target.value)}>
             <option value="">-- Không có (Cấp 1) --</option>
-            {PARENT_OPTIONS.map((o) => (
+            {parentOptions.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
