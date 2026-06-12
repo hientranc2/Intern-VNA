@@ -8,6 +8,7 @@ import {
   getToken,
   clearToken,
   getProfile,
+  getBusinessId,
   changePassword,
   ApiError,
 } from "@/libs/tts/auth/authApi";
@@ -53,6 +54,7 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!getToken()) { router.replace("/login"); return; }
+    if (getBusinessId()) { router.replace("/enterprise-info"); return; }
     getProfile().then((p) => {
       setSidebarOverride({
         userName: p.fullName || p.username,

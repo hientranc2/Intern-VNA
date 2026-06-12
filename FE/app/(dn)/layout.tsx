@@ -32,7 +32,7 @@ export default function DnLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!getToken()) { router.replace("/enterprise-login"); return; }
     const bizId = getBusinessId();
-    if (!bizId) return;
+    if (!bizId) { router.replace("/login"); return; }
     getBusinessById(bizId).then((detail) => {
       setBusinessName(detail.businessName);
       setInitials(getInitials(detail.businessName) || "DN");
