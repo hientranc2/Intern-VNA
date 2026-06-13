@@ -27,6 +27,7 @@ import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
+import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
 
 type ViewMode = "list" | "detail";
@@ -726,12 +727,11 @@ export default function UserPage() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-muted">Ngày tháng năm sinh</label>
-                    <input
-                      type="date"
-                      className={`${FORM_CONTROL_CLASS}${fieldErrors.dob ? " border-danger" : ""}`}
+                    <DateInput
                       value={form.dob}
+                      onChange={(v) => { setField("dob", v); clearFieldError("dob"); }}
                       max={localISODate(new Date())}
-                      onChange={(e) => { setField("dob", e.target.value); clearFieldError("dob"); }}
+                      error={!!fieldErrors.dob}
                     />
                     {fieldErrors.dob && (
                       <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>{fieldErrors.dob}</FormHelperText>

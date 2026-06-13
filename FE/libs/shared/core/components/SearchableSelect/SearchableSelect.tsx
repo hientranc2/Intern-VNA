@@ -10,6 +10,8 @@ type Props = {
   emptyText?: string;
   disabled?: boolean;
   className?: string;
+  /** Show danger border on the trigger (validation error) */
+  error?: boolean;
   /** Render dropdown with position:fixed to escape overflow:hidden containers (e.g. table filters) */
   fixed?: boolean;
   /** Compact size (h-7, text-xs) to match table filter row height */
@@ -26,6 +28,7 @@ export function SearchableSelect({
   emptyText = "Không tìm thấy",
   disabled,
   className,
+  error,
   fixed,
   compact,
   dropUp,
@@ -129,7 +132,9 @@ export function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={toggle}
-        className={`flex w-full items-center justify-between gap-2 border border-line bg-white text-ink outline-none transition-colors focus:border-[#3b82f6] disabled:cursor-not-allowed disabled:bg-body disabled:text-muted ${
+        className={`flex w-full items-center justify-between gap-2 border bg-white text-ink outline-none transition-colors focus:border-[#3b82f6] disabled:cursor-not-allowed disabled:bg-body disabled:text-muted ${
+          error ? "border-danger" : "border-line"
+        } ${
           compact
             ? "h-7 rounded-[5px] px-1.5 text-xs"
             : "h-10 rounded-md px-3 text-sm focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"

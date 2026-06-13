@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { SlidePanel } from "@/libs/shared/core/components/SlidePanel/SlidePanel";
@@ -289,21 +290,19 @@ export default function ReportConfigPage() {
         <div className="mb-4 grid grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
             <label className="text-[12.5px] font-medium text-[#374151]">Ngày bắt đầu <span className="text-danger">*</span></label>
-            <input
-              type="date"
-              className={`${FORM_CONTROL_CLASS}${panelErrors.batDau ? " border-danger" : ""}`}
+            <DateInput
               value={inputBatDau}
-              onChange={(e) => { setInputBatDau(e.target.value); if (panelErrors.batDau) setPanelErrors((p) => ({ ...p, batDau: undefined })); }}
+              onChange={(v) => { setInputBatDau(v); if (panelErrors.batDau) setPanelErrors((p) => ({ ...p, batDau: undefined })); }}
+              error={!!panelErrors.batDau}
             />
             {panelErrors.batDau && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.batDau}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12.5px] font-medium text-[#374151]">Ngày kết thúc <span className="text-danger">*</span></label>
-            <input
-              type="date"
-              className={`${FORM_CONTROL_CLASS}${panelErrors.ketThuc ? " border-danger" : ""}`}
+            <DateInput
               value={inputKetThuc}
-              onChange={(e) => { setInputKetThuc(e.target.value); if (panelErrors.ketThuc) setPanelErrors((p) => ({ ...p, ketThuc: undefined })); }}
+              onChange={(v) => { setInputKetThuc(v); if (panelErrors.ketThuc) setPanelErrors((p) => ({ ...p, ketThuc: undefined })); }}
+              error={!!panelErrors.ketThuc}
             />
             {panelErrors.ketThuc && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ketThuc}</p>}
           </div>

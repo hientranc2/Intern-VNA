@@ -7,6 +7,8 @@ import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail, isValidPhone } from "@/libs/tts/auth/authValidation";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
+import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
+import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 import { type EnterpriseForm, EMPTY_ENTERPRISE_FORM } from "@/libs/tts/enterprise/enterpriseData";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { getEnterpriseTypeList } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
@@ -23,7 +25,6 @@ const emptyAttachments = (): AttachedFile[] => FILE_NAMES.map(() => ({ file: nul
 
 const FORM_CONTROL_CLASS =
   "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
-const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
 function FieldGroup({
   label,
@@ -340,78 +341,65 @@ export default function EnterpriseRegisterPage() {
                     />
                   </FieldGroup>
                   <FieldGroup label="Loại hình kinh doanh" required error={wizardFieldErrors.loai}>
-                    <select
-                      className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.loai ? " border-danger" : ""}`}
+                    <SearchableSelect
+                      options={loaiHinhOptions}
                       value={form.loai}
-                      onChange={(e) => {
-                        setField("loai", e.target.value);
+                      placeholder="-- Chọn loại hình --"
+                      error={!!wizardFieldErrors.loai}
+                      onChange={(v) => {
+                        setField("loai", v);
                         if (wizardFieldErrors.loai) setWizardFieldErrors((p) => ({ ...p, loai: undefined }));
                       }}
-                    >
-                      <option value="">-- Chọn loại hình --</option>
-                      {loaiHinhOptions.map((o) => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
-                    </select>
+                    />
                   </FieldGroup>
                 </div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                   <FieldGroup label="Ngành nghề kinh doanh chính" required error={wizardFieldErrors.nganh}>
-                    <select
-                      className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.nganh ? " border-danger" : ""}`}
+                    <SearchableSelect
+                      options={nganhCap4Options}
                       value={form.nganh}
-                      onChange={(e) => {
-                        setField("nganh", e.target.value);
+                      placeholder="-- Chọn ngành nghề --"
+                      error={!!wizardFieldErrors.nganh}
+                      onChange={(v) => {
+                        setField("nganh", v);
                         if (wizardFieldErrors.nganh) setWizardFieldErrors((p) => ({ ...p, nganh: undefined }));
                       }}
-                    >
-                      <option value="">-- Chọn ngành nghề --</option>
-                      {nganhCap4Options.map((o) => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
-                    </select>
+                    />
                   </FieldGroup>
                   <FieldGroup label="Ngày cấp GPKD">
-                    <input
-                      type="date"
-                      className={FORM_CONTROL_CLASS}
+                    <DateInput
                       value={form.ngayCap}
+                      onChange={(v) => setField("ngayCap", v)}
                       max={localISODate(new Date())}
-                      onChange={(e) => setField("ngayCap", e.target.value)}
                     />
                   </FieldGroup>
                   <FieldGroup label="Tỉnh/Thành phố ĐKKD" required error={wizardFieldErrors.tinh}>
-                    <select
-                      className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.tinh ? " border-danger" : ""}`}
+                    <SearchableSelect
+                      options={PROVINCES}
                       value={form.tinh}
-                      onChange={(e) => {
-                        setField("tinh", e.target.value);
+                      placeholder="-- Chọn tỉnh/thành phố --"
+                      error={!!wizardFieldErrors.tinh}
+                      onChange={(v) => {
+                        setField("tinh", v);
                         setField("phuong", "");
                         if (wizardFieldErrors.tinh) setWizardFieldErrors((p) => ({ ...p, tinh: undefined }));
                       }}
-                    >
-                      <option value="">-- Chọn tỉnh/thành phố --</option>
-                      {PROVINCES.map((o) => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
-                    </select>
+                    />
                   </FieldGroup>
                 </div>
                 <div className="grid grid-cols-2 gap-3.5">
                   <FieldGroup label="Phường/Xã ĐKKD" required error={wizardFieldErrors.phuong}>
-                    <select
-                      className={`${SELECT_CONTROL_CLASS}${wizardFieldErrors.phuong ? " border-danger" : ""}`}
+                    <SearchableSelect
+                      options={phuongDKKDOptions}
                       value={form.phuong}
-                      onChange={(e) => {
-                        setField("phuong", e.target.value);
+                      placeholder="-- Chọn phường/xã --"
+                      disabled={!form.tinh}
+                      error={!!wizardFieldErrors.phuong}
+                      onChange={(v) => {
+                        setField("phuong", v);
                         if (wizardFieldErrors.phuong) setWizardFieldErrors((p) => ({ ...p, phuong: undefined }));
                       }}
-                    >
-                      <option value="">-- Chọn phường/xã --</option>
-                      {phuongDKKDOptions.map((o) => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
-                    </select>
+                    />
                   </FieldGroup>
                   <FieldGroup label="Địa chỉ">
                     <input
@@ -479,33 +467,26 @@ export default function EnterpriseRegisterPage() {
                     />
                   </FieldGroup>
                   <FieldGroup label="Tỉnh/TP hoạt động KD">
-                    <select
-                      className={SELECT_CONTROL_CLASS}
+                    <SearchableSelect
+                      options={PROVINCES}
                       value={form.tinhHD}
-                      onChange={(e) => {
-                        setField("tinhHD", e.target.value);
+                      placeholder="-- Chọn tỉnh --"
+                      onChange={(v) => {
+                        setField("tinhHD", v);
                         setField("phuongHD", "");
                       }}
-                    >
-                      <option value="">-- Chọn tỉnh --</option>
-                      {PROVINCES.map((o) => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
-                    </select>
+                    />
                   </FieldGroup>
                 </div>
                 <div className="grid grid-cols-3 gap-3.5">
                   <FieldGroup label="Phường/xã hoạt động KD">
-                    <select
-                      className={SELECT_CONTROL_CLASS}
+                    <SearchableSelect
+                      options={phuongHDOptions}
                       value={form.phuongHD}
-                      onChange={(e) => setField("phuongHD", e.target.value)}
-                    >
-                      <option value="">-- Chọn phường/xã --</option>
-                      {phuongHDOptions.map((o) => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
-                    </select>
+                      placeholder="-- Chọn phường/xã --"
+                      disabled={!form.tinhHD}
+                      onChange={(v) => setField("phuongHD", v)}
+                    />
                   </FieldGroup>
                   <FieldGroup label="Địa điểm kinh doanh">
                     <input
