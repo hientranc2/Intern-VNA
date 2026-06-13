@@ -126,7 +126,6 @@ export class AuthService {
         id: account.id,
         username: account.username,
         role: account.role,
-        businessId: account.businessId,
         businessName: account.business?.businessName ?? '',
       },
     };

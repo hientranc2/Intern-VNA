@@ -129,7 +129,6 @@ export class BusinessService {
     const account = this.accountRepository.create({
       username: dto.taxCode,
       password: hashedPassword,
-      businessId: savedBusiness.id,
       role: 'DoanhNghiep',
     });
     const savedAccount = await this.accountRepository.save(account);

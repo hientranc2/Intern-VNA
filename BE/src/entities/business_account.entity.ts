@@ -18,9 +18,6 @@ export class Account {
   @Column()
   password: string;
 
-  @Column({ name: 'business_id' })
-  businessId: string;
-
   @Column({ default: 'DoanhNghiep' })
   role: string;
 
