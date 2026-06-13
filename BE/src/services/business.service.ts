@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -8,7 +13,14 @@ import * as WebSocket from 'ws';
 
 import { Business } from '../entities/business.entity';
 import { Account } from '../entities/business_account.entity';
-import { BusinessCreateDto, BusinessUpdateDto, BusinessQueryDto, BusinessToggleStatusDto, BusinessListDto, AccountPopupDto, } from '../../libs/shared/models/business.dto';
+import {
+  BusinessCreateDto,
+  BusinessUpdateDto,
+  BusinessQueryDto,
+  BusinessToggleStatusDto,
+  BusinessListDto,
+  AccountPopupDto,
+} from '../../libs/shared/models/business.dto';
 
 const DEFAULT_PASSWORD = '12345678';
 
@@ -22,7 +34,7 @@ export class BusinessService {
         persistSession: false,
         autoRefreshToken: false,
       },
-    }
+    },
   );
 
   constructor(
@@ -33,10 +45,16 @@ export class BusinessService {
     private accountRepository: Repository<Account>,
   ) {}
 
-  private async uploadFile(file: Express.Multer.File, taxCode: string, prefix: string): Promise<string> {
+  private async uploadFile(
+    file: Express.Multer.File,
+    taxCode: string,
+    prefix: string,
+  ): Promise<string> {
     const ext = file.originalname.split('.').pop();
     const fileName = `${prefix}-${taxCode}-${Date.now()}.${ext}`;
-    const fileBlob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
+    const fileBlob = new Blob([new Uint8Array(file.buffer)], {
+      type: file.mimetype,
+    });
 
     const { error } = await this.supabaseAdmin.storage
       .from('businesses')
@@ -71,9 +89,14 @@ export class BusinessService {
 
   async findAll(query: BusinessQueryDto) {
     const {
-      businessName, taxCode, businessType,
-      mainIndustry, registeredWard, isActive,
-      page = 1, limit = 10,
+      businessName,
+      taxCode,
+      businessType,
+      mainIndustry,
+      registeredWard,
+      isActive,
+      page = 1,
+      limit = 10,
     } = query;
 
     const where: FindOptionsWhere<Business> = {};
@@ -108,14 +131,25 @@ export class BusinessService {
     licenseFile?: Express.Multer.File,
     otherFile?: Express.Multer.File,
   ) {
-    const existing = await this.businessRepository.findOne({ where: { taxCode: dto.taxCode } });
+    const existing = await this.businessRepository.findOne({
+      where: { taxCode: dto.taxCode },
+    });
     if (existing) throw new ConflictException('Mã số thuế đã tồn tại');
 
-    const existingEmail = await this.businessRepository.findOne({ where: { email: dto.email } });
-    if (existingEmail) throw new ConflictException('Email đã được sử dụng cho doanh nghiệp khác');
+    const existingEmail = await this.businessRepository.findOne({
+      where: { email: dto.email },
+    });
+    if (existingEmail)
+      throw new ConflictException(
+        'Email đã được sử dụng cho doanh nghiệp khác',
+      );
 
-    const licenseFileUrl = licenseFile ? await this.uploadFile(licenseFile, dto.taxCode, 'license') : null;
-    const otherFileUrl = otherFile ? await this.uploadFile(otherFile, dto.taxCode, 'other') : null;
+    const licenseFileUrl = licenseFile
+      ? await this.uploadFile(licenseFile, dto.taxCode, 'license')
+      : null;
+    const otherFileUrl = otherFile
+      ? await this.uploadFile(otherFile, dto.taxCode, 'other')
+      : null;
 
     const business = this.businessRepository.create({
       ...dto,
@@ -133,7 +167,9 @@ export class BusinessService {
     });
     const savedAccount = await this.accountRepository.save(account);
 
-    await this.businessRepository.update(savedBusiness.id, { accountId: savedAccount.id });
+    await this.businessRepository.update(savedBusiness.id, {
+      accountId: savedAccount.id,
+    });
 
     const accountPopup: AccountPopupDto = {
       username: dto.taxCode,
@@ -157,17 +193,30 @@ export class BusinessService {
     if (!business) throw new NotFoundException('Không tìm thấy doanh nghiệp');
 
     if (dto.email && dto.email !== business.email) {
-      const existingEmail = await this.businessRepository.findOne({ where: { email: dto.email } });
-      if (existingEmail) throw new ConflictException('Email đã được sử dụng cho doanh nghiệp khác');
+      const existingEmail = await this.businessRepository.findOne({
+        where: { email: dto.email },
+      });
+      if (existingEmail)
+        throw new ConflictException(
+          'Email đã được sử dụng cho doanh nghiệp khác',
+        );
     }
-    
+
     if (licenseFile) {
       await this.deleteFile(business.licenseFile);
-      business.licenseFile = await this.uploadFile(licenseFile, business.taxCode, 'license');
+      business.licenseFile = await this.uploadFile(
+        licenseFile,
+        business.taxCode,
+        'license',
+      );
     }
     if (otherFile) {
       await this.deleteFile(business.otherFile);
-      business.otherFile = await this.uploadFile(otherFile, business.taxCode, 'other');
+      business.otherFile = await this.uploadFile(
+        otherFile,
+        business.taxCode,
+        'other',
+      );
     }
 
     Object.assign(business, dto);
@@ -202,7 +251,8 @@ export class BusinessService {
       relations: { account: true },
     });
     if (!business) throw new NotFoundException('Không tìm thấy doanh nghiệp');
-    if (!business.account) throw new NotFoundException('Doanh nghiệp chưa có tài khoản');
+    if (!business.account)
+      throw new NotFoundException('Doanh nghiệp chưa có tài khoản');
 
     return { username: business.account.username };
   }

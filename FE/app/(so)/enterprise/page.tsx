@@ -71,7 +71,7 @@ export default function EnterprisePage() {
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   const [loaiHinhOptions, setLoaiHinhOptions] = useState<string[]>([]);
-  const [nganhCap4Options, setNganhCap4Options] = useState<{ value: string; label: string }[]>([]);
+  const [nganhCap4Options, setNganhCap4Options] = useState<string[]>([]);
 
   useEffect(() => {
     getEnterpriseTypeList()
@@ -81,7 +81,7 @@ export default function EnterprisePage() {
       .then((sectors) => {
         const cap4 = sectors
           .filter((s) => s.cap === 4)
-          .map((s) => { const label = `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`; return { value: label, label }; });
+          .map((s) => `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`);
         setNganhCap4Options(cap4);
       })
       .catch(() => {});
@@ -464,7 +464,14 @@ export default function EnterprisePage() {
                       />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fMainIndustry} onChange={(e) => { setFMainIndustry(e.target.value); setCurrentPage(1); }} />
+                      <SearchableSelect
+                        fixed
+                        compact
+                        options={nganhCap4Options}
+                        value={fMainIndustry}
+                        onChange={(v) => { setFMainIndustry(v); setCurrentPage(1); }}
+                        placeholder="Tất cả"
+                      />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
                       <SearchableSelect

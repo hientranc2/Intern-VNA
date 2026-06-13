@@ -9,6 +9,7 @@ import * as WebSocket from 'ws';
 (global as any).WebSocket = WebSocket;
 import { User } from '../entities/user.entity';
 import { Account } from '../entities/business_account.entity';
+import { Business } from '../entities/business.entity';
 import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, UpdateProfileDto, ChangePasswordDto, ChangeEmailDto, SendRegisterOtpDto, VerifyRegisterOtpDto } from '../../libs/shared/models/auth.dto';
 import 'multer';
 
@@ -49,6 +50,7 @@ export class AuthService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Account) private accountRepository: Repository<Account>,
+    @InjectRepository(Business) private businessRepository: Repository<Business>,
     private jwtService: JwtService,
   ) {}
 
@@ -99,20 +101,23 @@ export class AuthService {
   async loginBusiness(dto: LoginDto) {
     const account = await this.accountRepository.findOne({
       where: { username: dto.username },
-      relations: { business: true },
     });
 
     if (!account) {
       throw new UnauthorizedException('Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại');
     }
 
-    if (!account.business?.isActive) {
-      throw new UnauthorizedException('Tài khoản doanh nghiệp đã bị vô hiệu hóa. Vui lòng liên hệ cơ quan quản lý.');
-    }
-
     const isPasswordValid = await bcrypt.compare(dto.password, account.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại');
+    }
+
+    const business = await this.businessRepository.findOne({
+      where: { accountId: account.id },
+    });
+
+    if (!business?.isActive) {
+      throw new UnauthorizedException('Tài khoản doanh nghiệp đã bị vô hiệu hóa. Vui lòng liên hệ cơ quan quản lý.');
     }
 
     const expiresIn = dto.rememberMe ? '7d' : '1h';
@@ -126,7 +131,8 @@ export class AuthService {
         id: account.id,
         username: account.username,
         role: account.role,
-        businessName: account.business?.businessName ?? '',
+        businessId: business.id,
+        businessName: business.businessName,
       },
     };
   }

@@ -19,7 +19,6 @@ import { BusinessSector } from './entities/business-sector.entity';
 import { BusinessSectorController } from './controllers/business-sector.controller';
 import { BusinessSectorService } from './services/business-sector.service';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -27,12 +26,18 @@ import { BusinessSectorService } from './services/business-sector.service';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       entities: [User, Business, Account, EnterpriseType, BusinessSector],
-      synchronize: false, // Chổ này chỉnh true có thể để TypeORM tự động tạo Database
+      synchronize: false,
       ssl: {
         rejectUnauthorized: false,
       },
     }),
-    TypeOrmModule.forFeature([User, Business, Account, EnterpriseType, BusinessSector]),
+    TypeOrmModule.forFeature([
+      User,
+      Business,
+      Account,
+      EnterpriseType,
+      BusinessSector,
+    ]),
     JwtModule.register({
       secret: 'thu_thap_bi_mat_vna_123',
       signOptions: { expiresIn: '1h' },

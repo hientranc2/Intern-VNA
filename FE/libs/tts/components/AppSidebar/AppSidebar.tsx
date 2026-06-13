@@ -154,7 +154,7 @@ export function AppSidebar({
                     const isActive = child.label === active;
                     const className = `relative py-[10px] pl-9 pr-4 text-[12.5px] transition-colors hover:bg-white/10 hover:text-white ${
                       isActive
-                        ? "font-semibold text-white before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-r-sm before:bg-[#60a5fa] before:content-['']"
+                        ? "bg-white/[0.14] font-semibold text-white before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-r-sm before:bg-[#60a5fa] before:content-['']"
                         : "text-white/80"
                     }`;
                     if (child.href) {
