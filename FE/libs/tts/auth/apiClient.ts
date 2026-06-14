@@ -1,7 +1,7 @@
 // Shared HTTP client cho toàn bộ API calls trong dự án.
 // Tự động đính kèm Bearer token và xử lý lỗi 401 (redirect về login).
 
-import { getToken, clearToken } from "./authApi";
+import { getToken, clearToken, getBusinessId } from "./authApi";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -15,9 +15,10 @@ export class ApiError extends Error {
 }
 
 function handle401(): never {
+  const isBusiness = typeof window !== "undefined" && !!getBusinessId();
   clearToken();
   if (typeof window !== "undefined") {
-    window.location.href = "/login";
+    window.location.href = isBusiness ? "/enterprise-login" : "/login";
   }
   throw new ApiError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401);
 }

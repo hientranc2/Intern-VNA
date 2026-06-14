@@ -227,7 +227,6 @@ export default function EnterpriseRegisterPage() {
   };
 
   const reviewRows: [string, string][] = [
-    ["Tên đăng nhập :", form.mst],
     ["Mã số thuế :", form.mst],
     ["Tên doanh nghiệp :", form.ten],
     ["Tên viết bằng tiếng nước ngoài :", form.tenNN],
@@ -332,7 +331,7 @@ export default function EnterpriseRegisterPage() {
                     <input
                       className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.mst ? " border-danger" : ""}`}
                       value={form.mst}
-                      maxLength={14}
+                      maxLength={10}
                       onChange={(e) => {
                         setField("mst", e.target.value);
                         if (wizardFieldErrors.mst) setWizardFieldErrors((p) => ({ ...p, mst: undefined }));
@@ -722,7 +721,7 @@ export default function EnterpriseRegisterPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setOtpOpen(false); countdown.stop(); }}
+            onClick={() => { setOtpOpen(false); countdown.stop(); setOtp(""); setOtpError(null); }}
             className="text-[13px] text-muted hover:text-[#374151]"
           >
             Huỷ bỏ
