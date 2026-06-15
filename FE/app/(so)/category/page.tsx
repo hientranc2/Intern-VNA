@@ -7,9 +7,6 @@ import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import {
-  INJURY_FACTORS,
-  INJURY_TYPES,
-  OCCUPATIONS,
   CAP_LABELS,
   INJURY_TYPE_PARENTS,
   OCCUPATION_PARENTS,
@@ -17,6 +14,20 @@ import {
   type InjuryFactor,
   type TreeNode,
 } from "@/libs/tts/category/categoryData";
+import {
+  getInjuryFactorList,
+  createInjuryFactor,
+  deleteInjuryFactor,
+  toggleInjuryFactorActive,
+  getInjuryTypeList,
+  createInjuryType,
+  updateInjuryType,
+  deleteInjuryType,
+  getOccupationList,
+  createOccupation,
+  updateOccupation,
+  deleteOccupation,
+} from "@/libs/tts/category/categoryApi";
 
 const TAB_META: Record<CategoryTab, { label: string; option: string }> = {
   factor: { label: "Yếu tố gây chấn thương", option: "Yếu tố chấn thương" },
@@ -37,12 +48,18 @@ export default function CategoryPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
 
-  const [factors, setFactors] = useState<InjuryFactor[]>(INJURY_FACTORS);
-  const [injuryTypes, setInjuryTypes] = useState<TreeNode[]>(INJURY_TYPES);
-  const [occupations, setOccupations] = useState<TreeNode[]>(OCCUPATIONS);
+  const [factors, setFactors] = useState<InjuryFactor[]>([]);
+  const [injuryTypes, setInjuryTypes] = useState<TreeNode[]>([]);
+  const [occupations, setOccupations] = useState<TreeNode[]>([]);
   const [tab, setTab] = useState<CategoryTab>("factor");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    getInjuryFactorList().then(setFactors).catch(() => {});
+    getInjuryTypeList().then(setInjuryTypes).catch(() => {});
+    getOccupationList().then(setOccupations).catch(() => {});
+  }, []);
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -66,6 +83,8 @@ export default function CategoryPage() {
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
   const [inputMa, setInputMa] = useState("");
   const [inputTen, setInputTen] = useState("");
   const [inputCha, setInputCha] = useState("");
@@ -116,11 +135,17 @@ export default function CategoryPage() {
 
   const toggleFactor = (id: number, active: boolean) => {
     setFactors((prev) => prev.map((r) => (r.id === id ? { ...r, active } : r)));
-    setToast("Cập nhật trạng thái thành công");
+    toggleInjuryFactorActive(id, active)
+      .then(() => setToast("Cập nhật trạng thái thành công"))
+      .catch(() => {
+        setFactors((prev) => prev.map((r) => (r.id === id ? { ...r, active: !active } : r)));
+        setToast("Cập nhật thất bại");
+      });
   };
 
   const openAdd = () => {
     setIsEdit(false);
+    setEditId(null);
     setInputMa("");
     setInputTen("");
     setInputCha("");
@@ -131,6 +156,7 @@ export default function CategoryPage() {
 
   const openEditTree = (r: TreeNode) => {
     setIsEdit(true);
+    setEditId(r.id);
     setInputMa(r.ma);
     setInputTen(r.ten);
     setInputCha(r.cha);
@@ -139,7 +165,7 @@ export default function CategoryPage() {
     setPanelOpen(true);
   };
 
-  const savePanel = () => {
+  const savePanel = async () => {
     const errors: { ma?: string; ten?: string } = {};
     if (!inputMa.trim()) errors.ma = "Mã không được để trống";
     if (!inputTen.trim()) errors.ten = "Tên không được để trống";
@@ -148,25 +174,63 @@ export default function CategoryPage() {
       return;
     }
     setPanelErrors({});
-    if (tab === "factor" && !isEdit) {
-      setFactors((prev) => [
-        { id: Date.now(), ma: inputMa.trim(), ten: inputTen.trim(), active: inputActive === "1" },
-        ...prev,
-      ]);
+    const ma = inputMa.trim();
+    const ten = inputTen.trim();
+    setSaving(true);
+    try {
+      if (tab === "factor") {
+        const created = await createInjuryFactor({ ma, ten, active: inputActive === "1" });
+        setFactors((prev) => [created, ...prev]);
+      } else {
+        const isType = tab === "injuryType";
+        const list = isType ? injuryTypes : occupations;
+        const setter = isType ? setInjuryTypes : setOccupations;
+        if (isEdit && editId != null) {
+          const updated = isType
+            ? await updateInjuryType(editId, { ten })
+            : await updateOccupation(editId, { ten });
+          setter((prev) => prev.map((r) => (r.id === editId ? updated : r)));
+        } else {
+          const cha = inputCha.trim();
+          const parent = cha ? list.find((n) => n.ma === cha) : undefined;
+          const cap = parent ? Math.min(parent.cap + 1, 4) : 1;
+          const payload = { ma, ten, cap, cha: cha || undefined };
+          const created = isType
+            ? await createInjuryType(payload)
+            : await createOccupation(payload);
+          setter((prev) => [created, ...prev]);
+        }
+      }
+      setPanelOpen(false);
+      setToast(isEdit ? "Cập nhật thành công" : "Thêm mới thành công");
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Lưu thất bại. Vui lòng thử lại.");
+    } finally {
+      setSaving(false);
     }
-    setPanelOpen(false);
-    setToast(isEdit ? "Cập nhật thành công" : "Thêm mới thành công");
   };
 
-  const deleteSelected = () => {
-    const count = selectedIds.size;
+  const deleteSelected = async () => {
+    const ids = [...selectedIds];
     const remove = <T extends { id: number }>(list: T[]) => list.filter((r) => !selectedIds.has(r.id));
-    if (tab === "factor") setFactors(remove);
-    else if (tab === "injuryType") setInjuryTypes(remove);
-    else setOccupations(remove);
-    setSelectedIds(new Set());
-    setDeleteConfirmOpen(false);
-    setToast(`Đã xóa ${count} mục`);
+    try {
+      if (tab === "factor") {
+        await Promise.all(ids.map((id) => deleteInjuryFactor(id)));
+        setFactors(remove);
+      } else if (tab === "injuryType") {
+        await Promise.all(ids.map((id) => deleteInjuryType(id)));
+        setInjuryTypes(remove);
+      } else {
+        await Promise.all(ids.map((id) => deleteOccupation(id)));
+        setOccupations(remove);
+      }
+      setSelectedIds(new Set());
+      setDeleteConfirmOpen(false);
+      setToast(`Đã xóa ${ids.length} mục`);
+    } catch {
+      setDeleteConfirmOpen(false);
+      setToast("Xóa thất bại. Vui lòng thử lại.");
+    }
   };
 
   const parentOptions = tab === "injuryType" ? INJURY_TYPE_PARENTS : OCCUPATION_PARENTS;
@@ -366,14 +430,14 @@ export default function CategoryPage() {
         onClose={() => setPanelOpen(false)}
         footer={
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setPanelOpen(false)} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">Huỷ bỏ</button>
-            <button type="button" onClick={savePanel} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]">
+            <button type="button" onClick={() => setPanelOpen(false)} disabled={saving} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50">Huỷ bỏ</button>
+            <button type="button" onClick={savePanel} disabled={saving} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                 <polyline points="17 21 17 13 7 13 7 21" />
                 <polyline points="7 3 7 8 15 8" />
               </svg>
-              Lưu lại
+              {saving ? "Đang lưu..." : "Lưu lại"}
             </button>
           </div>
         }

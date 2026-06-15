@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import {
-  INITIAL_ACCIDENT_REPORTS,
   DETAIL_REPORT_ROWS,
   EMPTY_VALS,
   TONGHOP_I_ROWS,
   TONGHOP_II_GROUPS,
   type AccidentReport,
 } from "@/libs/tts/accident-report/accidentReportData";
+import { getAccidentReportList } from "@/libs/tts/accident-report/accidentReportApi";
 import { exportTonghopDocx } from "@/libs/tts/accident-report/exportTonghopDocx";
 import { exportDetailDocx } from "@/libs/tts/accident-report/exportDetailDocx";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
@@ -29,7 +29,13 @@ const fmtRate = (n: number, d: number) => (d === 0 ? "0" : ((n / d) * 1000).toFi
 
 export default function AccidentReportPage() {
   const [view, setView] = useState<ViewMode>("list");
-  const [reports] = useState<AccidentReport[]>(INITIAL_ACCIDENT_REPORTS);
+  const [reports, setReports] = useState<AccidentReport[]>([]);
+
+  useEffect(() => {
+    getAccidentReportList({ page: 1, pageSize: 1000 })
+      .then((res) => setReports(res.data))
+      .catch(() => {});
+  }, []);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [fTen, setFTen] = useState("");

@@ -722,7 +722,7 @@ export default function EnterprisePage() {
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
                     <FieldGroup label="Ngành nghề kinh doanh, chính" required>
                       <SearchableSelect
-                        options={nganhCap4Options.map((o) => o.label)}
+                        options={nganhCap4Options}
                         value={form.mainIndustry}
                         placeholder="-- Chọn ngành nghề --"
                         onChange={(v) => setField("mainIndustry", v)}

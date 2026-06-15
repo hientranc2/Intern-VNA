@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
+import { getDnReportList } from "@/libs/tts/accident-report/enterpriseReportApi";
 
 type PageView = "list" | "form";
 type FormSection = "ttct" | "tnld" | "tongquan";
@@ -30,11 +31,6 @@ type AccidentDetail = {
   yeuTo: string;
 };
 
-const INITIAL_REPORTS: ReportRecord[] = [
-  { id: 1, ten: "Công ty TNHH Thương mại Dịch vụ Vận tải Phạm Thiên Ân", mst: "0317118106", ky: "6 tháng", tt: "Đang báo cáo" },
-  { id: 2, ten: "Công ty TNHH Thương mại Dịch vụ Vận tải Phạm Thiên Ân", mst: "0317118106", ky: "Cả năm", tt: "Đã nộp" },
-];
-
 const SECTION_OPTIONS: { value: FormSection; label: string }[] = [
   { value: "ttct", label: "Thông tin doanh nghiệp" },
   { value: "tnld", label: "2. Tai nạn lao động được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ" },
@@ -59,6 +55,13 @@ export default function EnterpriseReportPage() {
   const [section, setSection] = useState<FormSection>("ttct");
   const [subTab, setSubTab] = useState<SubTab>("tongSo");
   const [toast, setToast] = useState<string | null>(null);
+  const [reports, setReports] = useState<ReportRecord[]>([]);
+
+  useEffect(() => {
+    getDnReportList()
+      .then(setReports)
+      .catch(() => {});
+  }, []);
 
   // Thông tin công ty
   const [totalLao, setTotalLao] = useState("10");
@@ -200,7 +203,7 @@ export default function EnterpriseReportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {INITIAL_REPORTS.map((r) => (
+                  {reports.map((r) => (
                     <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
                       <td className="px-3.5 py-2.5">
                         <div className="flex gap-1">
@@ -242,7 +245,7 @@ export default function EnterpriseReportPage() {
                 </tbody>
               </table>
               <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#374151]">
-                <span className="text-[#6b7280]">1 - {INITIAL_REPORTS.length} of {INITIAL_REPORTS.length}</span>
+                <span className="text-[#6b7280]">1 - {reports.length} of {reports.length}</span>
               </div>
             </div>
           </div>

@@ -1,9 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
-import { INITIAL_ROLES, type Role } from "@/libs/tts/role/roleData";
-import { PERMISSIONS } from "@/libs/tts/permission/permissionData";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
+import { type Role } from "@/libs/tts/role/roleData";
+import {
+  getRoleList,
+  createRole,
+  updateRole,
+  deleteRole,
+} from "@/libs/tts/role/roleApi";
+import { type Permission } from "@/libs/tts/permission/permissionData";
+import { getPermissionList } from "@/libs/tts/permission/permissionApi";
 
 type PermRow = {
   id: string;
@@ -18,11 +26,23 @@ const FILTER_INPUT_CLASS =
 const FORM_CONTROL_CLASS =
   "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
 
-const PERM_GROUPS = PERMISSIONS.filter((p) => p.parentId === null);
-const permChildrenOf = (groupId: string) => PERMISSIONS.filter((p) => p.parentId === groupId);
-
 export default function RolePage() {
-  const [roles, setRoles] = useState<Role[]>(INITIAL_ROLES);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [allPerms, setAllPerms] = useState<Permission[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getRoleList()
+      .then(setRoles)
+      .catch(() => setToast("Không tải được danh sách vai trò"));
+    getPermissionList()
+      .then(setAllPerms)
+      .catch(() => {});
+  }, []);
+
+  const permChildrenOf = (groupId: string) =>
+    allPerms.filter((p) => p.parentId === groupId);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [filterMa, setFilterMa] = useState("");
   const [filterTen, setFilterTen] = useState("");
@@ -71,12 +91,19 @@ export default function RolePage() {
       return next;
     });
 
-  const deleteSelected = () => {
+  const deleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (!window.confirm(`Xoá ${selectedIds.size} vai trò đã chọn?`)) return;
-    setRoles((prev) => prev.filter((r) => !selectedIds.has(r.id)));
-    setSelectedIds(new Set());
-    setCurrentPage(1);
+    const ids = [...selectedIds];
+    try {
+      await Promise.all(ids.map((id) => deleteRole(id)));
+      setRoles((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+      setSelectedIds(new Set());
+      setCurrentPage(1);
+      setToast(`Đã xóa ${ids.length} vai trò`);
+    } catch {
+      setToast("Xóa thất bại. Vui lòng thử lại.");
+    }
   };
 
   const openAdd = () => {
@@ -106,7 +133,7 @@ export default function RolePage() {
     setPermExpanded({ g1: true, g2: true, g3: true });
   };
 
-  const saveRole = () => {
+  const saveRole = async () => {
     const ma = formMa.trim();
     const ten = formTen.trim();
     const errors: { ma?: string; ten?: string } = {};
@@ -117,17 +144,28 @@ export default function RolePage() {
       return;
     }
     const perms = [...checkedPerms];
-    if (editingId) {
-      setRoles((prev) => prev.map((r) => (r.id === editingId ? { ...r, ten, perms } : r)));
-    } else {
-      if (roles.some((r) => r.ma === ma)) {
-        setFormErrors({ ma: "Mã vai trò đã tồn tại" });
-        return;
+    setSaving(true);
+    try {
+      if (editingId) {
+        const updated = await updateRole(editingId, { ten, perms });
+        setRoles((prev) => prev.map((r) => (r.id === editingId ? updated : r)));
+      } else {
+        if (roles.some((r) => r.ma === ma)) {
+          setFormErrors({ ma: "Mã vai trò đã tồn tại" });
+          setSaving(false);
+          return;
+        }
+        const created = await createRole({ ma, ten, perms });
+        setRoles((prev) => [...prev, created]);
       }
-      setRoles((prev) => [...prev, { id: Date.now(), ma, ten, perms }]);
+      setFormErrors({});
+      setModalOpen(false);
+      setToast(editingId ? "Cập nhật thành công" : "Thêm mới thành công");
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Lưu thất bại. Vui lòng thử lại.");
+    } finally {
+      setSaving(false);
     }
-    setFormErrors({});
-    setModalOpen(false);
   };
 
   const permRows = useMemo<PermRow[]>(() => {
@@ -135,8 +173,11 @@ export default function RolePage() {
     const fTen = permFilterTen.toLowerCase();
     const hasFilter = Boolean(fMa || fTen);
     const rows: PermRow[] = [];
-    PERM_GROUPS.forEach((g) => {
-      const children = permChildrenOf(g.id);
+    const permGroups = allPerms.filter((p) => p.parentId === null);
+    const childrenOf = (groupId: string) =>
+      allPerms.filter((p) => p.parentId === groupId);
+    permGroups.forEach((g) => {
+      const children = childrenOf(g.id);
       const groupMatch = g.code.toLowerCase().includes(fMa) && g.name.toLowerCase().includes(fTen);
       const anyChild = children.some(
         (c) => c.code.toLowerCase().includes(fMa) && c.name.toLowerCase().includes(fTen),
@@ -151,7 +192,7 @@ export default function RolePage() {
       });
     });
     return rows;
-  }, [permFilterMa, permFilterTen, permExpanded]);
+  }, [allPerms, permFilterMa, permFilterTen, permExpanded]);
 
   const permTotal = permRows.length;
   const permLastPage = Math.max(1, Math.ceil(permTotal / permPageSize));
@@ -530,20 +571,24 @@ export default function RolePage() {
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
+              disabled={saving}
+              className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50"
             >
               Hủy bỏ
             </button>
             <button
               type="button"
               onClick={saveRole}
-              className="h-9 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]"
+              disabled={saving}
+              className="h-9 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
             >
-              Lưu
+              {saving ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
         </div>
       </div>
+
+      <Toast message={toast} onDone={() => setToast(null)} />
     </>
   );
 }

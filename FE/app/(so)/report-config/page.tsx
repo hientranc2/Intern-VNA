@@ -1,16 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { SlidePanel } from "@/libs/shared/core/components/SlidePanel/SlidePanel";
 import {
-  INITIAL_REPORT_CONFIGS,
   REPORT_NAME_OPTIONS,
   KY_OPTIONS,
   type ReportConfig,
 } from "@/libs/tts/report-config/reportConfigData";
+import {
+  getReportConfigList,
+  createReportConfig,
+  updateReportConfig,
+  toggleReportConfigActive,
+} from "@/libs/tts/report-config/reportConfigApi";
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
@@ -19,8 +24,15 @@ const FORM_CONTROL_CLASS =
 const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
 export default function ReportConfigPage() {
-  const [items, setItems] = useState<ReportConfig[]>(INITIAL_REPORT_CONFIGS);
+  const [items, setItems] = useState<ReportConfig[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getReportConfigList()
+      .then(setItems)
+      .catch(() => setToast("Không tải được danh sách cấu hình báo cáo"));
+  }, []);
 
   const [fNam, setFNam] = useState("");
   const [fTen, setFTen] = useState("");
@@ -62,7 +74,12 @@ export default function ReportConfigPage() {
 
   const toggleStatus = (id: number, active: boolean) => {
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, active } : r)));
-    setToast("Cập nhật trạng thái thành công");
+    toggleReportConfigActive(id, active)
+      .then(() => setToast("Cập nhật trạng thái thành công"))
+      .catch(() => {
+        setItems((prev) => prev.map((r) => (r.id === id ? { ...r, active: !active } : r)));
+        setToast("Cập nhật thất bại");
+      });
   };
 
   const openAdd = () => {
@@ -89,7 +106,7 @@ export default function ReportConfigPage() {
     setPanelOpen(true);
   };
 
-  const savePanel = () => {
+  const savePanel = async () => {
     const errors: typeof panelErrors = {};
     if (!inputTen) errors.ten = "Vui lòng chọn tên báo cáo";
     if (!inputNam.trim()) errors.nam = "Năm không được để trống";
@@ -109,16 +126,37 @@ export default function ReportConfigPage() {
     }
     setPanelErrors({});
     const active = inputActive === "1";
-    if (editId) {
-      setItems((prev) => prev.map((r) => (r.id === editId ? { ...r, ten: inputTen, nam: inputNam, ky: inputKy, active } : r)));
-    } else {
-      setItems((prev) => [
-        { id: Date.now(), nam: inputNam, ten: inputTen, ky: inputKy, batDau: inputBatDau, ketThuc: inputKetThuc, active },
-        ...prev,
-      ]);
+    setSaving(true);
+    try {
+      if (editId) {
+        const payload: Parameters<typeof updateReportConfig>[1] = {
+          nam: inputNam,
+          ten: inputTen,
+          ky: inputKy,
+          active,
+        };
+        if (inputBatDau) payload.batDau = inputBatDau;
+        if (inputKetThuc) payload.ketThuc = inputKetThuc;
+        const updated = await updateReportConfig(editId, payload);
+        setItems((prev) => prev.map((r) => (r.id === editId ? updated : r)));
+      } else {
+        const created = await createReportConfig({
+          nam: inputNam,
+          ten: inputTen,
+          ky: inputKy,
+          batDau: inputBatDau,
+          ketThuc: inputKetThuc,
+          active,
+        });
+        setItems((prev) => [created, ...prev]);
+      }
+      setPanelOpen(false);
+      setToast(editId ? "Cập nhật thành công" : "Thêm mới thành công");
+    } catch {
+      setToast("Lưu thất bại. Vui lòng thử lại.");
+    } finally {
+      setSaving(false);
     }
-    setPanelOpen(false);
-    setToast(editId ? "Cập nhật thành công" : "Thêm mới thành công");
   };
 
   const thBase = "border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151] whitespace-nowrap";
@@ -235,14 +273,14 @@ export default function ReportConfigPage() {
         width={400}
         footer={
           <>
-            <button type="button" onClick={() => setPanelOpen(false)} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">Huỷ bỏ</button>
-            <button type="button" onClick={savePanel} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]">
+            <button type="button" onClick={() => setPanelOpen(false)} disabled={saving} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50">Huỷ bỏ</button>
+            <button type="button" onClick={savePanel} disabled={saving} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                 <polyline points="17 21 17 13 7 13 7 21" />
                 <polyline points="7 3 7 8 15 8" />
               </svg>
-              Lưu
+              {saving ? "Đang lưu..." : "Lưu"}
             </button>
           </>
         }

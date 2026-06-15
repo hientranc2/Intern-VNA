@@ -1,15 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { PERMISSIONS, type Permission } from "@/libs/tts/permission/permissionData";
+import { useEffect, useMemo, useState } from "react";
+import { type Permission } from "@/libs/tts/permission/permissionData";
+import { getPermissionList } from "@/libs/tts/permission/permissionApi";
 
 type VisibleRow = Permission & { isGroup: boolean };
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
-
-const GROUPS = PERMISSIONS.filter((p) => p.parentId === null);
-const childrenOf = (groupId: string) => PERMISSIONS.filter((p) => p.parentId === groupId);
 
 function matches(p: Permission, loai: string, ma: string, ten: string): boolean {
   return (
@@ -20,6 +18,14 @@ function matches(p: Permission, loai: string, ma: string, ten: string): boolean 
 }
 
 export default function PermissionPage() {
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+
+  useEffect(() => {
+    getPermissionList()
+      .then(setPermissions)
+      .catch(() => {});
+  }, []);
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ g1: true });
   const [filterLoai, setFilterLoai] = useState("");
   const [filterMa, setFilterMa] = useState("");
@@ -36,8 +42,12 @@ export default function PermissionPage() {
     const ten = filterTen.toLowerCase();
     const hasFilter = Boolean(loai || ma || ten);
 
+    const groups = permissions.filter((p) => p.parentId === null);
+    const childrenOf = (groupId: string) =>
+      permissions.filter((p) => p.parentId === groupId);
+
     const rows: VisibleRow[] = [];
-    GROUPS.forEach((group) => {
+    groups.forEach((group) => {
       const children = childrenOf(group.id);
       const groupMatch = matches(group, loai, ma, ten);
       const anyChildMatch = children.some((c) => matches(c, loai, ma, ten));
@@ -52,7 +62,7 @@ export default function PermissionPage() {
       });
     });
     return rows;
-  }, [expanded, filterLoai, filterMa, filterTen]);
+  }, [permissions, expanded, filterLoai, filterMa, filterTen]);
 
   const total = visibleRows.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
