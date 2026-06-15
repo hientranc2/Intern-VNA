@@ -18,6 +18,24 @@ import { EnterpriseTypeService } from './services/enterprise-type.service';
 import { BusinessSector } from './entities/business-sector.entity';
 import { BusinessSectorController } from './controllers/business-sector.controller';
 import { BusinessSectorService } from './services/business-sector.service';
+import { Role } from './entities/role.entity';
+import { RoleController } from './controllers/role.controller';
+import { RoleService } from './services/role.service';
+import { Permission } from './entities/permission.entity';
+import { PermissionController } from './controllers/permission.controller';
+import { PermissionService } from './services/permission.service';
+import { ReportConfig } from './entities/report-config.entity';
+import { ReportConfigController } from './controllers/report-config.controller';
+import { ReportConfigService } from './services/report-config.service';
+import { InjuryFactor } from './entities/injury-factor.entity';
+import { InjuryType } from './entities/injury-type.entity';
+import { Occupation } from './entities/occupation.entity';
+import { CategoryController } from './controllers/category.controller';
+import { CategoryService } from './services/category.service';
+import { AccidentReport } from './entities/accident-report.entity';
+import { AccidentReportController } from './controllers/accident-report.controller';
+import { EnterpriseReportController } from './controllers/enterprise-report.controller';
+import { AccidentReportService } from './services/accident-report.service';
 
 @Module({
   imports: [
@@ -25,7 +43,20 @@ import { BusinessSectorService } from './services/business-sector.service';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User, Business, Account, EnterpriseType, BusinessSector],
+      entities: [
+        User,
+        Business,
+        Account,
+        EnterpriseType,
+        BusinessSector,
+        Role,
+        Permission,
+        ReportConfig,
+        InjuryFactor,
+        InjuryType,
+        Occupation,
+        AccidentReport,
+      ],
       synchronize: false,
       ssl: {
         rejectUnauthorized: false,
@@ -37,6 +68,13 @@ import { BusinessSectorService } from './services/business-sector.service';
       Account,
       EnterpriseType,
       BusinessSector,
+      Role,
+      Permission,
+      ReportConfig,
+      InjuryFactor,
+      InjuryType,
+      Occupation,
+      AccidentReport,
     ]),
     JwtModule.register({
       secret: 'thu_thap_bi_mat_vna_123',
@@ -49,6 +87,12 @@ import { BusinessSectorService } from './services/business-sector.service';
     BusinessController,
     EnterpriseTypeController,
     BusinessSectorController,
+    RoleController,
+    PermissionController,
+    ReportConfigController,
+    CategoryController,
+    AccidentReportController,
+    EnterpriseReportController,
   ],
   providers: [
     AuthService,
@@ -57,6 +101,11 @@ import { BusinessSectorService } from './services/business-sector.service';
     BusinessService,
     EnterpriseTypeService,
     BusinessSectorService,
+    RoleService,
+    PermissionService,
+    ReportConfigService,
+    CategoryService,
+    AccidentReportService,
   ],
 })
 export class AppModule {}

@@ -1,9 +1,25 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from '../services/users.service';
-import { GetUsersFilterDto, CreateUserAdminDto, UpdateUserAdminDto, ResetPasswordAdminDto } from '../dtos/user-admin.dto';
+import {
+  GetUsersFilterDto,
+  CreateUserAdminDto,
+  UpdateUserAdminDto,
+  ResetPasswordAdminDto,
+} from '../dtos/user-admin.dto';
 @Controller('admin/users')
-@UseGuards(AuthGuard('jwt')) 
+@UseGuards(AuthGuard('jwt'))
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -27,7 +43,15 @@ export class UsersController {
     return this.usersService.toggleUserStatus(id);
   }
   @Patch(':id/reset-password')
-  adminResetPassword(@Param('id') id: string, @Body() dto: ResetPasswordAdminDto) {
+  adminResetPassword(
+    @Param('id') id: string,
+    @Body() dto: ResetPasswordAdminDto,
+  ) {
     return this.usersService.adminResetPassword(id, dto);
+  }
+
+  @Delete(':id')
+  removeUser(@Param('id') id: string) {
+    return this.usersService.deleteUser(id);
   }
 }
