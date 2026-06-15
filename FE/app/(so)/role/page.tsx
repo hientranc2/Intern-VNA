@@ -58,8 +58,6 @@ export default function RolePage() {
   const [permExpanded, setPermExpanded] = useState<Record<string, boolean>>({});
   const [permFilterMa, setPermFilterMa] = useState("");
   const [permFilterTen, setPermFilterTen] = useState("");
-  const [permPage, setPermPage] = useState(1);
-  const [permPageSize, setPermPageSize] = useState(10);
 
   const filteredRoles = useMemo(() => {
     const ma = filterMa.toLowerCase();
@@ -129,8 +127,11 @@ export default function RolePage() {
   const resetPermView = () => {
     setPermFilterMa("");
     setPermFilterTen("");
-    setPermPage(1);
-    setPermExpanded({ g1: true, g2: true, g3: true });
+    // Mở rộng sẵn mọi nhóm quyền load từ API (không cứng id g1/g2/g3)
+    const expandedGroups = Object.fromEntries(
+      allPerms.filter((p) => p.parentId === null).map((g) => [g.id, true]),
+    );
+    setPermExpanded(expandedGroups);
   };
 
   const saveRole = async () => {
@@ -193,13 +194,6 @@ export default function RolePage() {
     });
     return rows;
   }, [allPerms, permFilterMa, permFilterTen, permExpanded]);
-
-  const permTotal = permRows.length;
-  const permLastPage = Math.max(1, Math.ceil(permTotal / permPageSize));
-  const permCurrent = Math.min(permPage, permLastPage);
-  const permStart = (permCurrent - 1) * permPageSize;
-  const permEnd = Math.min(permStart + permPageSize, permTotal);
-  const pagedPermRows = permRows.slice(permStart, permEnd);
 
   const toggleGroupPerm = (groupId: string, checked: boolean) => {
     const codes = permChildrenOf(groupId).map((c) => c.code);
@@ -443,8 +437,9 @@ export default function RolePage() {
 
             <div className="mb-2.5 text-[13px] font-semibold text-[#374151]">Danh sách quyền</div>
             <div className="overflow-hidden rounded-md border border-[#e5e7eb]">
+              <div className="max-h-[340px] overflow-y-auto">
               <table className="w-full border-collapse text-[13px]">
-                <thead>
+                <thead className="sticky top-0 z-10">
                   <tr>
                     <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-2.5" />
                     <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-2.5 text-left text-[12.5px] font-semibold text-[#374151]">
@@ -460,26 +455,20 @@ export default function RolePage() {
                       <input
                         className="h-7 w-full rounded border border-line px-1.5 text-xs outline-none focus:border-[#3b82f6]"
                         value={permFilterMa}
-                        onChange={(e) => {
-                          setPermFilterMa(e.target.value);
-                          setPermPage(1);
-                        }}
+                        onChange={(e) => setPermFilterMa(e.target.value)}
                       />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
                       <input
                         className="h-7 w-full rounded border border-line px-1.5 text-xs outline-none focus:border-[#3b82f6]"
                         value={permFilterTen}
-                        onChange={(e) => {
-                          setPermFilterTen(e.target.value);
-                          setPermPage(1);
-                        }}
+                        onChange={(e) => setPermFilterTen(e.target.value)}
                       />
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedPermRows.map((row) => {
+                  {permRows.map((row) => {
                     if (row.isGroup) {
                       const children = permChildrenOf(row.id);
                       const allChecked = children.length > 0 && children.every((c) => checkedPerms.has(c.code));
@@ -530,39 +519,6 @@ export default function RolePage() {
                   })}
                 </tbody>
               </table>
-              <div className="flex items-center justify-end gap-2 border-t border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-2 text-xs text-muted">
-                <select
-                  className="h-[26px] rounded border border-line px-1.5 text-xs outline-none"
-                  value={permPageSize}
-                  onChange={(e) => {
-                    setPermPageSize(Number(e.target.value));
-                    setPermPage(1);
-                  }}
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                </select>
-                <span>{permTotal === 0 ? "0 - 0 of 0" : `${permStart + 1} - ${permEnd} of ${permTotal}`}</span>
-                <button
-                  type="button"
-                  onClick={() => setPermPage((p) => Math.max(1, p - 1))}
-                  disabled={permCurrent <= 1}
-                  className="flex h-6 w-6 items-center justify-center rounded border border-line bg-white disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M15 18l-6-6 6-6" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPermPage((p) => Math.min(permLastPage, p + 1))}
-                  disabled={permEnd >= permTotal}
-                  className="flex h-6 w-6 items-center justify-center rounded border border-line bg-white disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
-                </button>
               </div>
             </div>
           </div>

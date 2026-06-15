@@ -19,14 +19,19 @@ function matches(p: Permission, loai: string, ma: string, ten: string): boolean 
 
 export default function PermissionPage() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     getPermissionList()
-      .then(setPermissions)
+      .then((list) => {
+        setPermissions(list);
+        // Mở rộng sẵn mọi nhóm quyền (không cứng id g1)
+        setExpanded(
+          Object.fromEntries(list.filter((p) => p.parentId === null).map((g) => [g.id, true])),
+        );
+      })
       .catch(() => {});
   }, []);
-
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ g1: true });
   const [filterLoai, setFilterLoai] = useState("");
   const [filterMa, setFilterMa] = useState("");
   const [filterTen, setFilterTen] = useState("");
