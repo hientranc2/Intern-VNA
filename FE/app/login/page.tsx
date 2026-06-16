@@ -7,7 +7,7 @@ import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
-import { login, loginBusiness, setToken, setBusinessId, setPermissions, getToken, getBusinessId, ApiError } from "@/libs/tts/auth/authApi";
+import { login, loginBusiness, setToken, setBusinessId, setPermissions, setIsSuper, getToken, getBusinessId, ApiError } from "@/libs/tts/auth/authApi";
 
 type FieldErrors = { username?: string; password?: string };
 
@@ -53,6 +53,7 @@ export default function LoginPage() {
         const res = await login({ username: user, password: pass, rememberMe });
         setToken(res.accessToken);
         setPermissions(res.user.permissions ?? []);
+        setIsSuper(res.user.isSuper ?? false);
         router.push("/account");
       }
     } catch (err) {

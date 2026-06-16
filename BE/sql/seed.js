@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
 const bcrypt = require('bcrypt');
+const { seedDiverse } = require('./008_diverse_seed');
 require('dotenv').config();
 
 const URL = process.env.DATABASE_URL;
@@ -169,9 +170,11 @@ async function seedSampleReports(c, businessId) {
     await runSqlFile(c, '004_sync_user_roles.sql');
     await runSqlFile(c, '005_accident_phan_loai.sql');
     await runSqlFile(c, '006_atvsld_reports.sql');
+    await runSqlFile(c, '007_role_protection.sql');
     const { businessId } = await seedDnAccount(c);
     await seedSampleReports(c, businessId);
     await seedSampleAtvsldReports(c, businessId);
+    await seedDiverse(c);
     console.log('\n=== HOÀN TẤT SEED ===');
   } finally {
     await c.end();

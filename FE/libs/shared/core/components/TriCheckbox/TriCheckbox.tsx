@@ -7,9 +7,11 @@ type TriCheckboxProps = {
   indeterminate?: boolean;
   onChange: (checked: boolean) => void;
   className?: string;
+  disabled?: boolean;
+  title?: string;
 };
 
-export function TriCheckbox({ checked, indeterminate = false, onChange, className }: TriCheckboxProps) {
+export function TriCheckbox({ checked, indeterminate = false, onChange, className, disabled = false, title }: TriCheckboxProps) {
   const ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -21,8 +23,10 @@ export function TriCheckbox({ checked, indeterminate = false, onChange, classNam
       ref={ref}
       type="checkbox"
       checked={checked}
+      disabled={disabled}
+      title={title}
       onChange={(e) => onChange(e.target.checked)}
-      className={className ?? "h-[15px] w-[15px] cursor-pointer accent-primary"}
+      className={className ?? "h-[15px] w-[15px] cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-40"}
     />
   );
 }

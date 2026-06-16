@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { type Role } from "@/libs/tts/role/roleData";
@@ -13,6 +13,7 @@ import {
 import { type Permission } from "@/libs/tts/permission/permissionData";
 import { getPermissionList } from "@/libs/tts/permission/permissionApi";
 import { useCan } from "@/libs/tts/auth/abilityContext";
+import { getIsSuper } from "@/libs/tts/auth/authApi";
 
 type PermRow = {
   id: string;
@@ -35,6 +36,13 @@ export default function RolePage() {
   const [allPerms, setAllPerms] = useState<Permission[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // User hiện tại là ADMIN/CEO? — chỉ họ mới được sửa vai trò cấp cao (is_super).
+  // Đọc 1 lần từ localStorage; server trả false để tránh hydration mismatch.
+  const isPrivileged = useSyncExternalStore(
+    () => () => {},
+    () => getIsSuper(),
+    () => false,
+  );
 
   useEffect(() => {
     getRoleList()
@@ -76,7 +84,10 @@ export default function RolePage() {
   const end = Math.min(start + pageSize, total);
   const pagedRoles = filteredRoles.slice(start, end);
 
-  const allPageChecked = pagedRoles.length > 0 && pagedRoles.every((r) => selectedIds.has(r.id));
+  // Vai trò hệ thống cấp cao không được chọn để xóa.
+  const selectableRoles = pagedRoles.filter((r) => !r.isProtected);
+  const allPageChecked =
+    selectableRoles.length > 0 && selectableRoles.every((r) => selectedIds.has(r.id));
 
   const toggleRow = (id: number, checked: boolean) =>
     setSelectedIds((prev) => {
@@ -89,22 +100,26 @@ export default function RolePage() {
   const toggleAll = (checked: boolean) =>
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      pagedRoles.forEach((r) => (checked ? next.add(r.id) : next.delete(r.id)));
+      selectableRoles.forEach((r) => (checked ? next.add(r.id) : next.delete(r.id)));
       return next;
     });
 
   const deleteSelected = async () => {
-    if (selectedIds.size === 0) return;
-    if (!window.confirm(`Xoá ${selectedIds.size} vai trò đã chọn?`)) return;
-    const ids = [...selectedIds];
+    const protectedIds = new Set(roles.filter((r) => r.isProtected).map((r) => r.id));
+    const ids = [...selectedIds].filter((id) => !protectedIds.has(id));
+    if (ids.length === 0) {
+      setToast("Vai trò hệ thống cấp cao không thể xóa");
+      return;
+    }
+    if (!window.confirm(`Xoá ${ids.length} vai trò đã chọn?`)) return;
     try {
       await Promise.all(ids.map((id) => deleteRole(id)));
-      setRoles((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+      setRoles((prev) => prev.filter((r) => !ids.includes(r.id)));
       setSelectedIds(new Set());
       setCurrentPage(1);
       setToast(`Đã xóa ${ids.length} vai trò`);
-    } catch {
-      setToast("Xóa thất bại. Vui lòng thử lại.");
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Xóa thất bại. Vui lòng thử lại.");
     }
   };
 
@@ -321,23 +336,52 @@ export default function RolePage() {
                         className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}
                       >
                         <td className="px-3.5 py-2.5">
-                          <TriCheckbox checked={selected} onChange={(c) => toggleRow(r.id, c)} />
+                          <TriCheckbox
+                            checked={selected}
+                            disabled={r.isProtected}
+                            title={r.isProtected ? "Vai trò hệ thống cấp cao — không thể xóa" : undefined}
+                            onChange={(c) => toggleRow(r.id, c)}
+                          />
                         </td>
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">
+                          <span className="inline-flex items-center gap-2">
+                            {r.ten}
+                            {r.isProtected ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[#f3f4f6] px-2 py-0.5 text-[11px] font-medium text-muted">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                                </svg>
+                                Hệ thống
+                              </span>
+                            ) : null}
+                          </span>
+                        </td>
                         <td className="px-3.5 py-2.5 text-center">
+                          {(() => {
+                            const lockedSuper = r.isSuper && !isPrivileged;
+                            const editDisabled = !canUpdate || lockedSuper;
+                            const editTitle = !canUpdate
+                              ? "Bạn không có quyền sửa"
+                              : lockedSuper
+                                ? "Chỉ ADMIN hoặc CEO mới được sửa vai trò cấp cao"
+                                : "Chỉnh sửa";
+                            return (
                           <button
                             type="button"
                             onClick={() => openEdit(r)}
-                            disabled={!canUpdate}
+                            disabled={editDisabled}
                             className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
-                            title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"}
+                            title={editTitle}
                           >
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                           </button>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );

@@ -39,6 +39,7 @@ import { AccidentReportService } from './services/accident-report.service';
 import { AtvsldReport } from './entities/atvsld-report.entity';
 import { AtvsldReportController } from './controllers/atvsld-report.controller';
 import { AtvsldReportService } from './services/atvsld-report.service';
+import { PermissionsGuard } from './guards/permissions.guard';
 
 @Module({
   imports: [
@@ -113,6 +114,7 @@ import { AtvsldReportService } from './services/atvsld-report.service';
     CategoryService,
     AccidentReportService,
     AtvsldReportService,
+    PermissionsGuard,
   ],
 })
 export class AppModule {}

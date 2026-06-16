@@ -2,20 +2,27 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../entities/role.entity';
+import { User } from '../entities/user.entity';
 import {
   CreateRoleDto,
   UpdateRoleDto,
 } from '../../libs/shared/models/role.dto';
+
+// Người gọi (lấy từ JWT) — dùng để kiểm tra đặc quyền admin/CEO.
+export type RoleRequester = { userId: string; role: string };
 
 @Injectable()
 export class RoleService {
   constructor(
     @InjectRepository(Role)
     private readonly repo: Repository<Role>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   findAll(): Promise<Role[]> {
@@ -35,8 +42,17 @@ export class RoleService {
     return this.repo.save(item);
   }
 
-  async update(id: number, dto: UpdateRoleDto): Promise<Role> {
+  async update(
+    id: number,
+    dto: UpdateRoleDto,
+    requester: RoleRequester,
+  ): Promise<Role> {
     const item = await this.findOne(id);
+    // Thông tin vai trò cấp cao (ADMIN/CEO) chỉ ADMIN hoặc CEO mới được cập nhật.
+    if (item.isSuper && !(await this.isAdminOrSuper(requester)))
+      throw new ForbiddenException(
+        'Chỉ ADMIN hoặc CEO mới được cập nhật vai trò cấp cao',
+      );
     if (dto.ten !== undefined) item.ten = dto.ten;
     if (dto.perms !== undefined) item.perms = dto.perms;
     return this.repo.save(item);
@@ -44,7 +60,21 @@ export class RoleService {
 
   async remove(id: number): Promise<{ message: string }> {
     const item = await this.findOne(id);
+    // Vai trò hệ thống cấp cao không được xóa, dù người dùng có quyền SO_C_ROLE_DELETE.
+    if (item.isProtected)
+      throw new ForbiddenException('Không thể xóa vai trò hệ thống cấp cao');
     await this.repo.remove(item);
     return { message: 'Xóa vai trò thành công' };
+  }
+
+  // Người gọi là ADMIN (role string) hoặc đang giữ một vai trò is_super (vd CEO)?
+  private async isAdminOrSuper(requester: RoleRequester): Promise<boolean> {
+    if (requester.role === 'ADMIN') return true;
+    const user = await this.userRepo.findOne({
+      where: { id: requester.userId },
+    });
+    if (!user?.roleId) return false;
+    const role = await this.repo.findOne({ where: { id: user.roleId } });
+    return Boolean(role?.isSuper);
   }
 }

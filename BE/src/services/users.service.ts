@@ -2,11 +2,13 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../entities/user.entity';
+import { Role } from '../entities/role.entity';
 import {
   GetUsersFilterDto,
   CreateUserAdminDto,
@@ -18,6 +20,7 @@ import {
 export class UsersService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
+    @InjectRepository(Role) private roleRepository: Repository<Role>,
   ) {}
 
   // 1. LẤY DANH SÁCH & TÌM KIẾM CÓ PHÂN TRANG
@@ -149,7 +152,23 @@ export class UsersService {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
 
+    // Không xóa người dùng cấp cao (ADMIN/CEO) — phải đổi vai trò về cấp thường trước.
+    if (await this.isHighRoleUser(user))
+      throw new ForbiddenException(
+        'Không thể xóa người dùng cấp cao. Hãy đổi vai trò của họ về cấp thường trước khi xóa.',
+      );
+
     await this.userRepository.remove(user);
     return { message: 'Xóa người dùng thành công' };
+  }
+
+  // User cấp cao: role string ADMIN, hoặc đang giữ một vai trò is_super (vd CEO, Quản trị viên hệ thống).
+  private async isHighRoleUser(user: User): Promise<boolean> {
+    if (user.role === 'ADMIN') return true;
+    if (!user.roleId) return false;
+    const role = await this.roleRepository.findOne({
+      where: { id: user.roleId },
+    });
+    return Boolean(role?.isSuper);
   }
 }

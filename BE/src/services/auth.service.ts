@@ -84,13 +84,15 @@ export class AuthService {
   // roleName ưu tiên tên vai trò (roleId), fallback role string (vd ADMIN).
   private async getAccessInfo(
     user: User,
-  ): Promise<{ permissions: string[]; roleName: string }> {
+  ): Promise<{ permissions: string[]; roleName: string; isSuper: boolean }> {
     const role = user.roleId
       ? await this.roleRepository.findOne({ where: { id: user.roleId } })
       : null;
 
+    // ADMIN (role string) hoặc vai trò is_super = toàn quyền (mọi Component).
+    const isSuper = user.role === 'ADMIN' || Boolean(role?.isSuper);
     let permissions: string[];
-    if (user.role === 'ADMIN') {
+    if (isSuper) {
       const all = await this.permissionRepository.find({
         where: { type: 'Component' },
       });
@@ -99,7 +101,7 @@ export class AuthService {
       permissions = role?.perms ?? [];
     }
 
-    return { permissions, roleName: role?.ten ?? user.role };
+    return { permissions, roleName: role?.ten ?? user.role, isSuper };
   }
 
   async register(dto: RegisterDto) {
@@ -150,12 +152,12 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload, { expiresIn });
     const { password, otpCode, otpExpiresAt, ...userInfo } = user;
-    const { permissions, roleName } = await this.getAccessInfo(user);
+    const { permissions, roleName, isSuper } = await this.getAccessInfo(user);
 
     return {
       message: 'Đăng nhập thành công',
       accessToken,
-      user: { ...userInfo, permissions, roleName },
+      user: { ...userInfo, permissions, roleName, isSuper },
     };
   }
 
@@ -303,8 +305,8 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     const { password, otpCode, otpExpiresAt, ...result } = user;
-    const { permissions, roleName } = await this.getAccessInfo(user);
-    return { ...result, permissions, roleName };
+    const { permissions, roleName, isSuper } = await this.getAccessInfo(user);
+    return { ...result, permissions, roleName, isSuper };
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {

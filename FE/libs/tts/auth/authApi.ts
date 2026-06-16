@@ -7,6 +7,7 @@ import { request, requestFormData } from "./apiClient";
 const TOKEN_KEY = "tts_access_token";
 const BUSINESS_ID_KEY = "tts_business_id";
 const PERMISSIONS_KEY = "tts_permissions";
+const IS_SUPER_KEY = "tts_is_super";
 
 export type AuthUser = {
   id: string;
@@ -24,6 +25,7 @@ export type AuthUser = {
   isActive: boolean;
   permissions?: string[];
   roleName?: string;
+  isSuper?: boolean; // user là ADMIN hoặc giữ vai trò toàn quyền (CEO)
 };
 
 // --- Quản lý token (chỉ chạy phía client) ---
@@ -43,6 +45,17 @@ export function clearToken(): void {
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(BUSINESS_ID_KEY);
   window.localStorage.removeItem(PERMISSIONS_KEY);
+  window.localStorage.removeItem(IS_SUPER_KEY);
+}
+
+export function setIsSuper(isSuper: boolean): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(IS_SUPER_KEY, isSuper ? "1" : "0");
+}
+
+export function getIsSuper(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(IS_SUPER_KEY) === "1";
 }
 
 export function setPermissions(perms: string[]): void {

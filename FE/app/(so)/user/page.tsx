@@ -190,9 +190,13 @@ export default function UserPage() {
   // Tên vai trò hiển thị: ưu tiên vai trò phân quyền (roleId), fallback role string (vd ADMIN).
   const roleName = (u: User) => roles.find((r) => r.id === u.roleId)?.ten ?? u.role ?? "—";
 
+  // User cấp cao (ADMIN / CEO / Quản trị viên hệ thống): không được xóa — phải đổi vai trò trước.
+  const isHighRoleUser = (u: User) =>
+    u.role === "ADMIN" || Boolean(roles.find((r) => r.id === u.roleId)?.isSuper);
+
   const start = (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalItems);
-  const selectableUsers = users.filter((u) => u.id !== currentUserId);
+  const selectableUsers = users.filter((u) => u.id !== currentUserId && !isHighRoleUser(u));
   const allPageChecked =
     selectableUsers.length > 0 && selectableUsers.every((u) => selectedIds.has(u.id));
 
@@ -208,7 +212,7 @@ export default function UserPage() {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       users.forEach((u) => {
-        if (u.id === currentUserId) return;
+        if (u.id === currentUserId || isHighRoleUser(u)) return;
         checked ? next.add(u.id) : next.delete(u.id);
       });
       return next;
@@ -342,7 +346,11 @@ export default function UserPage() {
 
   const deleteSelected = async () => {
     setIsDeleting(true);
-    const ids = Array.from(selectedIds);
+    // Phòng thủ: loại bỏ user cấp cao đã thấy trên trang (BE vẫn là chốt chặn cuối).
+    const ids = Array.from(selectedIds).filter((id) => {
+      const u = users.find((x) => x.id === id);
+      return !u || !isHighRoleUser(u);
+    });
     const results = await Promise.allSettled(ids.map((id) => deleteUser(id)));
     const failed = results.filter((r) => r.status === "rejected").length;
     setIsDeleting(false);
@@ -502,10 +510,15 @@ export default function UserPage() {
                         return (
                           <tr key={u.id} className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}>
                             <td className="px-3.5 py-2.5">
-                              {u.id === currentUserId ? (
+                              {u.id === currentUserId || isHighRoleUser(u) ? (
                                 <input
                                   type="checkbox"
                                   disabled
+                                  title={
+                                    u.id === currentUserId
+                                      ? "Không thể tự xóa tài khoản của bạn"
+                                      : "Người dùng cấp cao — đổi vai trò về cấp thường trước khi xóa"
+                                  }
                                   className="h-[15px] w-[15px] cursor-not-allowed opacity-30 accent-primary"
                                 />
                               ) : (

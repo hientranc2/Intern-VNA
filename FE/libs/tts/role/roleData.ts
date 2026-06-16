@@ -3,6 +3,8 @@ export type Role = {
   ma: string;
   ten: string;
   perms: string[];
+  isProtected?: boolean; // vai trò hệ thống cấp cao — không được xóa
+  isSuper?: boolean; // vai trò toàn quyền (như ADMIN)
 };
 
 export const INITIAL_ROLES: Role[] = [

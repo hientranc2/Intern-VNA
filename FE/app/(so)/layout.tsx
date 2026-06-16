@@ -11,6 +11,7 @@ import {
   getBusinessId,
   getPermissions,
   setPermissions,
+  setIsSuper,
   changePassword,
   ApiError,
 } from "@/libs/tts/auth/authApi";
@@ -76,6 +77,7 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
       });
       const perms = p.permissions ?? [];
       setPermissions(perms);
+      setIsSuper(p.isSuper ?? false);
       setAbility(defineAbilityFor(perms));
     }).catch(() => {});
   }, [router]);
