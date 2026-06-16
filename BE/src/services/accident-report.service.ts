@@ -15,6 +15,7 @@ import {
   UpdateEnterpriseReportDto,
 } from '../../libs/shared/models/accident-report.dto';
 
+const STATUS_DRAFT = 'Đang báo cáo';
 const STATUS_SUBMITTED = 'Đã nộp';
 const STATUS_APPROVED = 'Đã tiếp nhận';
 
@@ -80,6 +81,7 @@ export class AccidentReportService {
 
   async getSummary(query: SummaryQueryDto): Promise<{
     rows: Record<string, number[]>;
+    phanLoai: Record<string, number[]>;
   }> {
     const { nam, ky } = query;
 
@@ -88,11 +90,14 @@ export class AccidentReportService {
     if (nam) {
       const configs = await this.configRepo.find({ where: { nam } });
       where.configId = In(configs.map((c) => c.id));
-      if (configs.length === 0) return { rows: {} };
+      if (configs.length === 0) return { rows: {}, phanLoai: {} };
     }
 
     const reports = await this.repo.find({ where });
-    return { rows: this.aggregateRows(reports) };
+    return {
+      rows: this.sumKeyedRows(reports.map((r) => r.rows)),
+      phanLoai: this.sumKeyedRows(reports.map((r) => r.phanLoaiRows)),
+    };
   }
 
   // ===== Màn hình Doanh nghiệp =====
@@ -119,6 +124,24 @@ export class AccidentReportService {
         configId: report.configId,
         tongSoRows: report.rows,
         chiTietRows: report.chiTietRows,
+        phanLoaiRows: report.phanLoaiRows ?? {},
+        tongHop: {
+          soLaoDong: report.soLaoDong,
+          soLDCoBaoHiem: report.soLDCoBaoHiem,
+          soLDNu: report.soLDNu,
+          soVu: report.soVu,
+          soVuCoNguoiChet: report.soVuCoNguoiChet,
+          soVuCo2NguoiBiNan: report.soVuCo2NguoiBiNan,
+          soNguoiBiNan: report.soNguoiBiNan,
+          soNguoiBiChet: report.soNguoiBiChet,
+          soNguoiBiThuongNang: report.soNguoiBiThuongNang,
+          soNgayNghi: report.soNgayNghi,
+          tongSoTien: report.tongSoTien,
+          chiPhiYTe: report.chiPhiYTe,
+          chiPhiTraLuong: report.chiPhiTraLuong,
+          boiThuongTroCap: report.boiThuongTroCap,
+          thiethaiTaiSan: report.thiethaiTaiSan,
+        },
       },
     };
   }
@@ -131,20 +154,23 @@ export class AccidentReportService {
     if (!config)
       throw new NotFoundException('Không tìm thấy kỳ báo cáo tương ứng');
 
+    const status = dto.status ?? STATUS_SUBMITTED;
     const report = this.repo.create({
       enterpriseId: business.id,
       configId: dto.configId,
       ten: business.businessName,
       mst: business.taxCode,
       ky: config.ky,
-      status: STATUS_SUBMITTED,
+      status,
       rows: dto.tongSoRows,
       chiTietRows: dto.chiTietRows as AccidentReport['chiTietRows'],
+      phanLoaiRows: dto.phanLoaiRows ?? {},
       province: business.registeredProvince,
       ward: business.registeredWard,
       loaiHinh: business.businessType,
-      submittedAt: new Date(),
+      submittedAt: status === STATUS_DRAFT ? null : new Date(),
     });
+    this.applyTongHop(report, dto);
     const saved = await this.repo.save(report);
     return this.toDnRecord(saved);
   }
@@ -160,12 +186,49 @@ export class AccidentReportService {
     if (dto.tongSoRows !== undefined) report.rows = dto.tongSoRows;
     if (dto.chiTietRows !== undefined)
       report.chiTietRows = dto.chiTietRows as AccidentReport['chiTietRows'];
+    if (dto.phanLoaiRows !== undefined) report.phanLoaiRows = dto.phanLoaiRows;
+    if (dto.status !== undefined) {
+      report.status = dto.status;
+      if (dto.status !== STATUS_DRAFT && !report.submittedAt)
+        report.submittedAt = new Date();
+    }
+    this.applyTongHop(report, dto);
 
     const saved = await this.repo.save(report);
     return this.toDnRecord(saved);
   }
 
   // ===== Helpers =====
+
+  // Gán các trường số liệu tổng hợp (chỉ field nào được gửi lên).
+  private applyTongHop(
+    report: AccidentReport,
+    dto: UpdateEnterpriseReportDto,
+  ): void {
+    if (dto.soLaoDong !== undefined) report.soLaoDong = dto.soLaoDong;
+    if (dto.soLDCoBaoHiem !== undefined)
+      report.soLDCoBaoHiem = dto.soLDCoBaoHiem;
+    if (dto.soLDNu !== undefined) report.soLDNu = dto.soLDNu;
+    if (dto.soVu !== undefined) report.soVu = dto.soVu;
+    if (dto.soVuCoNguoiChet !== undefined)
+      report.soVuCoNguoiChet = dto.soVuCoNguoiChet;
+    if (dto.soVuCo2NguoiBiNan !== undefined)
+      report.soVuCo2NguoiBiNan = dto.soVuCo2NguoiBiNan;
+    if (dto.soNguoiBiNan !== undefined) report.soNguoiBiNan = dto.soNguoiBiNan;
+    if (dto.soNguoiBiChet !== undefined)
+      report.soNguoiBiChet = dto.soNguoiBiChet;
+    if (dto.soNguoiBiThuongNang !== undefined)
+      report.soNguoiBiThuongNang = dto.soNguoiBiThuongNang;
+    if (dto.soNgayNghi !== undefined) report.soNgayNghi = dto.soNgayNghi;
+    if (dto.tongSoTien !== undefined) report.tongSoTien = dto.tongSoTien;
+    if (dto.chiPhiYTe !== undefined) report.chiPhiYTe = dto.chiPhiYTe;
+    if (dto.chiPhiTraLuong !== undefined)
+      report.chiPhiTraLuong = dto.chiPhiTraLuong;
+    if (dto.boiThuongTroCap !== undefined)
+      report.boiThuongTroCap = dto.boiThuongTroCap;
+    if (dto.thiethaiTaiSan !== undefined)
+      report.thiethaiTaiSan = dto.thiethaiTaiSan;
+  }
 
   private async resolveBusiness(userId: string): Promise<Business> {
     const business = await this.businessRepo.findOne({
@@ -186,6 +249,7 @@ export class AccidentReportService {
       province: r.province,
       ward: r.ward,
       loaiHinh: r.loaiHinh,
+      phanLoaiRows: r.phanLoaiRows ?? {},
       soLaoDong: r.soLaoDong,
       soLDCoBaoHiem: r.soLDCoBaoHiem,
       soVu: r.soVu,
@@ -215,11 +279,14 @@ export class AccidentReportService {
     };
   }
 
-  private aggregateRows(reports: AccidentReport[]): Record<string, number[]> {
+  // Cộng dồn nhiều map keyed-by-string → number[] theo từng vị trí cột.
+  private sumKeyedRows(
+    maps: (Record<string, number[]> | null | undefined)[],
+  ): Record<string, number[]> {
     const totals: Record<string, number[]> = {};
-    for (const report of reports) {
-      const rows = report.rows ?? {};
-      for (const [key, values] of Object.entries(rows)) {
+    for (const map of maps) {
+      if (!map) continue;
+      for (const [key, values] of Object.entries(map)) {
         if (!Array.isArray(values)) continue;
         if (!totals[key]) totals[key] = values.map(() => 0);
         values.forEach((v, i) => {

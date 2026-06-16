@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -28,6 +34,10 @@ export class User {
 
   @Column({ default: 'USER' })
   role: string;
+
+  // Liên kết tới vai trò (bảng roles) để suy ra danh sách quyền. Null = chưa gán.
+  @Column({ name: 'role_id', type: 'integer', nullable: true })
+  roleId: number | null;
 
   @Column({ name: 'avatar_url', nullable: true })
   avatarUrl: string;

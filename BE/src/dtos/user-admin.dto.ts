@@ -1,4 +1,14 @@
-import { IsOptional, IsString, IsEnum, IsInt, Min, IsNotEmpty, IsEmail, MinLength, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsInt,
+  Min,
+  IsNotEmpty,
+  IsEmail,
+  MinLength,
+  IsBoolean,
+} from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 // 1. DTO hứng bộ lọc tìm kiếm và phân trang
@@ -18,6 +28,11 @@ export class GetUsersFilterDto {
   @IsOptional()
   @IsString()
   role?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  roleId?: number;
 
   @IsOptional()
   @IsString()
@@ -67,6 +82,11 @@ export class CreateUserAdminDto {
   role?: string;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  roleId?: number;
+
+  @IsOptional()
   @IsString()
   jobTitle?: string;
 
@@ -88,6 +108,11 @@ export class UpdateUserAdminDto {
   @IsOptional()
   @IsString()
   role?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  roleId?: number;
 
   @IsOptional()
   @IsString()

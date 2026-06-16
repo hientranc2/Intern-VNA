@@ -166,7 +166,7 @@ export default function AccountPage() {
           dob: p.dob ? String(p.dob).slice(0, 10) : "",
           gender: p.gender ?? "",
           jobTitle: p.jobTitle ?? "",
-          role: p.role ?? "",
+          role: p.roleName ?? p.role ?? "",
           province: p.province ?? "",
           ward: p.ward ?? "",
           address: p.address ?? "",

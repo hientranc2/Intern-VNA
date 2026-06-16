@@ -11,6 +11,7 @@ import {
   createBusinessSector,
   updateBusinessSector,
 } from "@/libs/tts/business-sector/businessSectorApi";
+import { useCan } from "@/libs/tts/auth/abilityContext";
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
@@ -22,6 +23,8 @@ const CAP_BADGE_CLASS = ["", "bg-[#eff6ff] text-[#1d4ed8]", "bg-[#f0fdf4] text-[
 const INDENT_PX = ["0", "0", "14px", "28px", "42px"];
 
 export default function BusinessSectorPage() {
+  const canCreate = useCan("create", "BUSINESS_SECTOR");
+  const canUpdate = useCan("update", "BUSINESS_SECTOR");
   const importRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<BusinessSector[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -144,7 +147,7 @@ export default function BusinessSectorPage() {
               </svg>
               Thêm từ file
             </button>
-            <button type="button" onClick={openAdd} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
+            <button type="button" onClick={openAdd} disabled={!canCreate} title={canCreate ? undefined : "Bạn không có quyền thêm"} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -193,7 +196,7 @@ export default function BusinessSectorPage() {
                           <TriCheckbox checked={selected} onChange={(c) => toggleRow(r.id, c)} />
                         </td>
                         <td className="px-3.5 py-2.5 text-center">
-                          <button type="button" onClick={() => openEdit(r)} title="Chỉnh sửa" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
+                          <button type="button" onClick={() => openEdit(r)} disabled={!canUpdate} title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"} className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />

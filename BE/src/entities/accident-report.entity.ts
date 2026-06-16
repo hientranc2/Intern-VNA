@@ -50,6 +50,10 @@ export class AccidentReport {
   @Column({ name: 'chi_tiet_rows', type: 'jsonb', default: () => "'[]'" })
   chiTietRows: AccidentDetailRow[];
 
+  // Record<string, number[13]> — phân loại TNLĐ phần II, key = mã hạng mục "1".."24"
+  @Column({ name: 'phan_loai_rows', type: 'jsonb', default: () => "'{}'" })
+  phanLoaiRows: Record<string, number[]>;
+
   // --- Thông tin tổng hợp cho màn hình Sở ---
   @Column({ nullable: true })
   province: string;

@@ -12,6 +12,7 @@ import {
 } from "@/libs/tts/role/roleApi";
 import { type Permission } from "@/libs/tts/permission/permissionData";
 import { getPermissionList } from "@/libs/tts/permission/permissionApi";
+import { useCan } from "@/libs/tts/auth/abilityContext";
 
 type PermRow = {
   id: string;
@@ -27,6 +28,9 @@ const FORM_CONTROL_CLASS =
   "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
 
 export default function RolePage() {
+  const canCreate = useCan("create", "ROLE");
+  const canUpdate = useCan("update", "ROLE");
+  const canDelete = useCan("delete", "ROLE");
   const [roles, setRoles] = useState<Role[]>([]);
   const [allPerms, setAllPerms] = useState<Permission[]>([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -219,7 +223,9 @@ export default function RolePage() {
           <button
             type="button"
             onClick={openAdd}
-            className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+            disabled={!canCreate}
+            title={canCreate ? undefined : "Bạn không có quyền thêm"}
+            className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -236,7 +242,9 @@ export default function RolePage() {
               <button
                 type="button"
                 onClick={deleteSelected}
-                className="flex h-[30px] items-center gap-1.5 rounded-[5px] bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626]"
+                disabled={!canDelete}
+                title={canDelete ? undefined : "Bạn không có quyền xóa"}
+                className="flex h-[30px] items-center gap-1.5 rounded-[5px] bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="3 6 5 6 21 6" />
@@ -321,8 +329,9 @@ export default function RolePage() {
                           <button
                             type="button"
                             onClick={() => openEdit(r)}
-                            className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
-                            title="Chỉnh sửa"
+                            disabled={!canUpdate}
+                            className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
+                            title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"}
                           >
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />

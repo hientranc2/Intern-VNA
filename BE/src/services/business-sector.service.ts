@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BusinessSector } from '../entities/business-sector.entity';
@@ -20,7 +24,8 @@ export class BusinessSectorService {
 
   async findOne(id: number): Promise<BusinessSector> {
     const item = await this.repo.findOne({ where: { id } });
-    if (!item) throw new NotFoundException('Không tìm thấy ngành nghề kinh doanh');
+    if (!item)
+      throw new NotFoundException('Không tìm thấy ngành nghề kinh doanh');
     return item;
   }
 
@@ -31,7 +36,10 @@ export class BusinessSectorService {
     return this.repo.save(item);
   }
 
-  async update(id: number, dto: UpdateBusinessSectorDto): Promise<BusinessSector> {
+  async update(
+    id: number,
+    dto: UpdateBusinessSectorDto,
+  ): Promise<BusinessSector> {
     const item = await this.findOne(id);
     if (dto.ten !== undefined) item.ten = dto.ten;
     return this.repo.save(item);

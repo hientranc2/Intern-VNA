@@ -27,6 +27,7 @@ export class UsersService {
       username,
       email,
       role,
+      roleId,
       jobTitle,
       isActive,
       page = 1,
@@ -45,6 +46,8 @@ export class UsersService {
     if (email)
       query.andWhere('user.email ILIKE :email', { email: `%${email}%` });
     if (role) query.andWhere('user.role = :role', { role });
+    if (roleId !== undefined)
+      query.andWhere('user.roleId = :roleId', { roleId });
     if (jobTitle)
       query.andWhere('user.jobTitle ILIKE :jobTitle', {
         jobTitle: `%${jobTitle}%`,

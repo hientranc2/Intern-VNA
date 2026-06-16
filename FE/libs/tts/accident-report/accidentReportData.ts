@@ -3,7 +3,7 @@ export type AccidentReport = {
   ten: string;
   mst: string;
   ky: string;
-  tt: "Đang báo cáo" | "Đã tiếp nhận";
+  tt: "Đang báo cáo" | "Đã nộp" | "Đã tiếp nhận";
   province: string;
   ward: string;
   loaiHinh: string;
@@ -22,6 +22,8 @@ export type AccidentReport = {
   chiPhiTraLuong: number;
   boiThuongTroCap: number;
   thiethaiTaiSan: number;
+  // Phân loại phần II: key mã hạng mục "1".."24" -> number[13]
+  phanLoaiRows?: Record<string, number[]>;
 };
 
 export type ReportRow =
@@ -97,6 +99,23 @@ export const TONGHOP_I_ROWS = [
   "Đơn vị kinh tế tập thể",
   "Đơn vị kinh tế cá thể",
   "Đơn vị hành chính sự nghiệp, đảng, đoàn thể, hiệp hội",
+];
+
+// 13 cột số liệu của phần II (đúng thứ tự lưu trong phanLoaiRows[ma]).
+export const PHAN_LOAI_COLS = [
+  "Số vụ",
+  "Số vụ có người chết",
+  "Số vụ ≥2 người bị nạn",
+  "Số người bị nạn",
+  "Số LĐ nữ",
+  "Số người bị chết",
+  "Số người bị thương nặng",
+  "Tổng ngày nghỉ",
+  "Tổng số tiền (1.000đ)",
+  "Y tế",
+  "Trả lương",
+  "Bồi thường/Trợ cấp",
+  "Thiệt hại tài sản (1.000đ)",
 ];
 
 export const TONGHOP_II_GROUPS: { category: string; items: { label: string; ma: string }[] }[] = [

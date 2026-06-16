@@ -8,10 +8,11 @@ import { PasswordField } from "@/libs/shared/core/components/PasswordField/Passw
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import {
-  ROLE_OPTIONS,
   GENDER_OPTIONS,
   type User,
 } from "@/libs/tts/user/userData";
+import { type Role } from "@/libs/tts/role/roleData";
+import { getRoleList } from "@/libs/tts/role/roleApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import {
   getUserList,
@@ -23,6 +24,7 @@ import {
 } from "@/libs/tts/user/userApi";
 import { ApiError } from "@/libs/tts/auth/apiClient";
 import { getProfile } from "@/libs/tts/auth/authApi";
+import { useCan } from "@/libs/tts/auth/abilityContext";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
@@ -36,7 +38,7 @@ type UserForm = {
   username: string;
   fullName: string;
   email: string;
-  role: string;
+  roleId: number | "";
   jobTitle: string;
   isActive: boolean;
   dob: string;
@@ -50,7 +52,6 @@ type FieldErrors = {
   username?: string;
   fullName?: string;
   email?: string;
-  role?: string;
   password?: string;
   dob?: string;
 };
@@ -59,7 +60,7 @@ const EMPTY_FORM: UserForm = {
   username: "",
   fullName: "",
   email: "",
-  role: "",
+  roleId: "",
   jobTitle: "",
   isActive: true,
   dob: "",
@@ -91,8 +92,12 @@ function avatarColor(username: string): string {
 }
 
 export default function UserPage() {
+  const canCreate = useCan("create", "USER");
+  const canUpdate = useCan("update", "USER");
+  const canDelete = useCan("delete", "USER");
   const importRef = useRef<HTMLInputElement>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [view, setView] = useState<ViewMode>("list");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -110,7 +115,7 @@ export default function UserPage() {
   const [fFullName, setFFullName] = useState("");
   const [fUsername, setFUsername] = useState("");
   const [fEmail, setFEmail] = useState("");
-  const [fRole, setFRole] = useState("");
+  const [fRoleId, setFRoleId] = useState("");
   const [fJobTitle, setFJobTitle] = useState("");
   const [fActive, setFActive] = useState("");
   const [fProvince, setFProvince] = useState("");
@@ -140,6 +145,7 @@ export default function UserPage() {
 
   useEffect(() => {
     getProfile().then((p) => setCurrentUserId(p.id)).catch(() => {});
+    getRoleList().then(setRoles).catch(() => {});
   }, []);
 
   const loadUsers = useCallback(async () => {
@@ -154,7 +160,7 @@ export default function UserPage() {
         fullName: dFFullName || undefined,
         username: dFUsername || undefined,
         email: dFEmail || undefined,
-        role: fRole || undefined,
+        roleId: fRoleId ? Number(fRoleId) : undefined,
         jobTitle: dFJobTitle || undefined,
         isActive: isActiveParam,
         province: fProvince || undefined,
@@ -169,7 +175,7 @@ export default function UserPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, pageSize, dFFullName, dFUsername, dFEmail, fRole, dFJobTitle, fActive, fProvince]);
+  }, [currentPage, pageSize, dFFullName, dFUsername, dFEmail, fRoleId, dFJobTitle, fActive, fProvince]);
 
   useEffect(() => {
     if (view === "list") loadUsers();
@@ -180,6 +186,9 @@ export default function UserPage() {
 
   const clearFieldError = (key: keyof FieldErrors) =>
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+
+  // Tên vai trò hiển thị: ưu tiên vai trò phân quyền (roleId), fallback role string (vd ADMIN).
+  const roleName = (u: User) => roles.find((r) => r.id === u.roleId)?.ten ?? u.role ?? "—";
 
   const start = (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalItems);
@@ -235,7 +244,7 @@ export default function UserPage() {
       username: user.username,
       fullName: user.fullName,
       email: user.email,
-      role: user.role,
+      roleId: user.roleId ?? "",
       jobTitle: user.jobTitle ?? "",
       isActive: user.isActive,
       dob: user.dob ?? "",
@@ -265,7 +274,6 @@ export default function UserPage() {
     if (!fullName) errors.fullName = "Họ và tên không được để trống";
     if (!email) errors.email = "Email không được để trống";
     else if (!isValidEmail(email)) errors.email = "Email không đúng định dạng";
-    if (!form.role) errors.role = "Vui lòng chọn vai trò";
     if (!editingId && !password) errors.password = "Mật khẩu không được để trống";
     if (form.dob && form.dob > localISODate(new Date()))
       errors.dob = "Ngày sinh không được là ngày tương lai";
@@ -281,7 +289,7 @@ export default function UserPage() {
         await updateUser(editingId, {
           fullName,
           email,
-          role: form.role,
+          roleId: form.roleId === "" ? undefined : form.roleId,
           jobTitle: form.jobTitle || undefined,
           isActive: form.isActive,
         });
@@ -292,7 +300,7 @@ export default function UserPage() {
           password,
           email,
           fullName,
-          role: form.role || undefined,
+          roleId: form.roleId === "" ? undefined : form.roleId,
           jobTitle: form.jobTitle || undefined,
           isActive: form.isActive,
         });
@@ -377,7 +385,9 @@ export default function UserPage() {
               <button
                 type="button"
                 onClick={openAdd}
-                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+                disabled={!canCreate}
+                title={canCreate ? undefined : "Bạn không có quyền thêm"}
+                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -444,10 +454,10 @@ export default function UserPage() {
                         <input className={FILTER_INPUT_CLASS} value={fEmail} onChange={(e) => { setFEmail(e.target.value); setCurrentPage(1); }} />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fRole} onChange={(e) => { setFRole(e.target.value); setCurrentPage(1); }}>
+                        <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fRoleId} onChange={(e) => { setFRoleId(e.target.value); setCurrentPage(1); }}>
                           <option value="">Tất cả</option>
-                          {ROLE_OPTIONS.map((r) => (
-                            <option key={r} value={r}>{r}</option>
+                          {roles.map((r) => (
+                            <option key={r.id} value={r.id}>{r.ten}</option>
                           ))}
                         </select>
                       </th>
@@ -507,8 +517,9 @@ export default function UserPage() {
                                 <button
                                   type="button"
                                   onClick={() => openEdit(u)}
-                                  title="Chỉnh sửa"
-                                  className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                                  disabled={!canUpdate}
+                                  title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"}
+                                  className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
                                 >
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -518,8 +529,9 @@ export default function UserPage() {
                                 <button
                                   type="button"
                                   onClick={() => { setResetTarget(u); setResetPwd(""); setResetPwdError(null); }}
-                                  title="Đặt lại mật khẩu"
-                                  className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                                  disabled={!canUpdate}
+                                  title={canUpdate ? "Đặt lại mật khẩu" : "Bạn không có quyền sửa"}
+                                  className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
                                 >
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
@@ -542,14 +554,14 @@ export default function UserPage() {
                             <td className="px-3.5 py-2.5 text-[#374151]">{u.email}</td>
                             <td className="px-3.5 py-2.5">
                               <span className="inline-block rounded-full bg-[#f3f4f6] px-2.5 py-0.5 text-xs font-medium text-[#374151]">
-                                {u.role}
+                                {roleName(u)}
                               </span>
                             </td>
                             <td className="px-3.5 py-2.5 text-[#374151]">{u.jobTitle ?? "—"}</td>
                             <td className="px-3.5 py-2.5 text-[#374151]">{u.province ?? "—"}</td>
                             <td className="px-3.5 py-2.5">
                               <div className="flex justify-center">
-                                <Switch checked={u.isActive} onChange={() => handleToggleStatus(u)} />
+                                <Switch checked={u.isActive} onChange={() => handleToggleStatus(u)} disabled={!canUpdate} />
                               </div>
                             </td>
                           </tr>
@@ -571,7 +583,7 @@ export default function UserPage() {
                         u.fullName,
                         u.username,
                         u.email,
-                        u.role,
+                        roleName(u),
                         u.jobTitle ?? "",
                         u.province ?? "",
                         u.isActive ? "Kích hoạt" : "Ngừng",
@@ -642,8 +654,8 @@ export default function UserPage() {
               <button
                 type="button"
                 onClick={saveUser}
-                disabled={isSaving}
-                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+                disabled={isSaving || (editingId ? !canUpdate : !canCreate)}
+                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
@@ -751,20 +763,17 @@ export default function UserPage() {
                     <input className={FORM_CONTROL_CLASS} placeholder="Chức danh" value={form.jobTitle} onChange={(e) => setField("jobTitle", e.target.value)} />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">Vai trò <span className="text-danger">*</span></label>
+                    <label className="text-xs text-muted">Vai trò</label>
                     <select
-                      className={`${SELECT_CLASS}${fieldErrors.role ? " border-danger" : ""}`}
-                      value={form.role}
-                      onChange={(e) => { setField("role", e.target.value); clearFieldError("role"); }}
+                      className={SELECT_CLASS}
+                      value={form.roleId}
+                      onChange={(e) => setField("roleId", e.target.value === "" ? "" : Number(e.target.value))}
                     >
                       <option value="">-- Chọn vai trò --</option>
-                      {ROLE_OPTIONS.map((r) => (
-                        <option key={r} value={r}>{r}</option>
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>{r.ten}</option>
                       ))}
                     </select>
-                    {fieldErrors.role && (
-                      <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>{fieldErrors.role}</FormHelperText>
-                    )}
                   </div>
                   <div className="col-span-2 flex flex-col gap-1">
                     <label className="text-xs text-muted">Email <span className="text-danger">*</span></label>
@@ -893,7 +902,9 @@ export default function UserPage() {
             <button
               type="button"
               onClick={() => setDeleteConfirmOpen(true)}
-              className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626]"
+              disabled={!canDelete}
+              title={canDelete ? undefined : "Bạn không có quyền xóa"}
+              className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6" />

@@ -1,18 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { PhuLucIIView } from "@/libs/tts/accident-report/PhuLucIIView";
 import {
-  INITIAL_ATVSLD_REPORTS,
-  SAMPLE_DECLARATION,
+  EMPTY_DECLARATION,
   STATUS_META,
   STATUS_OPTIONS,
   type AtvsldReport,
+  type DeclarationValues,
   type ReportStatus,
 } from "@/libs/tts/accident-report/atvsldReportData";
+import {
+  getAtvsldReportList,
+  getAtvsldReportById,
+  approveAtvsldReports,
+  rejectAtvsldReports,
+} from "@/libs/tts/accident-report/atvsldReportApi";
+import { useCan } from "@/libs/tts/auth/abilityContext";
 
 type ViewMode = "list" | "detail";
 
@@ -32,9 +39,11 @@ function StatusCell({ status }: { status: ReportStatus }) {
 }
 
 export default function SignReportPage() {
+  const canApprove = useCan("update", "SIGN_REPORT");
   const [view, setView] = useState<ViewMode>("list");
-  const [reports, setReports] = useState<AtvsldReport[]>(INITIAL_ATVSLD_REPORTS);
+  const [reports, setReports] = useState<AtvsldReport[]>([]);
   const [viewingReport, setViewingReport] = useState<AtvsldReport | null>(null);
+  const [viewValues, setViewValues] = useState<DeclarationValues>(EMPTY_DECLARATION);
   const [year, setYear] = useState("2022");
   const [toast, setToast] = useState<string | null>(null);
 
@@ -46,6 +55,16 @@ export default function SignReportPage() {
 
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  const loadReports = useCallback(() => {
+    getAtvsldReportList({ nam: Number(year), pageSize: 100 })
+      .then((res) => setReports(res.data))
+      .catch(() => setToast("Không tải được danh sách báo cáo"));
+  }, [year]);
+
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -80,24 +99,39 @@ export default function SignReportPage() {
     });
   };
 
-  const approveSelected = () => {
-    const count = selectedIds.size;
-    setReports((prev) =>
-      prev.map((r) => (selectedIds.has(r.id) ? { ...r, status: "Hoàn thành", lyDoTuChoi: undefined } : r)),
-    );
-    setToast(`Đã duyệt ${count} báo cáo`);
-    setSelectedIds(new Set());
+  const approveSelected = async () => {
+    const ids = [...selectedIds];
+    try {
+      await approveAtvsldReports(ids);
+      setToast(`Đã duyệt ${ids.length} báo cáo`);
+      setSelectedIds(new Set());
+      loadReports();
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Duyệt báo cáo thất bại");
+    }
   };
 
-  const confirmReject = () => {
-    const count = selectedIds.size;
-    setReports((prev) =>
-      prev.map((r) => (selectedIds.has(r.id) ? { ...r, status: "Từ chối", lyDoTuChoi: rejectReason.trim() || "—" } : r)),
-    );
-    setToast(`Đã từ chối ${count} báo cáo`);
-    setSelectedIds(new Set());
-    setRejectReason("");
-    setRejectOpen(false);
+  const openDetail = (report: AtvsldReport) => {
+    setViewingReport(report);
+    setViewValues(EMPTY_DECLARATION);
+    setView("detail");
+    getAtvsldReportById(report.id)
+      .then((detail) => setViewValues({ ...EMPTY_DECLARATION, ...detail.declaration }))
+      .catch(() => setToast("Không tải được nội dung báo cáo"));
+  };
+
+  const confirmReject = async () => {
+    const ids = [...selectedIds];
+    try {
+      await rejectAtvsldReports(ids, rejectReason.trim() || "—");
+      setToast(`Đã từ chối ${ids.length} báo cáo`);
+      setSelectedIds(new Set());
+      setRejectReason("");
+      setRejectOpen(false);
+      loadReports();
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Từ chối báo cáo thất bại");
+    }
   };
 
   return (
@@ -160,7 +194,7 @@ export default function SignReportPage() {
                         <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
                           <td className="px-3.5 py-2.5"><TriCheckbox checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
                           <td className="px-3.5 py-2.5">
-                            <button type="button" onClick={() => { setViewingReport(r); setView("detail"); }} title="Xem" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
+                            <button type="button" onClick={() => openDetail(r)} title="Xem" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
                               </svg>
@@ -188,11 +222,11 @@ export default function SignReportPage() {
             <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.15)]">
               <span className="flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-[12px] font-semibold text-white">{selectedIds.size}</span>
               <span className="text-[13px] text-[#374151]">dữ liệu được chọn</span>
-              <button type="button" onClick={() => setRejectOpen(true)} className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626]">
+              <button type="button" onClick={() => setRejectOpen(true)} disabled={!canApprove} title={canApprove ? undefined : "Bạn không có quyền duyệt/từ chối"} className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 102.13-9.36L1 10" /></svg>
                 Từ chối
               </button>
-              <button type="button" onClick={approveSelected} className="flex h-8 items-center gap-1.5 rounded-md bg-success px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#16a34a]">
+              <button type="button" onClick={approveSelected} disabled={!canApprove} title={canApprove ? undefined : "Bạn không có quyền duyệt/từ chối"} className="flex h-8 items-center gap-1.5 rounded-md bg-success px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-success">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
                 Duyệt báo cáo
               </button>
@@ -210,7 +244,7 @@ export default function SignReportPage() {
           </div>
           <div className="px-6 py-5">
             <div className="rounded-lg bg-white p-8 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-              <PhuLucIIView values={SAMPLE_DECLARATION} report={viewingReport ?? undefined} />
+              <PhuLucIIView values={viewValues} report={viewingReport ?? undefined} />
             </div>
           </div>
         </>

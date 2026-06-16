@@ -1,7 +1,31 @@
-import { Controller, Post, Body, Get, Put, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, Request, BadRequestException, ParseFilePipeBuilder } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Put,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Request,
+  BadRequestException,
+  ParseFilePipeBuilder,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../services/auth.service';
-import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, UpdateProfileDto, ChangePasswordDto, ChangeEmailDto, SendRegisterOtpDto, VerifyRegisterOtpDto } from '../../libs/shared/models/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+  ChangeEmailDto,
+  SendRegisterOtpDto,
+  VerifyRegisterOtpDto,
+} from '../../libs/shared/models/auth.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('auth')
@@ -9,49 +33,73 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  register(@Body() dto: RegisterDto) { return this.authService.register(dto); }
+  register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
+  }
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  login(@Body() dto: LoginDto) { return this.authService.login(dto); }
+  login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
+  }
 
   @HttpCode(HttpStatus.OK)
   @Post('business-login')
-  loginBusiness(@Body() dto: LoginDto) { return this.authService.loginBusiness(dto); }
+  loginBusiness(@Body() dto: LoginDto) {
+    return this.authService.loginBusiness(dto);
+  }
 
   @Post('forgot-password')
-  forgotPassword(@Body() dto: ForgotPasswordDto) { return this.authService.forgotPassword(dto); }
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
 
   @Post('reset-password')
-  resetPassword(@Body() dto: ResetPasswordDto) { return this.authService.resetPassword(dto); }
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
 
   @Post('register/send-otp')
-  sendRegisterOtp(@Body() dto: SendRegisterOtpDto) { return this.authService.sendRegisterOtp(dto); }
+  sendRegisterOtp(@Body() dto: SendRegisterOtpDto) {
+    return this.authService.sendRegisterOtp(dto);
+  }
 
   @Post('register/verify-otp')
-  verifyRegisterOtp(@Body() dto: VerifyRegisterOtpDto) { return this.authService.verifyRegisterOtp(dto); }
+  verifyRegisterOtp(@Body() dto: VerifyRegisterOtpDto) {
+    return this.authService.verifyRegisterOtp(dto);
+  }
 
   // --- CÁC API KHÓA BẢO MẬT (PHẢI CÓ TOKEN) ---
 
   @UseGuards(AuthGuard('jwt'))
   @Get('profile')
-  getProfile(@Request() req) { return this.authService.getProfile(req.user.userId); }
+  getProfile(@Request() req) {
+    return this.authService.getProfile(req.user.userId);
+  }
 
   @UseGuards(AuthGuard('jwt'))
   @Put('profile')
-  updateProfile(@Request() req, @Body() dto: UpdateProfileDto) { return this.authService.updateProfile(req.user.userId, dto); }
+  updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(req.user.userId, dto);
+  }
 
   @UseGuards(AuthGuard('jwt'))
   @Post('change-password')
-  changePassword(@Request() req, @Body() dto: ChangePasswordDto) { return this.authService.changePassword(req.user.userId, dto); }
+  changePassword(@Request() req, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(req.user.userId, dto);
+  }
 
   @UseGuards(AuthGuard('jwt'))
   @Post('request-change-email')
-  requestChangeEmailOtp(@Request() req) { return this.authService.requestChangeEmailOtp(req.user.userId); }
+  requestChangeEmailOtp(@Request() req) {
+    return this.authService.requestChangeEmailOtp(req.user.userId);
+  }
 
   @UseGuards(AuthGuard('jwt'))
   @Post('change-email')
-  changeEmail(@Request() req, @Body() dto: ChangeEmailDto) { return this.authService.verifyAndChangeEmail(req.user.userId, dto); }
+  changeEmail(@Request() req, @Body() dto: ChangeEmailDto) {
+    return this.authService.verifyAndChangeEmail(req.user.userId, dto);
+  }
   @Post('profile/avatar')
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file'))
@@ -68,15 +116,19 @@ export class AuthController {
         })
         .build({
           errorHttpStatusCode: HttpStatus.BAD_REQUEST,
-          fileIsRequired: true, 
+          fileIsRequired: true,
           exceptionFactory: (error) => {
             if (error.includes('expected type is')) {
-              return new BadRequestException('Chỉ chấp nhận định dạng ảnh JPG, JPEG, hoặc PNG!');
+              return new BadRequestException(
+                'Chỉ chấp nhận định dạng ảnh JPG, JPEG, hoặc PNG!',
+              );
             }
             if (error.includes('File is required')) {
-              return new BadRequestException('Vui lòng chọn một file ảnh để tải lên!');
+              return new BadRequestException(
+                'Vui lòng chọn một file ảnh để tải lên!',
+              );
             }
-            return new BadRequestException(error); 
+            return new BadRequestException(error);
           },
         }),
     )

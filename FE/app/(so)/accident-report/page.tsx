@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import {
   DETAIL_REPORT_ROWS,
@@ -42,7 +42,7 @@ export default function AccidentReportPage() {
   const [fMST, setFMST] = useState("");
   const [fKy, setFKy] = useState("");
   const [fTT, setFTT] = useState("");
-  const [selectedProvince, setSelectedProvince] = useState("Thành phố Hồ Chí Minh");
+  const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,9 +92,23 @@ export default function AccidentReportPage() {
       thiethaiTaiSan: sum(reps, "thiethaiTaiSan"),
     });
 
+    // Phần II: cộng dồn phan_loai_rows của các báo cáo đã lọc theo từng mã hạng mục.
+    const phanLoai: Record<string, number[]> = {};
+    for (const r of filtered) {
+      const map = r.phanLoaiRows ?? {};
+      for (const [key, vals] of Object.entries(map)) {
+        if (!Array.isArray(vals)) continue;
+        if (!phanLoai[key]) phanLoai[key] = vals.map(() => 0);
+        vals.forEach((v, i) => {
+          phanLoai[key][i] = (phanLoai[key][i] ?? 0) + (Number(v) || 0);
+        });
+      }
+    }
+
     return {
       total: toRow(filtered),
       byLoaiHinh: TONGHOP_I_ROWS.map((name) => toRow(filtered.filter((r) => r.loaiHinh === name))),
+      phanLoai,
     };
   }, [filtered]);
 
@@ -194,6 +208,7 @@ export default function AccidentReportPage() {
                       <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fTT} onChange={(e) => { setFTT(e.target.value); setCurrentPage(1); }}>
                         <option value="">Tất cả</option>
                         <option>Đang báo cáo</option>
+                        <option>Đã nộp</option>
                         <option>Đã tiếp nhận</option>
                       </select>
                     </th>
@@ -219,7 +234,7 @@ export default function AccidentReportPage() {
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
                         <td className="px-3.5 py-2.5">
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
-                            <span className={`inline-block h-2 w-2 rounded-full ${r.tt === "Đang báo cáo" ? "bg-[#d1d5db]" : "bg-[#3b82f6]"}`} />
+                            <span className={`inline-block h-2 w-2 rounded-full ${r.tt === "Đang báo cáo" ? "bg-[#d1d5db]" : r.tt === "Đã nộp" ? "bg-[#f59e0b]" : "bg-[#3b82f6]"}`} />
                             {r.tt}
                           </span>
                         </td>
@@ -521,20 +536,20 @@ export default function AccidentReportPage() {
                       <td className={CT_TD}>{fmtMoney(tonghopStats.total.thiethaiTaiSan)}</td>
                     </tr>
                     {TONGHOP_II_GROUPS.map((group) => (
-                      <>
-                        <tr key={`cat-${group.category}`} className="bg-[#f1f5f9]">
+                      <Fragment key={group.category}>
+                        <tr className="bg-[#f1f5f9]">
                           <td className={`${CT_TD} text-left font-semibold`} colSpan={15}>{group.category}</td>
                         </tr>
                         {group.items.map((item) => (
                           <tr key={item.ma}>
                             <td className={`${CT_TD} text-left`} style={{ paddingLeft: 20 }}>{item.label}</td>
                             <td className={CT_TD}>{item.ma}</td>
-                            {Array.from({ length: 13 }).map((_, i) => (
-                              <td key={i} className={CT_TD} />
+                            {(tonghopStats.phanLoai[item.ma] ?? Array.from({ length: 13 }, () => 0)).map((v, i) => (
+                              <td key={i} className={CT_TD}>{v || ""}</td>
                             ))}
                           </tr>
                         ))}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

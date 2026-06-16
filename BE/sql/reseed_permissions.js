@@ -21,6 +21,7 @@ const MODULES = [
   ['REPORT_CONFIG',    'Cấu hình báo cáo',        'VII',  'cấu hình báo cáo'],
   ['CATEGORY',         'Khai báo danh mục',       'VIII', 'danh mục'],
   ['ACCIDENT_REPORT',  'Báo cáo TNLĐ',            'IX',   'báo cáo TNLĐ'],
+  ['SIGN_REPORT',      'Ký báo cáo',              'X',    'ký báo cáo'],
 ];
 const ACTIONS = [
   ['VIEW',   '1', 'Xem'],
@@ -52,7 +53,7 @@ async function reseedPermissions(c, rows) {
       [r.id, r.type, r.code, r.name, r.parentId, r.stt, r.sort],
     );
   }
-  console.log(`✓ permissions: nạp lại ${rows.length} quyền thật (9 nhóm × 4 thao tác + 9 nhóm)`);
+  console.log(`✓ permissions: nạp lại ${rows.length} quyền thật (${MODULES.length} nhóm × 4 thao tác + ${MODULES.length} nhóm)`);
 }
 
 async function fixRolePerms(c, rows) {

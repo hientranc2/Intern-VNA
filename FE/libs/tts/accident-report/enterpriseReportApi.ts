@@ -23,10 +23,42 @@ export type AccidentDetailRow = {
   yeuTo: string;
 };
 
+// 13 số liệu tổng hợp phần I (khớp cột phần II của biểu mẫu Sở).
+export type ReportTongHop = {
+  soLaoDong: number;
+  soLDCoBaoHiem: number;
+  soLDNu: number;
+  soVu: number;
+  soVuCoNguoiChet: number;
+  soVuCo2NguoiBiNan: number;
+  soNguoiBiNan: number;
+  soNguoiBiChet: number;
+  soNguoiBiThuongNang: number;
+  soNgayNghi: number;
+  tongSoTien: number;
+  chiPhiYTe: number;
+  chiPhiTraLuong: number;
+  boiThuongTroCap: number;
+  thiethaiTaiSan: number;
+};
+
 export type DnReportForm = {
   configId: number;
+  status?: string;
   tongSoRows: Record<string, number[]>;
   chiTietRows: AccidentDetailRow[];
+  // Phân loại phần II: key mã hạng mục "1".."24" -> number[13]
+  phanLoaiRows?: Record<string, number[]>;
+} & Partial<ReportTongHop>;
+
+export type DnReportDetail = DnReportRecord & {
+  form: {
+    configId: number;
+    tongSoRows: Record<string, number[]>;
+    chiTietRows: AccidentDetailRow[];
+    phanLoaiRows: Record<string, number[]>;
+    tongHop: ReportTongHop;
+  };
 };
 
 export function getDnReportList() {
@@ -34,7 +66,7 @@ export function getDnReportList() {
 }
 
 export function getDnReportById(id: number) {
-  return request<DnReportRecord & { form: DnReportForm }>(`/enterprise-reports/${id}`);
+  return request<DnReportDetail>(`/enterprise-reports/${id}`);
 }
 
 export function submitDnReport(input: DnReportForm) {

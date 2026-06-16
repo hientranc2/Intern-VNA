@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EnterpriseType } from '../entities/enterprise-type.entity';
@@ -20,7 +24,8 @@ export class EnterpriseTypeService {
 
   async findOne(id: number): Promise<EnterpriseType> {
     const item = await this.repo.findOne({ where: { id } });
-    if (!item) throw new NotFoundException('Không tìm thấy loại hình kinh doanh');
+    if (!item)
+      throw new NotFoundException('Không tìm thấy loại hình kinh doanh');
     return item;
   }
 
@@ -31,7 +36,10 @@ export class EnterpriseTypeService {
     return this.repo.save(item);
   }
 
-  async update(id: number, dto: UpdateEnterpriseTypeDto): Promise<EnterpriseType> {
+  async update(
+    id: number,
+    dto: UpdateEnterpriseTypeDto,
+  ): Promise<EnterpriseType> {
     const item = await this.findOne(id);
     if (dto.ten !== undefined) item.ten = dto.ten;
     if (dto.active !== undefined) item.active = dto.active;

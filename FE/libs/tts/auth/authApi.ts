@@ -6,6 +6,7 @@ import { request, requestFormData } from "./apiClient";
 
 const TOKEN_KEY = "tts_access_token";
 const BUSINESS_ID_KEY = "tts_business_id";
+const PERMISSIONS_KEY = "tts_permissions";
 
 export type AuthUser = {
   id: string;
@@ -21,6 +22,8 @@ export type AuthUser = {
   ward?: string | null;
   address?: string | null;
   isActive: boolean;
+  permissions?: string[];
+  roleName?: string;
 };
 
 // --- Quản lý token (chỉ chạy phía client) ---
@@ -39,6 +42,24 @@ export function clearToken(): void {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(BUSINESS_ID_KEY);
+  window.localStorage.removeItem(PERMISSIONS_KEY);
+}
+
+export function setPermissions(perms: string[]): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(perms));
+}
+
+export function getPermissions(): string[] {
+  if (typeof window === "undefined") return [];
+  const raw = window.localStorage.getItem(PERMISSIONS_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export function setBusinessId(id: string): void {

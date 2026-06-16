@@ -1,4 +1,11 @@
-import { IsEmail, IsNotEmpty, MinLength, IsString, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  MinLength,
+  IsString,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 
 export class RegisterDto {
   @IsNotEmpty({ message: 'Tên đăng nhập không được để trống' })
@@ -29,7 +36,7 @@ export class LoginDto {
 
   @IsBoolean()
   @IsOptional()
-  rememberMe?: boolean; 
+  rememberMe?: boolean;
 }
 
 export class ForgotPasswordDto {

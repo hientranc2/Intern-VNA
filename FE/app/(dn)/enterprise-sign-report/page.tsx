@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { PhuLucIIView } from "@/libs/tts/accident-report/PhuLucIIView";
 import {
   DECLARATION_SECTIONS,
-  INITIAL_ATVSLD_REPORTS,
-  SAMPLE_DECLARATION,
+  EMPTY_DECLARATION,
   STATUS_META,
   STATUS_OPTIONS,
   type AtvsldReport,
@@ -14,6 +13,12 @@ import {
   type FieldDef,
   type ReportStatus,
 } from "@/libs/tts/accident-report/atvsldReportData";
+import {
+  getMyAtvsldReports,
+  getAtvsldReportById,
+  updateAtvsldReport,
+  submitAtvsldReport,
+} from "@/libs/tts/accident-report/atvsldReportApi";
 
 type PageView = "list" | "form";
 type FormStep = "khaibao" | "xembaocao";
@@ -79,10 +84,11 @@ export default function EnterpriseSignReportPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [year, setYear] = useState("2022");
 
-  const [reports, setReports] = useState<AtvsldReport[]>(INITIAL_ATVSLD_REPORTS);
+  const [reports, setReports] = useState<AtvsldReport[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [values, setValues] = useState<DeclarationValues>(SAMPLE_DECLARATION);
+  const [values, setValues] = useState<DeclarationValues>(EMPTY_DECLARATION);
   const [triedSubmit, setTriedSubmit] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [fStatus, setFStatus] = useState("");
   const [fTen, setFTen] = useState("");
@@ -93,6 +99,16 @@ export default function EnterpriseSignReportPage() {
     () => reports.find((r) => r.id === editingId),
     [reports, editingId],
   );
+
+  const loadReports = useCallback(() => {
+    getMyAtvsldReports({ nam: Number(year) })
+      .then(setReports)
+      .catch(() => setToast("Không tải được danh sách báo cáo"));
+  }, [year]);
+
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
 
   const filtered = useMemo(
     () =>
@@ -108,9 +124,13 @@ export default function EnterpriseSignReportPage() {
 
   const openForm = (report: AtvsldReport, readonly: boolean) => {
     setEditingId(report.id);
-    setValues(SAMPLE_DECLARATION);
+    setValues(EMPTY_DECLARATION);
+    setTriedSubmit(false);
     setStep(readonly ? "xembaocao" : "khaibao");
     setView("form");
+    getAtvsldReportById(report.id)
+      .then((detail) => setValues({ ...EMPTY_DECLARATION, ...detail.declaration }))
+      .catch(() => setToast("Không tải được nội dung báo cáo"));
   };
 
   const setField = (key: string, v: string) =>
@@ -129,25 +149,36 @@ export default function EnterpriseSignReportPage() {
     return true;
   };
 
-  const saveDraft = () => {
-    if (editingId != null) {
-      setReports((prev) =>
-        prev.map((r) => (r.id === editingId ? { ...r, status: "Nhập liệu" } : r)),
-      );
+  const saveDraft = async () => {
+    if (editingId == null) return;
+    setSaving(true);
+    try {
+      await updateAtvsldReport(editingId, { declaration: values });
+      setView("list");
+      setToast("Lưu báo cáo thành công");
+      loadReports();
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Lưu báo cáo thất bại");
+    } finally {
+      setSaving(false);
     }
-    setView("list");
-    setToast("Lưu báo cáo thành công");
   };
 
-  const sendReport = () => {
+  const sendReport = async () => {
     if (!validateDeclaration()) return;
-    if (editingId != null) {
-      setReports((prev) =>
-        prev.map((r) => (r.id === editingId ? { ...r, status: "Chờ tiếp nhận" } : r)),
-      );
+    if (editingId == null) return;
+    setSaving(true);
+    try {
+      await updateAtvsldReport(editingId, { declaration: values });
+      await submitAtvsldReport(editingId);
+      setView("list");
+      setToast("Gửi báo cáo thành công");
+      loadReports();
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Gửi báo cáo thất bại");
+    } finally {
+      setSaving(false);
     }
-    setView("list");
-    setToast("Gửi báo cáo thành công");
   };
 
   return (
@@ -280,10 +311,10 @@ export default function EnterpriseSignReportPage() {
                   <button type="button" onClick={() => setStep("khaibao")} className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] font-medium text-[#374151] hover:bg-body">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6" /></svg> Quay lại
                   </button>
-                  <button type="button" onClick={saveDraft} className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-semibold text-primary hover:bg-[#eff6ff]">
+                  <button type="button" onClick={saveDraft} disabled={saving} className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-semibold text-primary hover:bg-[#eff6ff] disabled:cursor-not-allowed disabled:opacity-50">
                     Lưu nháp
                   </button>
-                  <button type="button" onClick={sendReport} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
+                  <button type="button" onClick={sendReport} disabled={saving} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
                     Gửi báo cáo
                   </button>

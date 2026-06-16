@@ -1,4 +1,10 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -10,7 +16,19 @@ import * as WebSocket from 'ws';
 import { User } from '../entities/user.entity';
 import { Account } from '../entities/business_account.entity';
 import { Business } from '../entities/business.entity';
-import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, UpdateProfileDto, ChangePasswordDto, ChangeEmailDto, SendRegisterOtpDto, VerifyRegisterOtpDto } from '../../libs/shared/models/auth.dto';
+import { Role } from '../entities/role.entity';
+import { Permission } from '../entities/permission.entity';
+import {
+  RegisterDto,
+  LoginDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+  ChangeEmailDto,
+  SendRegisterOtpDto,
+  VerifyRegisterOtpDto,
+} from '../../libs/shared/models/auth.dto';
 import 'multer';
 
 @Injectable()
@@ -18,7 +36,7 @@ export class AuthService {
   private transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.MAIL_USER, 
+      user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASS,
     },
   });
@@ -30,7 +48,7 @@ export class AuthService {
       auth: {
         persistSession: false,
       },
-    }
+    },
   );
 
   // Service role key bypass RLS — chỉ dùng cho storage admin operations
@@ -42,17 +60,47 @@ export class AuthService {
         persistSession: false,
         autoRefreshToken: false,
       },
-    }
+    },
   );
 
-  private registerOtpStore = new Map<string, { code: string; expiresAt: Date }>();
+  private registerOtpStore = new Map<
+    string,
+    { code: string; expiresAt: Date }
+  >();
 
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Account) private accountRepository: Repository<Account>,
-    @InjectRepository(Business) private businessRepository: Repository<Business>,
+    @InjectRepository(Business)
+    private businessRepository: Repository<Business>,
+    @InjectRepository(Role) private roleRepository: Repository<Role>,
+    @InjectRepository(Permission)
+    private permissionRepository: Repository<Permission>,
     private jwtService: JwtService,
   ) {}
+
+  // Suy ra quyền + tên vai trò hiển thị của user (nạp vai trò 1 lần).
+  // role ADMIN = toàn quyền (mọi Component); ngược lại lấy theo vai trò đã gán.
+  // roleName ưu tiên tên vai trò (roleId), fallback role string (vd ADMIN).
+  private async getAccessInfo(
+    user: User,
+  ): Promise<{ permissions: string[]; roleName: string }> {
+    const role = user.roleId
+      ? await this.roleRepository.findOne({ where: { id: user.roleId } })
+      : null;
+
+    let permissions: string[];
+    if (user.role === 'ADMIN') {
+      const all = await this.permissionRepository.find({
+        where: { type: 'Component' },
+      });
+      permissions = all.map((p) => p.code);
+    } else {
+      permissions = role?.perms ?? [];
+    }
+
+    return { permissions, roleName: role?.ten ?? user.role };
+  }
 
   async register(dto: RegisterDto) {
     const existingUser = await this.userRepository.findOne({
@@ -76,26 +124,39 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.userRepository.findOne({ where: { username: dto.username } });
+    const user = await this.userRepository.findOne({
+      where: { username: dto.username },
+    });
     if (!user) {
-      throw new UnauthorizedException('Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại');
+      throw new UnauthorizedException(
+        'Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại',
+      );
     }
     if (!user.isActive) {
-      throw new UnauthorizedException('Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.');
+      throw new UnauthorizedException(
+        'Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại');
+      throw new UnauthorizedException(
+        'Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại',
+      );
     }
 
-    const expiresIn = dto.rememberMe ? '7d' : '1h'; 
+    const expiresIn = dto.rememberMe ? '7d' : '1h';
     const payload = { sub: user.id, username: user.username, role: user.role };
-    
+
     const accessToken = this.jwtService.sign(payload, { expiresIn });
     const { password, otpCode, otpExpiresAt, ...userInfo } = user;
+    const { permissions, roleName } = await this.getAccessInfo(user);
 
-    return { message: 'Đăng nhập thành công', accessToken, user: userInfo };
+    return {
+      message: 'Đăng nhập thành công',
+      accessToken,
+      user: { ...userInfo, permissions, roleName },
+    };
   }
 
   async loginBusiness(dto: LoginDto) {
@@ -104,12 +165,19 @@ export class AuthService {
     });
 
     if (!account) {
-      throw new UnauthorizedException('Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại');
+      throw new UnauthorizedException(
+        'Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại',
+      );
     }
 
-    const isPasswordValid = await bcrypt.compare(dto.password, account.password);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      account.password,
+    );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại');
+      throw new UnauthorizedException(
+        'Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại',
+      );
     }
 
     const business = await this.businessRepository.findOne({
@@ -117,11 +185,17 @@ export class AuthService {
     });
 
     if (!business?.isActive) {
-      throw new UnauthorizedException('Tài khoản doanh nghiệp đã bị vô hiệu hóa. Vui lòng liên hệ cơ quan quản lý.');
+      throw new UnauthorizedException(
+        'Tài khoản doanh nghiệp đã bị vô hiệu hóa. Vui lòng liên hệ cơ quan quản lý.',
+      );
     }
 
     const expiresIn = dto.rememberMe ? '7d' : '1h';
-    const payload = { sub: account.id, username: account.username, role: account.role };
+    const payload = {
+      sub: account.id,
+      username: account.username,
+      role: account.role,
+    };
     const accessToken = this.jwtService.sign(payload, { expiresIn });
 
     return {
@@ -138,8 +212,11 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const user = await this.userRepository.findOne({ where: { email: dto.email } });
-    if (!user) throw new NotFoundException('Không tìm thấy tài khoản với email này');
+    const user = await this.userRepository.findOne({
+      where: { email: dto.email },
+    });
+    if (!user)
+      throw new NotFoundException('Không tìm thấy tài khoản với email này');
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date();
@@ -149,8 +226,8 @@ export class AuthService {
     user.otpExpiresAt = expiresAt;
     await this.userRepository.save(user);
 
-    console.log(`[MÃ OTP CỦA ${user.email} LÀ]: ${otp}`); 
-    
+    console.log(`[MÃ OTP CỦA ${user.email} LÀ]: ${otp}`);
+
     const htmlTemplate = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
   
@@ -190,27 +267,30 @@ export class AuthService {
   </div>
 </div>
 `;
-    
+
     try {
       await this.transporter.sendMail({
         from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
         to: user.email,
         subject: 'Mã OTP khôi phục mật khẩu - VNA GROUP',
-        html: htmlTemplate,   
+        html: htmlTemplate,
       });
     } catch (error) {
-       console.error('--- LỖI GỬI MAIL THỰC TẾ TỪ GOOGLE ---');
-       console.error(error);   
+      console.error('--- LỖI GỬI MAIL THỰC TẾ TỪ GOOGLE ---');
+      console.error(error);
     }
 
     return { message: 'Mã OTP đã được gửi đến email của bạn!' };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const user = await this.userRepository.findOne({ where: { email: dto.email, otpCode: dto.otpCode } });
-    
+    const user = await this.userRepository.findOne({
+      where: { email: dto.email, otpCode: dto.otpCode },
+    });
+
     if (!user) throw new BadRequestException('Mã OTP không chính xác');
-    if (new Date() > user.otpExpiresAt) throw new BadRequestException('Mã OTP đã hết hạn');
+    if (new Date() > user.otpExpiresAt)
+      throw new BadRequestException('Mã OTP đã hết hạn');
 
     user.password = await bcrypt.hash(dto.newPassword, 10);
     user.otpCode = null;
@@ -223,7 +303,8 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     const { password, otpCode, otpExpiresAt, ...result } = user;
-    return result;
+    const { permissions, roleName } = await this.getAccessInfo(user);
+    return { ...result, permissions, roleName };
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -242,7 +323,8 @@ export class AuthService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('Không tìm thấy tài khoản');
     const isOldPassValid = await bcrypt.compare(dto.oldPassword, user.password);
-    if (!isOldPassValid) throw new BadRequestException('Mật khẩu cũ không chính xác');
+    if (!isOldPassValid)
+      throw new BadRequestException('Mật khẩu cũ không chính xác');
 
     user.password = await bcrypt.hash(dto.newPassword, 10);
     await this.userRepository.save(user);
@@ -252,7 +334,7 @@ export class AuthService {
   async requestChangeEmailOtp(userId: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('Không tìm thấy tài khoản');
-    
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 5);
@@ -309,7 +391,9 @@ export class AuthService {
         html: htmlTemplate, // Đổi từ text sang html
       });
     } catch (error) {
-      console.log('Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.');
+      console.log(
+        'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
+      );
     }
     return { message: 'Đã gửi mã OTP đến email HIỆN TẠI của bạn' };
   }
@@ -317,14 +401,21 @@ export class AuthService {
   async verifyAndChangeEmail(userId: string, dto: ChangeEmailDto) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('Không tìm thấy tài khoản');
-    if (user.otpCode !== dto.otpCode) throw new BadRequestException('Mã OTP không chính xác');
-    if (new Date() > user.otpExpiresAt) throw new BadRequestException('Mã OTP đã hết hạn');
+    if (user.otpCode !== dto.otpCode)
+      throw new BadRequestException('Mã OTP không chính xác');
+    if (new Date() > user.otpExpiresAt)
+      throw new BadRequestException('Mã OTP đã hết hạn');
 
-    const emailExist = await this.userRepository.findOne({ where: { email: dto.newEmail } });
-    if (emailExist) throw new ConflictException('Email mới này đã được sử dụng bởi người khác!');
+    const emailExist = await this.userRepository.findOne({
+      where: { email: dto.newEmail },
+    });
+    if (emailExist)
+      throw new ConflictException(
+        'Email mới này đã được sử dụng bởi người khác!',
+      );
 
     user.email = dto.newEmail;
-    user.otpCode = null;  
+    user.otpCode = null;
     user.otpExpiresAt = null;
     await this.userRepository.save(user);
 
@@ -364,7 +455,9 @@ export class AuthService {
         html: htmlTemplate,
       });
     } catch (error) {
-      console.log('Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.');
+      console.log(
+        'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
+      );
     }
 
     return { message: 'Mã OTP đã được gửi đến email của bạn!' };
@@ -372,12 +465,16 @@ export class AuthService {
 
   async verifyRegisterOtp(dto: VerifyRegisterOtpDto) {
     const stored = this.registerOtpStore.get(dto.email);
-    if (!stored) throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    if (!stored)
+      throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
     if (new Date() > stored.expiresAt) {
       this.registerOtpStore.delete(dto.email);
-      throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng yêu cầu gửi lại');
+      throw new BadRequestException(
+        'Mã OTP đã hết hạn. Vui lòng yêu cầu gửi lại',
+      );
     }
-    if (stored.code !== dto.otpCode) throw new BadRequestException('Mã OTP không đúng');
+    if (stored.code !== dto.otpCode)
+      throw new BadRequestException('Mã OTP không đúng');
     this.registerOtpStore.delete(dto.email);
     return { message: 'Xác thực OTP thành công' };
   }
@@ -391,7 +488,9 @@ export class AuthService {
 
     // 2. Đẩy file vật lý lên Supabase Storage — dùng admin client để bypass RLS
     // Convert Buffer → Blob vì native fetch (Node 18+) không handle Buffer trực tiếp
-    const fileBlob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
+    const fileBlob = new Blob([new Uint8Array(file.buffer)], {
+      type: file.mimetype,
+    });
     const { data, error } = await this.supabaseAdmin.storage
       .from('avatars')
       .upload(fileName, fileBlob, {
@@ -414,9 +513,9 @@ export class AuthService {
     // 4. Lưu cái link đó vào CSDL Postgres của chúng ta
     await this.userRepository.update(userId, { avatarUrl: avatarUrl });
 
-    return { 
-      message: 'Cập nhật ảnh đại diện thành công', 
-      avatarUrl: avatarUrl 
+    return {
+      message: 'Cập nhật ảnh đại diện thành công',
+      avatarUrl: avatarUrl,
     };
   }
 }

@@ -16,6 +16,7 @@ import {
   updateReportConfig,
   toggleReportConfigActive,
 } from "@/libs/tts/report-config/reportConfigApi";
+import { useCan } from "@/libs/tts/auth/abilityContext";
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
@@ -24,6 +25,8 @@ const FORM_CONTROL_CLASS =
 const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
 export default function ReportConfigPage() {
+  const canCreate = useCan("create", "REPORT_CONFIG");
+  const canUpdate = useCan("update", "REPORT_CONFIG");
   const [items, setItems] = useState<ReportConfig[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -165,7 +168,7 @@ export default function ReportConfigPage() {
     <>
       <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
           <h1 className="text-base font-semibold text-ink">Danh sách cấu hình báo cáo</h1>
-          <button type="button" onClick={openAdd} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
+          <button type="button" onClick={openAdd} disabled={!canCreate} title={canCreate ? undefined : "Bạn không có quyền thêm"} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -223,7 +226,7 @@ export default function ReportConfigPage() {
                     paged.map((r) => (
                       <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
                         <td className="px-3.5 py-2.5">
-                          <button type="button" onClick={() => openEdit(r)} title="Chỉnh sửa" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
+                          <button type="button" onClick={() => openEdit(r)} disabled={!canUpdate} title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"} className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -237,7 +240,7 @@ export default function ReportConfigPage() {
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ketThuc}</td>
                         <td className="px-3.5 py-2.5">
                           <div className="flex justify-center">
-                            <Switch checked={r.active} onChange={(c) => toggleStatus(r.id, c)} />
+                            <Switch checked={r.active} onChange={(c) => toggleStatus(r.id, c)} disabled={!canUpdate} />
                           </div>
                         </td>
                       </tr>

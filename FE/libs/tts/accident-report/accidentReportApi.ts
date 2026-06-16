@@ -46,10 +46,15 @@ export function approveAccidentReport(id: number) {
   });
 }
 
+export type SummaryResponse = {
+  rows: Record<string, number[]>;
+  phanLoai: Record<string, number[]>;
+};
+
 export function getSummaryReport(params?: { nam?: string; ky?: string }) {
   const query = new URLSearchParams();
   if (params?.nam) query.set("nam", params.nam);
   if (params?.ky) query.set("ky", params.ky);
   const qs = query.toString();
-  return request<{ rows: Record<string, number[]> }>(`/accident-reports/summary${qs ? `?${qs}` : ""}`);
+  return request<SummaryResponse>(`/accident-reports/summary${qs ? `?${qs}` : ""}`);
 }

@@ -57,7 +57,12 @@ INSERT INTO permissions (id, type, code, name, parent_id, stt, sort_order) VALUE
   ('SO_C_ACCIDENT_REPORT_VIEW',  'Component','SO_C_ACCIDENT_REPORT_VIEW',  'Xem báo cáo TNLĐ',  'SO_G_ACCIDENT_REPORT', '1', 41),
   ('SO_C_ACCIDENT_REPORT_CREATE','Component','SO_C_ACCIDENT_REPORT_CREATE','Thêm báo cáo TNLĐ', 'SO_G_ACCIDENT_REPORT', '2', 42),
   ('SO_C_ACCIDENT_REPORT_UPDATE','Component','SO_C_ACCIDENT_REPORT_UPDATE','Sửa báo cáo TNLĐ',  'SO_G_ACCIDENT_REPORT', '3', 43),
-  ('SO_C_ACCIDENT_REPORT_DELETE','Component','SO_C_ACCIDENT_REPORT_DELETE','Xóa báo cáo TNLĐ',  'SO_G_ACCIDENT_REPORT', '4', 44)
+  ('SO_C_ACCIDENT_REPORT_DELETE','Component','SO_C_ACCIDENT_REPORT_DELETE','Xóa báo cáo TNLĐ',  'SO_G_ACCIDENT_REPORT', '4', 44),
+  ('SO_G_SIGN_REPORT',      'Group',     'SO_G_SIGN_REPORT',      'Ký báo cáo',             NULL,              'X',    45),
+  ('SO_C_SIGN_REPORT_VIEW',  'Component','SO_C_SIGN_REPORT_VIEW',  'Xem ký báo cáo',    'SO_G_SIGN_REPORT', '1', 46),
+  ('SO_C_SIGN_REPORT_CREATE','Component','SO_C_SIGN_REPORT_CREATE','Thêm ký báo cáo',   'SO_G_SIGN_REPORT', '2', 47),
+  ('SO_C_SIGN_REPORT_UPDATE','Component','SO_C_SIGN_REPORT_UPDATE','Sửa ký báo cáo',    'SO_G_SIGN_REPORT', '3', 48),
+  ('SO_C_SIGN_REPORT_DELETE','Component','SO_C_SIGN_REPORT_DELETE','Xóa ký báo cáo',    'SO_G_SIGN_REPORT', '4', 49)
 ON CONFLICT (id) DO NOTHING;
 
 -- ---------------------------------------------------------------------------

@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class CreateBusinessSectorDto {

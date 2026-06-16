@@ -25,7 +25,12 @@ import {
   BusinessToggleStatusDto,
 } from '../../libs/shared/models/business.dto';
 
-const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const fileUploadOptions = {
@@ -35,7 +40,10 @@ const fileUploadOptions = {
     if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new BadRequestException('Chỉ chấp nhận file PDF, JPG, JPEG, PNG'), false);
+      cb(
+        new BadRequestException('Chỉ chấp nhận file PDF, JPG, JPEG, PNG'),
+        false,
+      );
     }
   },
 };
@@ -113,10 +121,7 @@ export class BusinessController {
   }
 
   @Patch(':id/status')
-  toggleStatus(
-    @Param('id') id: string,
-    @Body() dto: BusinessToggleStatusDto,
-  ) {
+  toggleStatus(@Param('id') id: string, @Body() dto: BusinessToggleStatusDto) {
     return this.businessService.toggleStatus(id, dto);
   }
 

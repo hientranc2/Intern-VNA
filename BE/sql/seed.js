@@ -95,6 +95,41 @@ async function seedDnAccount(c) {
   return { businessId: biz.rows[0].id };
 }
 
+async function seedSampleAtvsldReports(c, businessId) {
+  if (!businessId) return;
+  const existing = await c.query('SELECT count(*)::int AS n FROM atvsld_reports WHERE enterprise_id = $1', [businessId]);
+  if (existing.rows[0].n > 0) {
+    console.log('  atvsld_reports mẫu đã có, bỏ qua');
+    return;
+  }
+  const declaration = JSON.stringify({
+    tongLaoDong: '179', nguoiATVSLD: '0', nguoiYTe: '0', laoDongNu: '0',
+    tnldTongVu: '0', bnnChiPhi: '10.2', skLoai2: '4', skLoai3: '6',
+    hlNhom1: '10/10', hlNhom2: '6/12', hlTongChiPhi: '10.2',
+    mayTongSo: '4', qtTongMau: '60', qtKhongDat: '20', thoiDiemDanhGia: '04/2022',
+  });
+  const rows = [
+    ['Cả năm', '01/01/2022', '31/12/2022', '', '', 'Nhập liệu', null],
+    ['6 tháng', '01/01/2022', '30/06/2022', '01/07/2022', '01/07/2022', 'Chờ tiếp nhận', null],
+    ['Cả năm', '01/01/2021', '31/12/2021', '03/07/2021', '06/07/2021', 'Từ chối', 'Kiểm tra lại dữ liệu'],
+  ];
+  for (const [ky, batDau, ketThuc, nop, capNhat, status, lyDo] of rows) {
+    const nam = parseInt(ketThuc.slice(-4), 10);
+    await c.query(
+      `INSERT INTO atvsld_reports
+         (enterprise_id, ten, mst, nam, ky, ngay_bat_dau, ngay_ket_thuc, ngay_nop,
+          nguoi_chinh_sua, province, ward, status, ly_do_tu_choi, declaration, submitted_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,$16)`,
+      [
+        businessId, 'CÔNG TY TNHH DEMO VNA', 'DN-DEMO-0001', nam, ky, batDau, ketThuc, nop,
+        'Phan Thanh Tùng', 'Thành phố Hồ Chí Minh', 'Phường Bình Thọ', status, lyDo,
+        declaration, nop ? new Date() : null, capNhat ? new Date() : new Date(),
+      ],
+    );
+  }
+  console.log('✓ thêm 3 atvsld_reports mẫu (Nhập liệu / Chờ tiếp nhận / Từ chối)');
+}
+
 async function seedSampleReports(c, businessId) {
   if (!businessId) return;
   const existing = await c.query('SELECT count(*)::int AS n FROM accident_reports WHERE enterprise_id = $1', [businessId]);
@@ -129,9 +164,14 @@ async function seedSampleReports(c, businessId) {
   try {
     await runSqlFile(c, '001_new_resources.sql');
     await runSqlFile(c, '002_seed.sql');
+    await runSqlFile(c, '003_user_role_link.sql');
     await seedSoAdmin(c);
+    await runSqlFile(c, '004_sync_user_roles.sql');
+    await runSqlFile(c, '005_accident_phan_loai.sql');
+    await runSqlFile(c, '006_atvsld_reports.sql');
     const { businessId } = await seedDnAccount(c);
     await seedSampleReports(c, businessId);
+    await seedSampleAtvsldReports(c, businessId);
     console.log('\n=== HOÀN TẤT SEED ===');
   } finally {
     await c.end();

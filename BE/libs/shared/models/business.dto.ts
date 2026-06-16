@@ -87,7 +87,7 @@ export class BusinessCreateDto {
 
   @IsEmail({}, { message: 'Email không hợp lệ' })
   @IsNotEmpty({ message: 'Email không được để trống' })
-  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   email: string;
 
   @IsOptional()
@@ -117,7 +117,9 @@ export class BusinessCreateDto {
 
   @IsOptional()
   @Transform(emptyToUndefined)
-  @Matches(VN_PHONE_REGEX, { message: 'Số điện thoại người đại diện không hợp lệ' })
+  @Matches(VN_PHONE_REGEX, {
+    message: 'Số điện thoại người đại diện không hợp lệ',
+  })
   representativePhone?: string;
 }
 
@@ -132,8 +134,14 @@ export class BusinessUpdateDto {
   @IsDateString({}, { message: 'Ngày cấp GPKD không hợp lệ' })
   licenseDate?: string;
 
-  @IsOptional() @Transform(emptyToUndefined) @IsString() registeredProvince?: string;
-  @IsOptional() @Transform(emptyToUndefined) @IsString() registeredWard?: string;
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  registeredProvince?: string;
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  registeredWard?: string;
   @IsOptional() @Transform(emptyToUndefined) @IsString() address?: string;
   @IsOptional() @Transform(emptyToUndefined) @IsString() foreignName?: string;
 
@@ -147,14 +155,25 @@ export class BusinessUpdateDto {
   @Matches(VN_PHONE_REGEX, { message: 'Số điện thoại văn phòng không hợp lệ' })
   officePhone?: string;
 
-  @IsOptional() @Transform(emptyToUndefined) @IsString() operatingProvince?: string;
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  operatingProvince?: string;
   @IsOptional() @Transform(emptyToUndefined) @IsString() operatingWard?: string;
-  @IsOptional() @Transform(emptyToUndefined) @IsString() operatingAddress?: string;
-  @IsOptional() @Transform(emptyToUndefined) @IsString() representative?: string;
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  operatingAddress?: string;
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  representative?: string;
 
   @IsOptional()
   @Transform(emptyToUndefined)
-  @Matches(VN_PHONE_REGEX, { message: 'Số điện thoại người đại diện không hợp lệ' })
+  @Matches(VN_PHONE_REGEX, {
+    message: 'Số điện thoại người đại diện không hợp lệ',
+  })
   representativePhone?: string;
 }
 
@@ -163,7 +182,10 @@ export class BusinessQueryDto {
   @IsOptional() @Transform(emptyToUndefined) @IsString() taxCode?: string;
   @IsOptional() @Transform(emptyToUndefined) @IsString() businessType?: string;
   @IsOptional() @Transform(emptyToUndefined) @IsString() mainIndustry?: string;
-  @IsOptional() @Transform(emptyToUndefined) @IsString() registeredWard?: string;
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  registeredWard?: string;
   @IsOptional() @IsBoolean() @Type(() => Boolean) isActive?: boolean;
   @IsOptional() @Type(() => Number) page?: number = 1;
   @IsOptional() @Type(() => Number) limit?: number = 10;

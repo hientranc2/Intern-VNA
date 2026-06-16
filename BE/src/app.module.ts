@@ -36,6 +36,9 @@ import { AccidentReport } from './entities/accident-report.entity';
 import { AccidentReportController } from './controllers/accident-report.controller';
 import { EnterpriseReportController } from './controllers/enterprise-report.controller';
 import { AccidentReportService } from './services/accident-report.service';
+import { AtvsldReport } from './entities/atvsld-report.entity';
+import { AtvsldReportController } from './controllers/atvsld-report.controller';
+import { AtvsldReportService } from './services/atvsld-report.service';
 
 @Module({
   imports: [
@@ -56,6 +59,7 @@ import { AccidentReportService } from './services/accident-report.service';
         InjuryType,
         Occupation,
         AccidentReport,
+        AtvsldReport,
       ],
       synchronize: false,
       ssl: {
@@ -75,6 +79,7 @@ import { AccidentReportService } from './services/accident-report.service';
       InjuryType,
       Occupation,
       AccidentReport,
+      AtvsldReport,
     ]),
     JwtModule.register({
       secret: 'thu_thap_bi_mat_vna_123',
@@ -93,6 +98,7 @@ import { AccidentReportService } from './services/accident-report.service';
     CategoryController,
     AccidentReportController,
     EnterpriseReportController,
+    AtvsldReportController,
   ],
   providers: [
     AuthService,
@@ -106,6 +112,7 @@ import { AccidentReportService } from './services/accident-report.service';
     ReportConfigService,
     CategoryService,
     AccidentReportService,
+    AtvsldReportService,
   ],
 })
 export class AppModule {}

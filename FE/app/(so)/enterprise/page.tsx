@@ -26,6 +26,7 @@ import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
+import { useCan } from "@/libs/tts/auth/abilityContext";
 
 type WizardMode = "add" | "edit";
 
@@ -64,6 +65,9 @@ function formatLicenseDate(iso?: string): string {
 }
 
 export default function EnterprisePage() {
+  const canCreate = useCan("create", "ENTERPRISE");
+  const canUpdate = useCan("update", "ENTERPRISE");
+  const canDelete = useCan("delete", "ENTERPRISE");
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -416,7 +420,9 @@ export default function EnterprisePage() {
             <button
               type="button"
               onClick={() => openWizard("add")}
-              className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+              disabled={!canCreate}
+              title={canCreate ? undefined : "Bạn không có quyền thêm"}
+              className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="12" y1="5" x2="12" y2="19" />
@@ -529,8 +535,9 @@ export default function EnterprisePage() {
                               <button
                                 type="button"
                                 onClick={() => openWizard("edit", b)}
-                                title="Chỉnh sửa"
-                                className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                                disabled={!canUpdate}
+                                title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"}
+                                className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -540,8 +547,9 @@ export default function EnterprisePage() {
                               <button
                                 type="button"
                                 onClick={() => { setResetTarget(b); setResetPwd(""); setResetPwdError(null); }}
-                                title="Đặt lại mật khẩu"
-                                className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                                disabled={!canUpdate}
+                                title={canUpdate ? "Đặt lại mật khẩu" : "Bạn không có quyền sửa"}
+                                className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
@@ -556,7 +564,7 @@ export default function EnterprisePage() {
                           <td className="px-3 py-2.5 text-[#374151]">{b.registeredWard}</td>
                           <td className="px-3 py-2.5">
                             <div className="flex justify-center">
-                              <Switch checked={b.isActive} onChange={(c) => handleToggleStatus(b.id, c)} />
+                              <Switch checked={b.isActive} onChange={(c) => handleToggleStatus(b.id, c)} disabled={!canUpdate} />
                             </div>
                           </td>
                         </tr>
@@ -952,8 +960,8 @@ export default function EnterprisePage() {
                 <button
                   type="button"
                   onClick={confirmWizard}
-                  disabled={isSubmitting}
-                  className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+                  disabled={isSubmitting || (wizardMode === "add" ? !canCreate : !canUpdate)}
+                  className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting ? (
                     "Đang xử lý..."
@@ -1164,7 +1172,9 @@ export default function EnterprisePage() {
             <button
               type="button"
               onClick={() => setDeleteConfirmOpen(true)}
-              className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626]"
+              disabled={!canDelete}
+              title={canDelete ? undefined : "Bạn không có quyền xóa"}
+              className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6" />

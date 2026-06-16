@@ -40,9 +40,11 @@ export function SearchableSelect({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Loại bỏ giá trị trùng để tránh trùng key React và mục lặp trong dropdown.
+  const uniqueOptions = Array.from(new Set(options));
   const filtered = query.trim()
-    ? options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()))
-    : options;
+    ? uniqueOptions.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()))
+    : uniqueOptions;
 
   useEffect(() => {
     if (open) {

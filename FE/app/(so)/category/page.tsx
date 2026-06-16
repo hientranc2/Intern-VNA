@@ -28,6 +28,7 @@ import {
   updateOccupation,
   deleteOccupation,
 } from "@/libs/tts/category/categoryApi";
+import { useCan } from "@/libs/tts/auth/abilityContext";
 
 const TAB_META: Record<CategoryTab, { label: string; option: string }> = {
   factor: { label: "Yếu tố gây chấn thương", option: "Yếu tố chấn thương" },
@@ -45,6 +46,9 @@ const CAP_BADGE_CLASS = ["", "bg-[#eff6ff] text-[#1d4ed8]", "bg-[#f0fdf4] text-[
 const INDENT_PX = ["0", "0", "14px", "28px", "42px"];
 
 export default function CategoryPage() {
+  const canCreate = useCan("create", "CATEGORY");
+  const canUpdate = useCan("update", "CATEGORY");
+  const canDelete = useCan("delete", "CATEGORY");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
 
@@ -259,7 +263,7 @@ export default function CategoryPage() {
               </svg>
               Thêm từ file
             </button>
-            <button type="button" onClick={openAdd} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
+            <button type="button" onClick={openAdd} disabled={!canCreate} title={canCreate ? undefined : "Bạn không có quyền thêm"} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -335,7 +339,7 @@ export default function CategoryPage() {
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
                         <td className="px-3.5 py-2.5">
-                          <div className="flex justify-center"><Switch checked={r.active} onChange={(c) => toggleFactor(r.id, c)} /></div>
+                          <div className="flex justify-center"><Switch checked={r.active} onChange={(c) => toggleFactor(r.id, c)} disabled={!canUpdate} /></div>
                         </td>
                       </tr>
                     ))
@@ -380,7 +384,7 @@ export default function CategoryPage() {
                   ) : (
                     pagedTree.map((r) => {
                       const editBtn = (
-                        <button type="button" onClick={() => openEditTree(r)} title="Chỉnh sửa" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
+                        <button type="button" onClick={() => openEditTree(r)} disabled={!canUpdate} title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"} className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                             <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -431,7 +435,7 @@ export default function CategoryPage() {
         footer={
           <div className="flex justify-end gap-3">
             <button type="button" onClick={() => setPanelOpen(false)} disabled={saving} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50">Huỷ bỏ</button>
-            <button type="button" onClick={savePanel} disabled={saving} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60">
+            <button type="button" onClick={savePanel} disabled={saving || (isEdit ? !canUpdate : !canCreate)} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                 <polyline points="17 21 17 13 7 13 7 21" />
@@ -501,7 +505,9 @@ export default function CategoryPage() {
             <button
               type="button"
               onClick={() => setDeleteConfirmOpen(true)}
-              className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626]"
+              disabled={!canDelete}
+              title={canDelete ? undefined : "Bạn không có quyền xóa"}
+              className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6" />

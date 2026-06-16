@@ -9,9 +9,13 @@ import {
   clearToken,
   getProfile,
   getBusinessId,
+  getPermissions,
+  setPermissions,
   changePassword,
   ApiError,
 } from "@/libs/tts/auth/authApi";
+import { AbilityContext } from "@/libs/tts/auth/abilityContext";
+import { defineAbilityFor, SUBJECT_BY_PATH, type AppAbility } from "@/libs/tts/auth/ability";
 
 function getInitials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -45,6 +49,8 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarOverride, setSidebarOverride] = useState<SidebarOverride>({});
+  const [ability, setAbility] = useState<AppAbility>(() => defineAbilityFor([]));
+  const [permsReady, setPermsReady] = useState(false);
 
   const [pwdOpen, setPwdOpen] = useState(false);
   const [oldPwd, setOldPwd] = useState("");
@@ -55,14 +61,31 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!getToken()) { router.replace("/login"); return; }
     if (getBusinessId()) { router.replace("/enterprise-info"); return; }
+    // Dựng ability ngay từ quyền đã lưu (tránh chớp menu), rồi làm mới từ profile.
+    // localStorage chỉ có ở client nên phải đồng bộ trong effect (không dùng lazy
+    // init để tránh hydration mismatch giữa server [] và client [quyền]).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAbility(defineAbilityFor(getPermissions()));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPermsReady(true);
     getProfile().then((p) => {
       setSidebarOverride({
         userName: p.fullName || p.username,
         initials: getInitials(p.fullName || p.username),
         avatarUrl: p.avatarUrl,
       });
+      const perms = p.permissions ?? [];
+      setPermissions(perms);
+      setAbility(defineAbilityFor(perms));
     }).catch(() => {});
   }, [router]);
+
+  // Chặn truy cập trực tiếp bằng URL khi không có quyền "view" trang đó.
+  useEffect(() => {
+    if (!permsReady) return;
+    const subject = SUBJECT_BY_PATH[pathname];
+    if (subject && !ability.can("view", subject)) router.replace("/account");
+  }, [permsReady, ability, pathname, router]);
 
   const handleLogout = () => {
     clearToken();
@@ -108,6 +131,7 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
   const toggle = () => setSidebarOpen((v) => !v);
 
   return (
+    <AbilityContext.Provider value={ability}>
     <SidebarOverrideContext.Provider
       value={{ override: sidebarOverride, setOverride: setSidebarOverride }}
     >
@@ -200,5 +224,6 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
         </div>
       </Modal>
     </SidebarOverrideContext.Provider>
+    </AbilityContext.Provider>
   );
 }

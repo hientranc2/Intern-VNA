@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
+import { useAbility } from "@/libs/tts/auth/abilityContext";
+import { SUBJECT_BY_PATH } from "@/libs/tts/auth/ability";
 
 type NavLink = {
   label: string;
@@ -77,6 +79,20 @@ export function AppSidebar({
   });
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const ability = useAbility();
+
+  // Ẩn mục không có quyền "view"; route không nằm trong SUBJECT_BY_PATH luôn hiển thị.
+  const canView = (href?: string) => {
+    if (!href) return true;
+    const subject = SUBJECT_BY_PATH[href];
+    if (!subject) return true;
+    return ability.can("view", subject);
+  };
+
+  const visibleGroups = GROUPS.map((group) => ({
+    ...group,
+    children: group.children.filter((child) => canView(child.href)),
+  })).filter((group) => group.children.length > 0);
 
   useEffect(() => {
     if (!showMenu) return;
@@ -114,7 +130,7 @@ export function AppSidebar({
       </div>
 
       <nav className="flex-1 overflow-y-auto">
-        {GROUPS.map((group) => {
+        {visibleGroups.map((group) => {
           const open = Boolean(openGroups[group.label]);
           return (
             <div key={group.label}>

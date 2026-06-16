@@ -19,6 +19,7 @@ export type CreateUserInput = {
   email: string;
   fullName: string;
   role?: string;
+  roleId?: number;
   jobTitle?: string;
   isActive?: boolean;
 };
@@ -27,6 +28,7 @@ export type UpdateUserInput = {
   fullName?: string;
   email?: string;
   role?: string;
+  roleId?: number;
   jobTitle?: string;
   isActive?: boolean;
 };
@@ -38,6 +40,7 @@ export function getUserList(params?: {
   username?: string;
   email?: string;
   role?: string;
+  roleId?: number;
   jobTitle?: string;
   isActive?: boolean;
   province?: string;
@@ -49,6 +52,7 @@ export function getUserList(params?: {
   if (params?.username) query.set("username", params.username);
   if (params?.email) query.set("email", params.email);
   if (params?.role) query.set("role", params.role);
+  if (params?.roleId !== undefined) query.set("roleId", String(params.roleId));
   if (params?.jobTitle) query.set("jobTitle", params.jobTitle);
   if (params?.isActive !== undefined) query.set("isActive", String(params.isActive));
   if (params?.province) query.set("province", params.province);
