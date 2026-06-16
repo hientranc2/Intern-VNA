@@ -242,191 +242,395 @@ export default function CategoryPage() {
   return (
     <>
       <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-          <h1 className="text-base font-semibold text-ink">Khai báo danh mục</h1>
-          <div className="flex gap-2.5">
-            {tab !== "occupation" ? (
-              <button type="button" className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Xuất danh sách
-              </button>
-            ) : null}
-            <input ref={importRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={() => setToast("Đã nhận file. Vui lòng chờ xử lý.")} />
-            <button type="button" onClick={() => importRef.current?.click()} className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              Thêm từ file
-            </button>
-            <button type="button" onClick={openAdd} disabled={!canCreate} title={canCreate ? undefined : "Bạn không có quyền thêm"} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Thêm mới
-            </button>
-          </div>
-        </div>
-
-        <div className="px-6 py-5">
-          <div className="relative mb-4 inline-block" ref={dropdownRef}>
+        <h1 className="text-base font-semibold text-ink">Khai báo danh mục</h1>
+        <div className="flex gap-2.5">
+          {tab !== "occupation" ? (
             <button
               type="button"
-              onClick={() => setDropdownOpen((o) => !o)}
-              className="flex h-[38px] min-w-[220px] items-center justify-between gap-2 rounded-md border border-line bg-white px-4 text-[13.5px] text-[#374151]"
+              className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
             >
-              <span>{TAB_META[tab].label}</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 9l6 6 6-6" />
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
+              Xuất danh sách
             </button>
-            {dropdownOpen ? (
-              <div className="absolute left-0 top-[42px] z-50 min-w-[220px] rounded-lg border border-[#e5e7eb] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                {(Object.keys(TAB_META) as CategoryTab[]).map((key) => (
-                  <div
-                    key={key}
-                    onClick={() => switchTab(key)}
-                    className={`cursor-pointer px-4 py-2.5 text-[13.5px] hover:bg-[#f3f4f6] ${
-                      tab === key ? "font-semibold text-primary" : "text-[#374151]"
-                    }`}
-                  >
-                    {TAB_META[key].option}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          ) : null}
+          <input
+            ref={importRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            className="hidden"
+            onChange={() => setToast("Đã nhận file. Vui lòng chờ xử lý.")}
+          />
+          <button
+            type="button"
+            onClick={() => importRef.current?.click()}
+            className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Thêm từ file
+          </button>
+          <button
+            type="button"
+            onClick={openAdd}
+            disabled={!canCreate}
+            title={canCreate ? undefined : "Bạn không có quyền thêm"}
+            className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Thêm mới
+          </button>
+        </div>
+      </div>
 
-          <div className="overflow-hidden rounded-lg bg-white shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-            {tab === "factor" ? (
-              <table className="w-full border-collapse text-[13.5px]">
-                <thead>
+      <div className="px-6 py-5">
+        <div className="relative mb-4 inline-block" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => setDropdownOpen((o) => !o)}
+            className="flex h-[38px] min-w-[220px] items-center justify-between gap-2 rounded-md border border-line bg-white px-4 text-[13.5px] text-[#374151]"
+          >
+            <span>{TAB_META[tab].label}</span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {dropdownOpen ? (
+            <div className="absolute left-0 top-[42px] z-50 min-w-[220px] rounded-lg border border-[#e5e7eb] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+              {(Object.keys(TAB_META) as CategoryTab[]).map((key) => (
+                <div
+                  key={key}
+                  onClick={() => switchTab(key)}
+                  className={`cursor-pointer px-4 py-2.5 text-[13.5px] hover:bg-[#f3f4f6] ${
+                    tab === key
+                      ? "font-semibold text-primary"
+                      : "text-[#374151]"
+                  }`}
+                >
+                  {TAB_META[key].option}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="overflow-hidden rounded-lg bg-white shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+          {tab === "factor" ? (
+            <table className="w-full border-collapse text-[13.5px]">
+              <thead>
+                <tr>
+                  <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
+                  <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                    Mã yếu tố
+                  </th>
+                  <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                    Yếu tố gây chấn thương
+                  </th>
+                  <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-center text-[13px] font-semibold text-[#374151]">
+                    Trạng thái
+                  </th>
+                </tr>
+                <tr>
+                  <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                  <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                    <input
+                      className={FILTER_INPUT_CLASS}
+                      value={fMa}
+                      onChange={(e) => {
+                        setFMa(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    />
+                  </th>
+                  <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                    <input
+                      className={FILTER_INPUT_CLASS}
+                      value={fTen}
+                      onChange={(e) => {
+                        setFTen(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    />
+                  </th>
+                  <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                    <select
+                      className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                      value={fTT}
+                      onChange={(e) => {
+                        setFTT(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <option value="">Tất cả</option>
+                      <option value="1">Sử dụng</option>
+                      <option value="0">Ngừng</option>
+                    </select>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedFactors.length === 0 ? (
                   <tr>
-                    <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
-                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Mã yếu tố</th>
-                    <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Yếu tố gây chấn thương</th>
-                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-center text-[13px] font-semibold text-[#374151]">Trạng thái</th>
+                    <td
+                      colSpan={4}
+                      className="px-3.5 py-8 text-center text-[13.5px] text-muted"
+                    >
+                      Không có dữ liệu
+                    </td>
                   </tr>
-                  <tr>
+                ) : (
+                  pagedFactors.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]"
+                    >
+                      <td className="px-3.5 py-2.5">
+                        <TriCheckbox
+                          checked={selectedIds.has(r.id)}
+                          onChange={() => toggleSelect(r.id)}
+                        />
+                      </td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
+                      <td className="px-3.5 py-2.5">
+                        <div className="flex justify-center">
+                          <Switch
+                            checked={r.active}
+                            onChange={(c) => toggleFactor(r.id, c)}
+                            disabled={!canUpdate}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full border-collapse text-[13.5px]">
+              <thead>
+                <tr>
+                  <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
+                  {tab === "occupation" ? (
+                    <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Thao tác
+                    </th>
+                  ) : null}
+                  <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                    {tab === "injuryType" ? "Mã số" : "Mã nghề"}
+                  </th>
+                  <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                    {tab === "injuryType"
+                      ? "Tên loại chấn thương"
+                      : "Tên nghề nghiệp"}
+                  </th>
+                  <th className="w-24 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                    Cấp
+                  </th>
+                  {tab === "injuryType" ? (
+                    <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Thao tác
+                    </th>
+                  ) : null}
+                </tr>
+                <tr>
+                  <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                  {tab === "occupation" ? (
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
-                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fMa} onChange={(e) => { setFMa(e.target.value); setCurrentPage(1); }} />
-                    </th>
-                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fTen} onChange={(e) => { setFTen(e.target.value); setCurrentPage(1); }} />
-                    </th>
-                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fTT} onChange={(e) => { setFTT(e.target.value); setCurrentPage(1); }}>
-                        <option value="">Tất cả</option>
-                        <option value="1">Sử dụng</option>
-                        <option value="0">Ngừng</option>
-                      </select>
-                    </th>
+                  ) : null}
+                  <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                    <input
+                      className={FILTER_INPUT_CLASS}
+                      value={fMa}
+                      onChange={(e) => {
+                        setFMa(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    />
+                  </th>
+                  <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                    <input
+                      className={FILTER_INPUT_CLASS}
+                      value={fTen}
+                      onChange={(e) => {
+                        setFTen(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    />
+                  </th>
+                  <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                  {tab === "injuryType" ? (
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody>
+                {pagedTree.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-3.5 py-8 text-center text-[13.5px] text-muted"
+                    >
+                      Không có dữ liệu
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {pagedFactors.length === 0 ? (
-                    <tr><td colSpan={4} className="px-3.5 py-8 text-center text-[13.5px] text-muted">Không có dữ liệu</td></tr>
-                  ) : (
-                    pagedFactors.map((r) => (
-                      <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
-                        <td className="px-3.5 py-2.5"><TriCheckbox checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
+                ) : (
+                  pagedTree.map((r) => {
+                    const editBtn = (
+                      <button
+                        type="button"
+                        onClick={() => openEditTree(r)}
+                        disabled={!canUpdate}
+                        title={
+                          canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"
+                        }
+                        className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                    );
+                    return (
+                      <tr
+                        key={r.id}
+                        className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]"
+                      >
                         <td className="px-3.5 py-2.5">
-                          <div className="flex justify-center"><Switch checked={r.active} onChange={(c) => toggleFactor(r.id, c)} disabled={!canUpdate} /></div>
+                          <TriCheckbox
+                            checked={selectedIds.has(r.id)}
+                            onChange={() => toggleSelect(r.id)}
+                          />
                         </td>
+                        {tab === "occupation" ? (
+                          <td className="px-3.5 py-2.5">{editBtn}</td>
+                        ) : null}
+                        <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
+                        <td
+                          className="px-3.5 py-2.5 text-[#374151]"
+                          style={{ paddingLeft: INDENT_PX[r.cap] }}
+                        >
+                          {r.ten}
+                        </td>
+                        <td className="px-3.5 py-2.5">
+                          <span
+                            className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${CAP_BADGE_CLASS[r.cap]}`}
+                          >
+                            {CAP_LABELS[r.cap]}
+                          </span>
+                        </td>
+                        {tab === "injuryType" ? (
+                          <td className="px-3.5 py-2.5">{editBtn}</td>
+                        ) : null}
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            ) : (
-              <table className="w-full border-collapse text-[13.5px]">
-                <thead>
-                  <tr>
-                    <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
-                    {tab === "occupation" ? (
-                      <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Thao tác</th>
-                    ) : null}
-                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
-                      {tab === "injuryType" ? "Mã số" : "Mã nghề"}
-                    </th>
-                    <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
-                      {tab === "injuryType" ? "Tên loại chấn thương" : "Tên nghề nghiệp"}
-                    </th>
-                    <th className="w-24 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Cấp</th>
-                    {tab === "injuryType" ? (
-                      <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Thao tác</th>
-                    ) : null}
-                  </tr>
-                  <tr>
-                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
-                    {tab === "occupation" ? <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" /> : null}
-                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fMa} onChange={(e) => { setFMa(e.target.value); setCurrentPage(1); }} />
-                    </th>
-                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fTen} onChange={(e) => { setFTen(e.target.value); setCurrentPage(1); }} />
-                    </th>
-                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
-                    {tab === "injuryType" ? <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" /> : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedTree.length === 0 ? (
-                    <tr><td colSpan={5} className="px-3.5 py-8 text-center text-[13.5px] text-muted">Không có dữ liệu</td></tr>
-                  ) : (
-                    pagedTree.map((r) => {
-                      const editBtn = (
-                        <button type="button" onClick={() => openEditTree(r)} disabled={!canUpdate} title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"} className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                        </button>
-                      );
-                      return (
-                        <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
-                          <td className="px-3.5 py-2.5"><TriCheckbox checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
-                          {tab === "occupation" ? <td className="px-3.5 py-2.5">{editBtn}</td> : null}
-                          <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
-                          <td className="px-3.5 py-2.5 text-[#374151]" style={{ paddingLeft: INDENT_PX[r.cap] }}>{r.ten}</td>
-                          <td className="px-3.5 py-2.5">
-                            <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${CAP_BADGE_CLASS[r.cap]}`}>{CAP_LABELS[r.cap]}</span>
-                          </td>
-                          {tab === "injuryType" ? <td className="px-3.5 py-2.5">{editBtn}</td> : null}
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            )}
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
 
-            <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#374151]">
-              <select className="h-[30px] cursor-pointer rounded-[5px] border border-line px-1.5 text-[13px] outline-none" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-              <span className="text-[#6b7280]">{total === 0 ? "0 of 0" : `${start + 1} - ${end} of ${total}`}</span>
-              <div className="flex gap-1">
-                <button type="button" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
-                </button>
-                <button type="button" onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))} disabled={end >= total} className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
-                </button>
-              </div>
+          <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#374151]">
+            <select
+              className="h-[30px] cursor-pointer rounded-[5px] border border-line px-1.5 text-[13px] outline-none"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span className="text-[#6b7280]">
+              {total === 0 ? "0 of 0" : `${start + 1} - ${end} of ${total}`}
+            </span>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
+                disabled={end >= total}
+                className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
+      </div>
 
       <Modal
         open={panelOpen}
@@ -434,9 +638,28 @@ export default function CategoryPage() {
         onClose={() => setPanelOpen(false)}
         footer={
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setPanelOpen(false)} disabled={saving} className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50">Huỷ bỏ</button>
-            <button type="button" onClick={savePanel} disabled={saving || (isEdit ? !canUpdate : !canCreate)} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <button
+              type="button"
+              onClick={() => setPanelOpen(false)}
+              disabled={saving}
+              className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50"
+            >
+              Huỷ bỏ
+            </button>
+            <button
+              type="button"
+              onClick={savePanel}
+              disabled={saving || (isEdit ? !canUpdate : !canCreate)}
+              className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                 <polyline points="17 21 17 13 7 13 7 21" />
                 <polyline points="7 3 7 8 15 8" />
@@ -448,31 +671,59 @@ export default function CategoryPage() {
       >
         <div className="mb-4 flex flex-col gap-1.5">
           <label className="text-[12.5px] font-medium text-[#374151]">
-            {tab === "factor" ? "Mã yếu tố chấn thương" : tab === "injuryType" ? "Mã số" : "Mã ngành"} <span className="text-danger">*</span>
+            {tab === "factor"
+              ? "Mã yếu tố chấn thương"
+              : tab === "injuryType"
+                ? "Mã số"
+                : "Mã ngành"}{" "}
+            <span className="text-danger">*</span>
           </label>
           <input
             className={`${FORM_CONTROL_CLASS}${panelErrors.ma ? " border-danger" : ""}`}
             value={inputMa}
             disabled={isEdit}
-            onChange={(e) => { setInputMa(e.target.value); if (panelErrors.ma) setPanelErrors((p) => ({ ...p, ma: undefined })); }}
+            onChange={(e) => {
+              setInputMa(e.target.value);
+              if (panelErrors.ma)
+                setPanelErrors((p) => ({ ...p, ma: undefined }));
+            }}
           />
-          {panelErrors.ma && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ma}</p>}
+          {panelErrors.ma && (
+            <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ma}</p>
+          )}
         </div>
         <div className="mb-4 flex flex-col gap-1.5">
           <label className="text-[12.5px] font-medium text-[#374151]">
-            {tab === "factor" ? "Tên yếu tố chấn thương" : tab === "injuryType" ? "Tên loại chấn thương" : "Tên ngành"} <span className="text-danger">*</span>
+            {tab === "factor"
+              ? "Tên yếu tố chấn thương"
+              : tab === "injuryType"
+                ? "Tên loại chấn thương"
+                : "Tên ngành"}{" "}
+            <span className="text-danger">*</span>
           </label>
           <input
             className={`${FORM_CONTROL_CLASS}${panelErrors.ten ? " border-danger" : ""}`}
             value={inputTen}
-            onChange={(e) => { setInputTen(e.target.value); if (panelErrors.ten) setPanelErrors((p) => ({ ...p, ten: undefined })); }}
+            onChange={(e) => {
+              setInputTen(e.target.value);
+              if (panelErrors.ten)
+                setPanelErrors((p) => ({ ...p, ten: undefined }));
+            }}
           />
-          {panelErrors.ten && <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ten}</p>}
+          {panelErrors.ten && (
+            <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ten}</p>
+          )}
         </div>
         {tab === "factor" ? (
           <div className="mb-4 flex flex-col gap-1.5">
-            <label className="text-[12.5px] font-medium text-[#374151]">Trạng thái <span className="text-danger">*</span></label>
-            <select className={SELECT_CONTROL_CLASS} value={inputActive} onChange={(e) => setInputActive(e.target.value)}>
+            <label className="text-[12.5px] font-medium text-[#374151]">
+              Trạng thái <span className="text-danger">*</span>
+            </label>
+            <select
+              className={SELECT_CONTROL_CLASS}
+              value={inputActive}
+              onChange={(e) => setInputActive(e.target.value)}
+            >
               <option value="1">Sử dụng</option>
               <option value="0">Ngừng sử dụng</option>
             </select>
@@ -480,12 +731,23 @@ export default function CategoryPage() {
         ) : (
           <div className="mb-4 flex flex-col gap-1.5">
             <label className="text-[12.5px] font-medium text-[#374151]">
-              {tab === "injuryType" ? "Tên loại chấn thương cha" : "Nhóm ngành cha"} {tab === "injuryType" ? <span className="text-danger">*</span> : null}
+              {tab === "injuryType"
+                ? "Tên loại chấn thương cha"
+                : "Nhóm ngành cha"}{" "}
+              {tab === "injuryType" ? (
+                <span className="text-danger">*</span>
+              ) : null}
             </label>
-            <select className={SELECT_CONTROL_CLASS} value={inputCha} onChange={(e) => setInputCha(e.target.value)}>
+            <select
+              className={SELECT_CONTROL_CLASS}
+              value={inputCha}
+              onChange={(e) => setInputCha(e.target.value)}
+            >
               <option value="">-- Không có (Cấp 1) --</option>
               {parentOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
           </div>
@@ -509,7 +771,14 @@ export default function CategoryPage() {
               title={canDelete ? undefined : "Bạn không có quyền xóa"}
               className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
                 <path d="M10 11v6M14 11v6" />
@@ -523,7 +792,14 @@ export default function CategoryPage() {
               aria-label="Bỏ chọn"
               className="flex h-10 w-10 items-center justify-center bg-white text-muted hover:bg-body hover:text-ink"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -539,13 +815,26 @@ export default function CategoryPage() {
         onClose={() => setDeleteConfirmOpen(false)}
         footer={
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setDeleteConfirmOpen(false)} className="h-9.5 rounded-md px-5 text-sm font-medium text-muted hover:bg-[#f9fafb] hover:text-[#374151]">Huỷ bỏ</button>
-            <button type="button" onClick={deleteSelected} className="h-9.5 rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626]">Xóa</button>
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(false)}
+              className="h-9.5 rounded-md px-5 text-sm font-medium text-muted hover:bg-[#f9fafb] hover:text-[#374151]"
+            >
+              Huỷ bỏ
+            </button>
+            <button
+              type="button"
+              onClick={deleteSelected}
+              className="h-9.5 rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626]"
+            >
+              Xóa
+            </button>
           </div>
         }
       >
         <p className="text-[13.5px] text-[#374151]">
-          Bạn có chắc muốn xóa <strong>{selectedIds.size}</strong> mục đã chọn? Hành động này không thể hoàn tác.
+          Bạn có chắc muốn xóa <strong>{selectedIds.size}</strong> mục đã chọn?
+          Hành động này không thể hoàn tác.
         </p>
       </Modal>
 

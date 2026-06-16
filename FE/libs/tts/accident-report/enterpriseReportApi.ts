@@ -6,6 +6,7 @@ export type DnReportRecord = {
   ten: string;
   mst: string;
   ky: string;
+  nam: string | null;
   tt: "Đang báo cáo" | "Đã nộp";
   configId: number;
 };

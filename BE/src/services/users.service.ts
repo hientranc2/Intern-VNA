@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../entities/user.entity';
 import { Role } from '../entities/role.entity';
+import { AVATAR_URL_PREFIX } from '../config/avatar-upload.config';
 import {
   GetUsersFilterDto,
   CreateUserAdminDto,
@@ -34,6 +35,7 @@ export class UsersService {
       roleId,
       jobTitle,
       isActive,
+      province,
       page = 1,
       limit = 10,
     } = filterDto;
@@ -56,6 +58,7 @@ export class UsersService {
       query.andWhere('user.jobTitle ILIKE :jobTitle', {
         jobTitle: `%${jobTitle}%`,
       });
+    if (province) query.andWhere('user.province = :province', { province });
     if (isActive !== undefined)
       query.andWhere('user.isActive = :isActive', { isActive });
 
@@ -83,7 +86,7 @@ export class UsersService {
   }
 
   // 2. TẠO MỚI NGƯỜI DÙNG (ADMIN QUYỀN)
-  async createUser(dto: CreateUserAdminDto) {
+  async createUser(dto: CreateUserAdminDto, avatar?: Express.Multer.File) {
     const existingUser = await this.userRepository.findOne({
       where: [{ username: dto.username }, { email: dto.email }],
     });
@@ -96,6 +99,7 @@ export class UsersService {
     const newUser = this.userRepository.create({
       ...dto,
       password: hashedPassword,
+      ...(avatar && { avatarUrl: `${AVATAR_URL_PREFIX}/${avatar.filename}` }),
     });
 
     await this.userRepository.save(newUser);
@@ -104,7 +108,11 @@ export class UsersService {
   }
 
   // 3. CẬP NHẬT THÔNG TIN NGƯỜI DÙNG
-  async updateUser(id: string, dto: UpdateUserAdminDto) {
+  async updateUser(
+    id: string,
+    dto: UpdateUserAdminDto,
+    avatar?: Express.Multer.File,
+  ) {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
 
@@ -116,7 +124,10 @@ export class UsersService {
         throw new ConflictException('Email này đã được người khác sử dụng!');
     }
 
-    await this.userRepository.update(id, dto);
+    const updatePayload: Partial<User> = { ...dto };
+    if (avatar)
+      updatePayload.avatarUrl = `${AVATAR_URL_PREFIX}/${avatar.filename}`;
+    await this.userRepository.update(id, updatePayload);
 
     const updatedUser = await this.userRepository.findOne({ where: { id } });
     const { password, otpCode, otpExpiresAt, ...result } = updatedUser;

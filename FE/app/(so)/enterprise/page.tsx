@@ -77,6 +77,7 @@ export default function EnterprisePage() {
 
   const [loaiHinhOptions, setLoaiHinhOptions] = useState<string[]>([]);
   const [nganhCap4Options, setNganhCap4Options] = useState<string[]>([]);
+  const [wardOptions, setWardOptions] = useState<string[]>([]);
 
   useEffect(() => {
     getEnterpriseTypeList()
@@ -88,6 +89,16 @@ export default function EnterprisePage() {
           .filter((s) => s.cap === 4)
           .map((s) => `${s.ma} - ${s.ten.replace(/^[–-]\s*/, "")}`);
         setNganhCap4Options(cap4);
+      })
+      .catch(() => {});
+    // Options phường lấy từ phường có thật trong dữ liệu DN (tên phường cũ/mới
+    // đều có) thay vì master list — vì master list sau sáp nhập 2025 thiếu nhiều.
+    getBusinessList({ limit: 999 })
+      .then((res) => {
+        const wards = Array.from(
+          new Set(res.data.map((b) => b.registeredWard).filter(Boolean)),
+        ).sort((a, b) => a.localeCompare(b, "vi"));
+        setWardOptions(wards);
       })
       .catch(() => {});
   }, []);
@@ -102,6 +113,7 @@ export default function EnterprisePage() {
   const dBusinessName = useDebounce(fBusinessName, 300);
   const dTaxCode = useDebounce(fTaxCode, 300);
   const dMainIndustry = useDebounce(fMainIndustry, 300);
+  const dWard = useDebounce(fWard, 300);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -109,10 +121,20 @@ export default function EnterprisePage() {
   const filteredByText = useMemo(() => {
     if (!fBusinessName && !fMainIndustry) return businesses;
     const normName = fBusinessName.normalize("NFC").toLowerCase();
-    const normIndustry = fMainIndustry.normalize("NFC").toLowerCase();
+    // Option ngành là "<mã> - <tên>" còn DB lưu "– <tên>". So khớp theo phần tên:
+    // bỏ tiền tố mã ở option và gạch đầu ở giá trị lưu rồi mới so.
+    const normIndustry = fMainIndustry
+      .replace(/^\d+\s*[-–]\s*/, "")
+      .normalize("NFC")
+      .toLowerCase()
+      .trim();
     return businesses.filter((b) => {
       const nameOk = !normName || b.businessName.normalize("NFC").toLowerCase().includes(normName);
-      const industryOk = !normIndustry || (b.mainIndustry ?? "").normalize("NFC").toLowerCase().includes(normIndustry);
+      const storedIndustry = (b.mainIndustry ?? "")
+        .replace(/^[-–]\s*/, "")
+        .normalize("NFC")
+        .toLowerCase();
+      const industryOk = !normIndustry || storedIndustry.includes(normIndustry);
       return nameOk && industryOk;
     });
   }, [businesses, fBusinessName, fMainIndustry]);
@@ -154,7 +176,6 @@ export default function EnterprisePage() {
 
   const phuongDKKDOptions = useMemo(() => WARDS_BY_PROVINCE[form.registeredProvince] ?? [], [form.registeredProvince]);
   const phuongHDOptions = useMemo(() => WARDS_BY_PROVINCE[form.operatingProvince] ?? [], [form.operatingProvince]);
-  const phuongFilterOptions = useMemo(() => WARDS_BY_PROVINCE["Thành phố Hồ Chí Minh"] ?? [], []);
 
   const lastPage = Math.max(1, Math.ceil(displayTotal / pageSize));
   const start = (currentPage - 1) * pageSize;
@@ -168,7 +189,7 @@ export default function EnterprisePage() {
       const res = await getBusinessList({
         taxCode: dTaxCode || undefined,
         businessType: fBusinessType || undefined,
-        registeredWard: fWard || undefined,
+        registeredWard: dWard || undefined,
         isActive: fStatus === "" ? undefined : fStatus === "1",
         page: isTextFilter ? 1 : currentPage,
         limit: isTextFilter ? 999 : pageSize,
@@ -180,7 +201,7 @@ export default function EnterprisePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [dBusinessName, dTaxCode, fBusinessType, dMainIndustry, fWard, fStatus, currentPage, pageSize]);
+  }, [dBusinessName, dTaxCode, fBusinessType, dMainIndustry, dWard, fStatus, currentPage, pageSize]);
 
   useEffect(() => { fetchList(); }, [fetchList]);
 
@@ -501,7 +522,7 @@ export default function EnterprisePage() {
                       <SearchableSelect
                         fixed
                         compact
-                        options={phuongFilterOptions}
+                        options={wardOptions}
                         value={fWard}
                         onChange={(v) => { setFWard(v); setCurrentPage(1); }}
                         placeholder="Tất cả"
@@ -625,6 +646,7 @@ export default function EnterprisePage() {
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
                 >
+                  <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>

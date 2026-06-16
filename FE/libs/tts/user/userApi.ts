@@ -1,4 +1,4 @@
-import { request } from "@/libs/tts/auth/apiClient";
+import { request, requestFormData } from "@/libs/tts/auth/apiClient";
 import type { User } from "./userData";
 
 export type UserListMeta = {
@@ -22,6 +22,7 @@ export type CreateUserInput = {
   roleId?: number;
   jobTitle?: string;
   isActive?: boolean;
+  avatar?: File | null;
 };
 
 export type UpdateUserInput = {
@@ -31,6 +32,7 @@ export type UpdateUserInput = {
   roleId?: number;
   jobTitle?: string;
   isActive?: boolean;
+  avatar?: File | null;
 };
 
 export function getUserList(params?: {
@@ -60,18 +62,41 @@ export function getUserList(params?: {
   return request<UserListResponse>(`/admin/users${qs ? `?${qs}` : ""}`);
 }
 
+// Build FormData từ input — chỉ append field có giá trị để tránh gửi chuỗi rỗng
+// làm hỏng transform số/boolean ở BE.
+function buildUserFormData(
+  input: CreateUserInput | UpdateUserInput,
+): FormData {
+  const fd = new FormData();
+  if ("username" in input && input.username)
+    fd.append("username", input.username);
+  if ("password" in input && input.password)
+    fd.append("password", input.password);
+  if (input.email) fd.append("email", input.email);
+  if (input.fullName) fd.append("fullName", input.fullName);
+  if (input.role) fd.append("role", input.role);
+  if (input.roleId !== undefined) fd.append("roleId", String(input.roleId));
+  if (input.jobTitle) fd.append("jobTitle", input.jobTitle);
+  if (input.isActive !== undefined)
+    fd.append("isActive", String(input.isActive));
+  if (input.avatar) fd.append("avatar", input.avatar);
+  return fd;
+}
+
 export function createUser(input: CreateUserInput) {
-  return request<{ message: string; user: User }>("/admin/users", {
-    method: "POST",
-    body: input,
-  });
+  return requestFormData<{ message: string; user: User }>(
+    "/admin/users",
+    buildUserFormData(input),
+    "POST",
+  );
 }
 
 export function updateUser(id: string, input: UpdateUserInput) {
-  return request<{ message: string; user: User }>(`/admin/users/${id}`, {
-    method: "PUT",
-    body: input,
-  });
+  return requestFormData<{ message: string; user: User }>(
+    `/admin/users/${id}`,
+    buildUserFormData(input),
+    "PUT",
+  );
 }
 
 export function toggleUserStatus(id: string) {

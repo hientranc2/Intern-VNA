@@ -5,6 +5,13 @@ import { getToken, clearToken, getBusinessId } from "./authApi";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
+// Chuyển đường dẫn asset tương đối từ BE (vd /uploads/avatars/x.png) thành URL đầy đủ.
+export function assetUrl(path?: string | null): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return `${API_URL}${path}`;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {

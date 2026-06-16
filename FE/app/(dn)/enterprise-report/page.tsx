@@ -21,6 +21,7 @@ type ReportRecord = {
   ten: string;
   mst: string;
   ky: string;
+  nam: string | null;
   tt: "Đang báo cáo" | "Đã nộp";
 };
 
@@ -71,6 +72,7 @@ export default function EnterpriseReportPage() {
   const [subTab, setSubTab] = useState<SubTab>("tongSo");
   const [toast, setToast] = useState<string | null>(null);
   const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [filterYear, setFilterYear] = useState("");
 
   useEffect(() => {
     getDnReportList()
@@ -266,6 +268,14 @@ export default function EnterpriseReportPage() {
     setAccidentDetails((prev) => prev.filter((d) => d.id !== id));
   };
 
+  // Năm để lọc lấy từ chính dữ liệu báo cáo (report_configs.nam), không hard-code.
+  const yearOptions = Array.from(
+    new Set(reports.map((r) => r.nam).filter((n): n is string => !!n)),
+  ).sort((a, b) => b.localeCompare(a));
+  const filteredReports = filterYear
+    ? reports.filter((r) => r.nam === filterYear)
+    : reports;
+
   return (
     <>
       <Toast message={toast} onDone={() => setToast(null)} />
@@ -277,11 +287,15 @@ export default function EnterpriseReportPage() {
             <div className="flex items-center gap-2.5">
               <select
                 className="h-[34px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none"
-                defaultValue="2023"
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
               >
-                <option>2022</option>
-                <option>2023</option>
-                <option>2024</option>
+                <option value="">Tất cả năm</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -298,7 +312,7 @@ export default function EnterpriseReportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {reports.map((r) => (
+                  {filteredReports.map((r) => (
                     <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
                       <td className="px-3.5 py-2.5">
                         <div className="flex gap-1">
@@ -340,7 +354,7 @@ export default function EnterpriseReportPage() {
                 </tbody>
               </table>
               <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#374151]">
-                <span className="text-[#6b7280]">1 - {reports.length} of {reports.length}</span>
+                <span className="text-[#6b7280]">1 - {filteredReports.length} of {filteredReports.length}</span>
               </div>
             </div>
           </div>

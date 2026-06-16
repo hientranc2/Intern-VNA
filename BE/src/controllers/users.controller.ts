@@ -9,9 +9,13 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from '../services/users.service';
+import { avatarMulterOptions } from '../config/avatar-upload.config';
 import {
   GetUsersFilterDto,
   CreateUserAdminDto,
@@ -29,13 +33,22 @@ export class UsersController {
   }
 
   @Post()
-  createUser(@Body() dto: CreateUserAdminDto) {
-    return this.usersService.createUser(dto);
+  @UseInterceptors(FileInterceptor('avatar', avatarMulterOptions))
+  createUser(
+    @Body() dto: CreateUserAdminDto,
+    @UploadedFile() avatar?: Express.Multer.File,
+  ) {
+    return this.usersService.createUser(dto, avatar);
   }
 
   @Put(':id')
-  updateUser(@Param('id') id: string, @Body() dto: UpdateUserAdminDto) {
-    return this.usersService.updateUser(id, dto);
+  @UseInterceptors(FileInterceptor('avatar', avatarMulterOptions))
+  updateUser(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserAdminDto,
+    @UploadedFile() avatar?: Express.Multer.File,
+  ) {
+    return this.usersService.updateUser(id, dto, avatar);
   }
 
   @Patch(':id/status')

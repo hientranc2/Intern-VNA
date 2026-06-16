@@ -39,6 +39,10 @@ export class GetUsersFilterDto {
   jobTitle?: string;
 
   @IsOptional()
+  @IsString()
+  province?: string;
+
+  @IsOptional()
   @Transform(({ value }) => {
     if (value === 'true') return true;
     if (value === 'false') return false;
@@ -91,6 +95,11 @@ export class CreateUserAdminDto {
   jobTitle?: string;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
   @IsBoolean()
   isActive?: boolean;
 }
@@ -119,6 +128,11 @@ export class UpdateUserAdminDto {
   jobTitle?: string;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
   @IsBoolean()
   isActive?: boolean;
 }

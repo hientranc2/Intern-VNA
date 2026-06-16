@@ -114,7 +114,16 @@ export class AccidentReportService {
       where: { enterpriseId: business.id },
       order: { createdAt: 'DESC' },
     });
-    return reports.map((r) => this.toDnRecord(r));
+    // Năm báo cáo nằm ở report_configs.nam (gắn qua config_id) — nạp 1 lượt để
+    // gắn nam vào từng record cho FE lọc theo năm.
+    const configIds = [...new Set(reports.map((r) => r.configId))];
+    const configs = configIds.length
+      ? await this.configRepo.find({ where: { id: In(configIds) } })
+      : [];
+    const namByConfig = new Map(configs.map((c) => [c.id, c.nam]));
+    return reports.map((r) =>
+      this.toDnRecord(r, namByConfig.get(r.configId) ?? null),
+    );
   }
 
   async findMyOne(userId: string, id: number) {
@@ -274,12 +283,13 @@ export class AccidentReportService {
     };
   }
 
-  private toDnRecord(r: AccidentReport) {
+  private toDnRecord(r: AccidentReport, nam: string | null = null) {
     return {
       id: r.id,
       ten: r.ten,
       mst: r.mst,
       ky: r.ky,
+      nam,
       tt: r.status,
       configId: r.configId,
     };

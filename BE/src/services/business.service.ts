@@ -104,7 +104,7 @@ export class BusinessService {
     if (taxCode) where.taxCode = Like(`%${taxCode}%`);
     if (businessType) where.businessType = businessType;
     if (mainIndustry) where.mainIndustry = mainIndustry;
-    if (registeredWard) where.registeredWard = registeredWard;
+    if (registeredWard) where.registeredWard = Like(`%${registeredWard}%`);
     if (isActive !== undefined) where.isActive = isActive;
 
     const [data, total] = await this.businessRepository.findAndCount({

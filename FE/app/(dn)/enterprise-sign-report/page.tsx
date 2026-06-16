@@ -30,6 +30,12 @@ const FIELD =
 const YEAR_SELECT =
   "h-[34px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none";
 
+// "dd/MM/yyyy" -> số yyyymmdd để so sánh khoảng ngày; null nếu chưa đủ/không hợp lệ.
+const toDateNum = (s: string): number | null => {
+  const m = s.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? Number(m[3] + m[2] + m[1]) : null;
+};
+
 const EDITABLE_STATUSES: ReportStatus[] = ["Chờ báo cáo", "Nhập liệu", "Từ chối"];
 
 function StatusCell({ status }: { status: ReportStatus }) {
@@ -94,6 +100,8 @@ export default function EnterpriseSignReportPage() {
   const [fTen, setFTen] = useState("");
   const [fKy, setFKy] = useState("");
   const [fNguoi, setFNguoi] = useState("");
+  const [fNgayBatDau, setFNgayBatDau] = useState("");
+  const [fNgayKetThuc, setFNgayKetThuc] = useState("");
 
   const editingReport = useMemo(
     () => reports.find((r) => r.id === editingId),
@@ -110,17 +118,27 @@ export default function EnterpriseSignReportPage() {
     loadReports();
   }, [loadReports]);
 
-  const filtered = useMemo(
-    () =>
-      reports.filter(
-        (r) =>
-          (!fStatus || r.status === fStatus) &&
-          r.ten.toLowerCase().includes(fTen.toLowerCase()) &&
-          (!fKy || r.ky === fKy) &&
-          r.nguoiChinhSua.toLowerCase().includes(fNguoi.toLowerCase()),
-      ),
-    [reports, fStatus, fTen, fKy, fNguoi],
-  );
+  const filtered = useMemo(() => {
+    // Lọc khoảng từ–đến: chỉ giữ báo cáo có kỳ nằm trong [Ngày bắt đầu, Ngày kết thúc].
+    const fromNum = toDateNum(fNgayBatDau);
+    const toNum = toDateNum(fNgayKetThuc);
+    return reports.filter((r) => {
+      if (fStatus && r.status !== fStatus) return false;
+      if (!r.ten.toLowerCase().includes(fTen.toLowerCase())) return false;
+      if (fKy && r.ky !== fKy) return false;
+      if (!r.nguoiChinhSua.toLowerCase().includes(fNguoi.toLowerCase()))
+        return false;
+      if (fromNum !== null) {
+        const start = toDateNum(r.ngayBatDau);
+        if (start === null || start < fromNum) return false;
+      }
+      if (toNum !== null) {
+        const end = toDateNum(r.ngayKetThuc);
+        if (end === null || end > toNum) return false;
+      }
+      return true;
+    });
+  }, [reports, fStatus, fTen, fNgayBatDau, fNgayKetThuc, fKy, fNguoi]);
 
   const openForm = (report: AtvsldReport, readonly: boolean) => {
     setEditingId(report.id);
@@ -254,14 +272,16 @@ export default function EnterpriseSignReportPage() {
                         <input
                           className={FILTER_INPUT}
                           placeholder="dd/MM/yyyy"
-                          disabled
+                          value={fNgayBatDau}
+                          onChange={(e) => setFNgayBatDau(e.target.value)}
                         />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <input
                           className={FILTER_INPUT}
                           placeholder="dd/MM/yyyy"
-                          disabled
+                          value={fNgayKetThuc}
+                          onChange={(e) => setFNgayKetThuc(e.target.value)}
                         />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">

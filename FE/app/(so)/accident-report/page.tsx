@@ -21,11 +21,14 @@ const FILTER_INPUT_CLASS =
 const SELECT_TOP_CLASS =
   "h-9 min-w-[200px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none";
 
-const CT_TH = "border border-line bg-[#f9fafb] px-2 py-1.5 text-center align-middle font-semibold text-[#374151]";
-const CT_TD = "border border-line px-2 py-1.5 text-center align-middle text-[#374151]";
+const CT_TH =
+  "border border-line bg-[#f9fafb] px-2 py-1.5 text-center align-middle font-semibold text-[#374151]";
+const CT_TD =
+  "border border-line px-2 py-1.5 text-center align-middle text-[#374151]";
 
 const fmtMoney = (n: number) => n.toLocaleString("vi-VN");
-const fmtRate = (n: number, d: number) => (d === 0 ? "0" : ((n / d) * 1000).toFixed(2));
+const fmtRate = (n: number, d: number) =>
+  d === 0 ? "0" : ((n / d) * 1000).toFixed(2);
 
 export default function AccidentReportPage() {
   const [view, setView] = useState<ViewMode>("list");
@@ -108,7 +111,9 @@ export default function AccidentReportPage() {
 
     return {
       total: toRow(filtered),
-      byLoaiHinh: TONGHOP_I_ROWS.map((name) => toRow(filtered.filter((r) => r.loaiHinh === name))),
+      byLoaiHinh: TONGHOP_I_ROWS.map((name) =>
+        toRow(filtered.filter((r) => r.loaiHinh === name)),
+      ),
       phanLoai,
     };
   }, [filtered]);
@@ -120,7 +125,8 @@ export default function AccidentReportPage() {
   const end = Math.min(start + pageSize, total);
   const paged = filtered.slice(start, end);
 
-  const allPageSelected = paged.length > 0 && paged.every((r) => selectedIds.has(r.id));
+  const allPageSelected =
+    paged.length > 0 && paged.every((r) => selectedIds.has(r.id));
   const somePageSelected = paged.some((r) => selectedIds.has(r.id));
 
   const toggleSelectAll = () => {
@@ -355,6 +361,7 @@ export default function AccidentReportPage() {
                     setCurrentPage(1);
                   }}
                 >
+                  <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                 </select>

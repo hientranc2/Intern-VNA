@@ -53,6 +53,7 @@ export default function SignReportPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [fTen, setFTen] = useState("");
   const [fMST, setFMST] = useState("");
+  const [fNgayNop, setFNgayNop] = useState("");
   const [fPhuong, setFPhuong] = useState("");
   const [fStatus, setFStatus] = useState("");
 
@@ -84,10 +85,11 @@ export default function SignReportPage() {
         (r) =>
           r.ten.toLowerCase().includes(fTen.toLowerCase()) &&
           r.mst.toLowerCase().includes(fMST.toLowerCase()) &&
+          r.ngayNop.includes(fNgayNop.trim()) &&
           r.ward.toLowerCase().includes(fPhuong.toLowerCase()) &&
           (!fStatus || r.status === fStatus),
       ),
-    [reports, fTen, fMST, fPhuong, fStatus],
+    [reports, fTen, fMST, fNgayNop, fPhuong, fStatus],
   );
 
   const allSelected =
@@ -215,7 +217,8 @@ export default function SignReportPage() {
                         <input
                           className={FILTER_INPUT}
                           placeholder="dd/MM/yyyy"
-                          disabled
+                          value={fNgayNop}
+                          onChange={(e) => setFNgayNop(e.target.value)}
                         />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
