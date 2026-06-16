@@ -3,7 +3,7 @@
 //   1. Tạo các bảng resource mới (001_new_resources.sql)
 //   2. Seed permissions / roles / report_configs / categories (002_seed.sql)
 //   3. Reset tài khoản Sở:  admin / 123456
-//   4. Tạo tài khoản Doanh nghiệp:  doanhnghiep / 123456  (+ business liên kết)
+//   4. Tạo tài khoản Doanh nghiệp:  0300000001 (MST) / 12345678  (+ business liên kết)
 //   5. Thêm vài accident_reports mẫu cho business demo
 //
 // Chạy:  node sql/seed.js
@@ -16,9 +16,10 @@ require('dotenv').config();
 
 const URL = process.env.DATABASE_URL;
 const SO_USERNAME = 'admin';
-const SO_PASSWORD = '123456';
-const DN_USERNAME = 'doanhnghiep';
-const DN_PASSWORD = '123456';
+const SO_PASSWORD = '12345678';
+// Username DN = MST (đúng quy ước đăng ký: business.service tạo account username = taxCode).
+const DN_USERNAME = '0300000001';
+const DN_PASSWORD = '12345678';
 
 async function runSqlFile(c, file) {
   const sql = fs.readFileSync(path.join(__dirname, file), 'utf8');
@@ -83,7 +84,7 @@ async function seedDnAccount(c) {
      RETURNING id`,
     [
       'CÔNG TY TNHH DEMO VNA',
-      'DN-DEMO-0001',
+      '0300000001',
       businessType,
       mainIndustry,
       'Thành phố Hồ Chí Minh',
@@ -122,7 +123,7 @@ async function seedSampleAtvsldReports(c, businessId) {
           nguoi_chinh_sua, province, ward, status, ly_do_tu_choi, declaration, submitted_at, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,$16)`,
       [
-        businessId, 'CÔNG TY TNHH DEMO VNA', 'DN-DEMO-0001', nam, ky, batDau, ketThuc, nop,
+        businessId, 'CÔNG TY TNHH DEMO VNA', '0300000001', nam, ky, batDau, ketThuc, nop,
         'Phan Thanh Tùng', 'Thành phố Hồ Chí Minh', 'Phường Bình Thọ', status, lyDo,
         declaration, nop ? new Date() : null, capNhat ? new Date() : new Date(),
       ],
@@ -154,7 +155,7 @@ async function seedSampleReports(c, businessId) {
      VALUES ($1,$2,$3,$4,$5,'Đã nộp',$6::jsonb,'[]'::jsonb,
         'Thành phố Hồ Chí Minh','Phường Bình Thọ','Công ty trách nhiệm hữu hạn',
         50,45,2,1,1,10,5,5,5,20,6000000,2000000,2000000,2000000,20000000, now())`,
-    [businessId, configId, 'CÔNG TY TNHH DEMO VNA', 'DN-DEMO-0001', ky, rows],
+    [businessId, configId, 'CÔNG TY TNHH DEMO VNA', '0300000001', ky, rows],
   );
   console.log('✓ thêm 1 accident_report mẫu (trạng thái Đã nộp)');
 }
@@ -171,6 +172,7 @@ async function seedSampleReports(c, businessId) {
     await runSqlFile(c, '005_accident_phan_loai.sql');
     await runSqlFile(c, '006_atvsld_reports.sql');
     await runSqlFile(c, '007_role_protection.sql');
+    await runSqlFile(c, '009_password_changed_at.sql');
     const { businessId } = await seedDnAccount(c);
     await seedSampleReports(c, businessId);
     await seedSampleAtvsldReports(c, businessId);

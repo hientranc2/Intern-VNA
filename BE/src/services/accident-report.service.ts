@@ -33,13 +33,19 @@ export class AccidentReportService {
   // ===== Màn hình Sở =====
 
   async findAll(query: AccidentReportQueryDto) {
-    const { page = 1, pageSize = 10, ten, mst, ky, tt } = query;
+    const { page = 1, pageSize = 10, ten, mst, ky, tt, nam } = query;
 
     const where: Record<string, unknown> = {};
     if (ten) where.ten = ILike(`%${ten}%`);
     if (mst) where.mst = ILike(`%${mst}%`);
     if (ky) where.ky = ky;
     if (tt) where.status = tt;
+    // Lọc theo năm: báo cáo gắn config_id, mà report_configs có cột nam.
+    if (nam) {
+      const configs = await this.configRepo.find({ where: { nam } });
+      if (configs.length === 0) return { data: [], total: 0, page, pageSize };
+      where.configId = In(configs.map((c) => c.id));
+    }
 
     const [data, total] = await this.repo.findAndCount({
       where,

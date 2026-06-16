@@ -177,6 +177,18 @@ export function changePassword(input: {
   });
 }
 
+// DN tự đổi mật khẩu (tài khoản doanh nghiệp).
+export function changeBusinessPassword(input: {
+  oldPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}) {
+  return request<{ message: string }>("/auth/business/change-password", {
+    method: "POST",
+    body: input,
+  });
+}
+
 export function requestChangeEmailOtp() {
   return request<{ message: string }>("/auth/request-change-email", {
     method: "POST",

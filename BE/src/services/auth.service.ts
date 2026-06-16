@@ -321,6 +321,11 @@ export class AuthService {
     if (dto.newPassword !== dto.confirmPassword) {
       throw new BadRequestException('Mật khẩu xác nhận không khớp!');
     }
+    if (dto.newPassword === dto.oldPassword) {
+      throw new BadRequestException(
+        'Mật khẩu mới không được trùng mật khẩu cũ',
+      );
+    }
 
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('Không tìm thấy tài khoản');
@@ -329,7 +334,36 @@ export class AuthService {
       throw new BadRequestException('Mật khẩu cũ không chính xác');
 
     user.password = await bcrypt.hash(dto.newPassword, 10);
+    user.passwordChangedAt = new Date();
     await this.userRepository.save(user);
+    return { message: 'Đổi mật khẩu thành công' };
+  }
+
+  // Đổi mật khẩu cho tài khoản DOANH NGHIỆP (DN tự đổi). sub trong JWT = account.id.
+  async changeBusinessPassword(accountId: string, dto: ChangePasswordDto) {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Mật khẩu xác nhận không khớp!');
+    }
+    if (dto.newPassword === dto.oldPassword) {
+      throw new BadRequestException(
+        'Mật khẩu mới không được trùng mật khẩu cũ',
+      );
+    }
+
+    const account = await this.accountRepository.findOne({
+      where: { id: accountId },
+    });
+    if (!account) throw new NotFoundException('Không tìm thấy tài khoản');
+    const isOldPassValid = await bcrypt.compare(
+      dto.oldPassword,
+      account.password,
+    );
+    if (!isOldPassValid)
+      throw new BadRequestException('Mật khẩu cũ không chính xác');
+
+    account.password = await bcrypt.hash(dto.newPassword, 10);
+    account.passwordChangedAt = new Date();
+    await this.accountRepository.save(account);
     return { message: 'Đổi mật khẩu thành công' };
   }
 

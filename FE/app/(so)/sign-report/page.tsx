@@ -31,7 +31,9 @@ const YEAR_SELECT =
 function StatusCell({ status }: { status: ReportStatus }) {
   const meta = STATUS_META[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${meta.text}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${meta.text}`}
+    >
       <span className={`inline-block h-2 w-2 rounded-full ${meta.dot}`} />
       {status}
     </span>
@@ -43,7 +45,8 @@ export default function SignReportPage() {
   const [view, setView] = useState<ViewMode>("list");
   const [reports, setReports] = useState<AtvsldReport[]>([]);
   const [viewingReport, setViewingReport] = useState<AtvsldReport | null>(null);
-  const [viewValues, setViewValues] = useState<DeclarationValues>(EMPTY_DECLARATION);
+  const [viewValues, setViewValues] =
+    useState<DeclarationValues>(EMPTY_DECLARATION);
   const [year, setYear] = useState("2022");
   const [toast, setToast] = useState<string | null>(null);
 
@@ -57,7 +60,7 @@ export default function SignReportPage() {
   const [rejectReason, setRejectReason] = useState("");
 
   const loadReports = useCallback(() => {
-    getAtvsldReportList({ nam: Number(year), pageSize: 100 })
+    getAtvsldReportList({ nam: year ? Number(year) : undefined, pageSize: 100 })
       .then((res) => setReports(res.data))
       .catch(() => setToast("Không tải được danh sách báo cáo"));
   }, [year]);
@@ -87,7 +90,8 @@ export default function SignReportPage() {
     [reports, fTen, fMST, fPhuong, fStatus],
   );
 
-  const allSelected = filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id));
+  const allSelected =
+    filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id));
   const someSelected = filtered.some((r) => selectedIds.has(r.id));
 
   const toggleSelectAll = () => {
@@ -116,7 +120,9 @@ export default function SignReportPage() {
     setViewValues(EMPTY_DECLARATION);
     setView("detail");
     getAtvsldReportById(report.id)
-      .then((detail) => setViewValues({ ...EMPTY_DECLARATION, ...detail.declaration }))
+      .then((detail) =>
+        setViewValues({ ...EMPTY_DECLARATION, ...detail.declaration }),
+      )
       .catch(() => setToast("Không tải được nội dung báo cáo"));
   };
 
@@ -141,11 +147,20 @@ export default function SignReportPage() {
       {view === "list" ? (
         <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-            <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ ATVSLĐ</h1>
-            <select className={YEAR_SELECT} value={year} onChange={(e) => setYear(e.target.value)}>
-              <option>2022</option>
-              <option>2023</option>
-              <option>2024</option>
+            <h1 className="text-base font-semibold text-ink">
+              Báo cáo định kỳ ATVSLĐ
+            </h1>
+            <select
+              className={YEAR_SELECT}
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+            >
+              <option value="">Tất cả</option>
+              <option value="2022">2022</option>
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
             </select>
           </div>
 
@@ -156,56 +171,135 @@ export default function SignReportPage() {
                   <thead>
                     <tr>
                       <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5">
-                        <TriCheckbox checked={allSelected} indeterminate={!allSelected && someSelected} onChange={toggleSelectAll} />
+                        <TriCheckbox
+                          checked={allSelected}
+                          indeterminate={!allSelected && someSelected}
+                          onChange={toggleSelectAll}
+                        />
                       </th>
-                      {["Thao tác", "Tên doanh nghiệp", "Mã số thuế", "Ngày nộp báo cáo", "Phường/xã", "Lý do từ chối", "Trạng thái"].map((h) => (
-                        <th key={h} className="whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">{h}</th>
+                      {[
+                        "Thao tác",
+                        "Tên doanh nghiệp",
+                        "Mã số thuế",
+                        "Ngày nộp báo cáo",
+                        "Phường/xã",
+                        "Lý do từ chối",
+                        "Trạng thái",
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]"
+                        >
+                          {h}
+                        </th>
                       ))}
                     </tr>
                     <tr>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT} value={fTen} onChange={(e) => setFTen(e.target.value)} />
+                        <input
+                          className={FILTER_INPUT}
+                          value={fTen}
+                          onChange={(e) => setFTen(e.target.value)}
+                        />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT} value={fMST} onChange={(e) => setFMST(e.target.value)} />
+                        <input
+                          className={FILTER_INPUT}
+                          value={fMST}
+                          onChange={(e) => setFMST(e.target.value)}
+                        />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT} placeholder="dd/MM/yyyy" disabled />
+                        <input
+                          className={FILTER_INPUT}
+                          placeholder="dd/MM/yyyy"
+                          disabled
+                        />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT} value={fPhuong} onChange={(e) => setFPhuong(e.target.value)} />
+                        <input
+                          className={FILTER_INPUT}
+                          value={fPhuong}
+                          onChange={(e) => setFPhuong(e.target.value)}
+                        />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <select className={`${FILTER_INPUT} cursor-pointer bg-white`} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+                        <select
+                          className={`${FILTER_INPUT} cursor-pointer bg-white`}
+                          value={fStatus}
+                          onChange={(e) => setFStatus(e.target.value)}
+                        >
                           <option value="">Tất cả</option>
-                          {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                          {STATUS_OPTIONS.map((s) => (
+                            <option key={s}>{s}</option>
+                          ))}
                         </select>
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.length === 0 ? (
-                      <tr><td colSpan={8} className="px-3.5 py-8 text-center text-[13.5px] text-muted">Không có dữ liệu</td></tr>
+                      <tr>
+                        <td
+                          colSpan={8}
+                          className="px-3.5 py-8 text-center text-[13.5px] text-muted"
+                        >
+                          Không có dữ liệu
+                        </td>
+                      </tr>
                     ) : (
                       filtered.map((r) => (
-                        <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
-                          <td className="px-3.5 py-2.5"><TriCheckbox checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
+                        <tr
+                          key={r.id}
+                          className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]"
+                        >
                           <td className="px-3.5 py-2.5">
-                            <button type="button" onClick={() => openDetail(r)} title="Xem" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                            <TriCheckbox
+                              checked={selectedIds.has(r.id)}
+                              onChange={() => toggleSelect(r.id)}
+                            />
+                          </td>
+                          <td className="px-3.5 py-2.5">
+                            <button
+                              type="button"
+                              onClick={() => openDetail(r)}
+                              title="Xem"
+                              className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                            >
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
                               </svg>
                             </button>
                           </td>
-                          <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
-                          <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.mst}</td>
-                          <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.ngayNop || "–"}</td>
-                          <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.ward}</td>
-                          <td className="px-3.5 py-2.5 text-[#374151]">{r.lyDoTuChoi || "–"}</td>
-                          <td className="whitespace-nowrap px-3.5 py-2.5"><StatusCell status={r.status} /></td>
+                          <td className="px-3.5 py-2.5 text-[#374151]">
+                            {r.ten}
+                          </td>
+                          <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
+                            {r.mst}
+                          </td>
+                          <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
+                            {r.ngayNop || "–"}
+                          </td>
+                          <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
+                            {r.ward}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-[#374151]">
+                            {r.lyDoTuChoi || "–"}
+                          </td>
+                          <td className="whitespace-nowrap px-3.5 py-2.5">
+                            <StatusCell status={r.status} />
+                          </td>
                         </tr>
                       ))
                     )}
@@ -213,25 +307,80 @@ export default function SignReportPage() {
                 </table>
               </div>
               <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#6b7280]">
-                <span>1 - {filtered.length} of {filtered.length}</span>
+                <span>
+                  1 - {filtered.length} of {filtered.length}
+                </span>
               </div>
             </div>
           </div>
 
           {selectedIds.size > 0 ? (
             <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.15)]">
-              <span className="flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-[12px] font-semibold text-white">{selectedIds.size}</span>
-              <span className="text-[13px] text-[#374151]">dữ liệu được chọn</span>
-              <button type="button" onClick={() => setRejectOpen(true)} disabled={!canApprove} title={canApprove ? undefined : "Bạn không có quyền duyệt/từ chối"} className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 102.13-9.36L1 10" /></svg>
+              <span className="flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-[12px] font-semibold text-white">
+                {selectedIds.size}
+              </span>
+              <span className="text-[13px] text-[#374151]">
+                dữ liệu được chọn
+              </span>
+              <button
+                type="button"
+                onClick={() => setRejectOpen(true)}
+                disabled={!canApprove}
+                title={
+                  canApprove ? undefined : "Bạn không có quyền duyệt/từ chối"
+                }
+                className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <path d="M1 4v6h6" />
+                  <path d="M3.51 15a9 9 0 102.13-9.36L1 10" />
+                </svg>
                 Từ chối
               </button>
-              <button type="button" onClick={approveSelected} disabled={!canApprove} title={canApprove ? undefined : "Bạn không có quyền duyệt/từ chối"} className="flex h-8 items-center gap-1.5 rounded-md bg-success px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-success">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+              <button
+                type="button"
+                onClick={approveSelected}
+                disabled={!canApprove}
+                title={
+                  canApprove ? undefined : "Bạn không có quyền duyệt/từ chối"
+                }
+                className="flex h-8 items-center gap-1.5 rounded-md bg-success px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-success"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
                 Duyệt báo cáo
               </button>
-              <button type="button" onClick={() => setSelectedIds(new Set())} className="rounded p-1 text-muted hover:bg-body hover:text-ink">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                className="rounded p-1 text-muted hover:bg-body hover:text-ink"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
           ) : null}
@@ -240,11 +389,20 @@ export default function SignReportPage() {
         <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
             <h1 className="text-base font-semibold text-ink">Báo cáo ATVSLĐ</h1>
-            <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151] hover:text-ink">Huỷ bỏ</button>
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className="text-[13.5px] font-medium text-[#374151] hover:text-ink"
+            >
+              Huỷ bỏ
+            </button>
           </div>
           <div className="px-6 py-5">
             <div className="rounded-lg bg-white p-8 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-              <PhuLucIIView values={viewValues} report={viewingReport ?? undefined} />
+              <PhuLucIIView
+                values={viewValues}
+                report={viewingReport ?? undefined}
+              />
             </div>
           </div>
         </>
@@ -256,12 +414,26 @@ export default function SignReportPage() {
         onClose={() => setRejectOpen(false)}
         footer={
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setRejectOpen(false)} className="h-9.5 rounded-md px-5 text-sm font-medium text-muted hover:bg-[#f9fafb] hover:text-[#374151]">Hủy bỏ</button>
-            <button type="button" onClick={confirmReject} className="h-9.5 rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626]">Xác nhận từ chối</button>
+            <button
+              type="button"
+              onClick={() => setRejectOpen(false)}
+              className="h-9.5 rounded-md px-5 text-sm font-medium text-muted hover:bg-[#f9fafb] hover:text-[#374151]"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="button"
+              onClick={confirmReject}
+              className="h-9.5 rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626]"
+            >
+              Xác nhận từ chối
+            </button>
           </div>
         }
       >
-        <label className="mb-1.5 block text-[12.5px] text-[#374151]">Lý do từ chối <span className="text-danger">*</span></label>
+        <label className="mb-1.5 block text-[12.5px] text-[#374151]">
+          Lý do từ chối <span className="text-danger">*</span>
+        </label>
         <textarea
           className="min-h-22.5 w-full rounded-md border border-line px-3 py-2 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
           placeholder="Nhập lý do từ chối báo cáo..."

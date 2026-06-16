@@ -24,6 +24,7 @@ export function getAccidentReportList(params?: {
   mst?: string;
   ky?: string;
   tt?: string;
+  nam?: string;
 }) {
   const query = new URLSearchParams();
   if (params?.page) query.set("page", String(params.page));
@@ -32,6 +33,7 @@ export function getAccidentReportList(params?: {
   if (params?.mst) query.set("mst", params.mst);
   if (params?.ky) query.set("ky", params.ky);
   if (params?.tt) query.set("tt", params.tt);
+  if (params?.nam) query.set("nam", params.nam);
   const qs = query.toString();
   return request<AccidentReportListResponse>(`/accident-reports${qs ? `?${qs}` : ""}`);
 }

@@ -30,12 +30,13 @@ const fmtRate = (n: number, d: number) => (d === 0 ? "0" : ((n / d) * 1000).toFi
 export default function AccidentReportPage() {
   const [view, setView] = useState<ViewMode>("list");
   const [reports, setReports] = useState<AccidentReport[]>([]);
+  const [year, setYear] = useState("2024");
 
   useEffect(() => {
-    getAccidentReportList({ page: 1, pageSize: 1000 })
+    getAccidentReportList({ page: 1, pageSize: 1000, nam: year || undefined })
       .then((res) => setReports(res.data))
       .catch(() => {});
-  }, []);
+  }, [year]);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [fTen, setFTen] = useState("");
@@ -137,14 +138,33 @@ export default function AccidentReportPage() {
       {view === "list" ? (
         <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-            <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ Tai nạn lao động</h1>
+            <h1 className="text-base font-semibold text-ink">
+              Báo cáo định kỳ Tai nạn lao động
+            </h1>
             <div className="flex items-center gap-2.5">
-              <select className={SELECT_TOP_CLASS.replace("min-w-[200px]", "min-w-[100px]") + " h-[34px]"} defaultValue="2023">
-                <option>2022</option>
-                <option>2023</option>
-                <option>2024</option>
+              <select
+                className={
+                  SELECT_TOP_CLASS.replace("min-w-[200px]", "min-w-[100px]") +
+                  " h-[34px]"
+                }
+                value={year}
+                onChange={(e) => {
+                  setYear(e.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="">Tất cả</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
               </select>
-              <button type="button" onClick={() => setView("tonghop")} className="h-9 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
+              <button
+                type="button"
+                onClick={() => setView("tonghop")}
+                className="h-9 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+              >
                 Báo cáo tổng hợp
               </button>
             </div>
@@ -154,11 +174,16 @@ export default function AccidentReportPage() {
             <select
               className={SELECT_TOP_CLASS}
               value={selectedProvince}
-              onChange={(e) => { setSelectedProvince(e.target.value); setSelectedWard(""); }}
+              onChange={(e) => {
+                setSelectedProvince(e.target.value);
+                setSelectedWard("");
+              }}
             >
               <option value="">Tất cả</option>
               {PROVINCES.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>
+                  {p}
+                </option>
               ))}
             </select>
             <select
@@ -169,7 +194,9 @@ export default function AccidentReportPage() {
             >
               <option value="">Tất cả</option>
               {(WARDS_BY_PROVINCE[selectedProvince] ?? []).map((w) => (
-                <option key={w} value={w}>{w}</option>
+                <option key={w} value={w}>
+                  {w}
+                </option>
               ))}
             </select>
           </div>
@@ -180,32 +207,74 @@ export default function AccidentReportPage() {
                 <thead>
                   <tr>
                     <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5">
-                      <TriCheckbox checked={allPageSelected} indeterminate={!allPageSelected && somePageSelected} onChange={toggleSelectAll} />
+                      <TriCheckbox
+                        checked={allPageSelected}
+                        indeterminate={!allPageSelected && somePageSelected}
+                        onChange={toggleSelectAll}
+                      />
                     </th>
-                    <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Thao tác</th>
-                    <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Tên doanh nghiệp</th>
-                    <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Mã số thuế</th>
-                    <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Kỳ báo cáo</th>
-                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">Trạng thái</th>
+                    <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Thao tác
+                    </th>
+                    <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Tên doanh nghiệp
+                    </th>
+                    <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Mã số thuế
+                    </th>
+                    <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Kỳ báo cáo
+                    </th>
+                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Trạng thái
+                    </th>
                   </tr>
                   <tr>
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fTen} onChange={(e) => { setFTen(e.target.value); setCurrentPage(1); }} />
+                      <input
+                        className={FILTER_INPUT_CLASS}
+                        value={fTen}
+                        onChange={(e) => {
+                          setFTen(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fMST} onChange={(e) => { setFMST(e.target.value); setCurrentPage(1); }} />
+                      <input
+                        className={FILTER_INPUT_CLASS}
+                        value={fMST}
+                        onChange={(e) => {
+                          setFMST(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fKy} onChange={(e) => { setFKy(e.target.value); setCurrentPage(1); }}>
+                      <select
+                        className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                        value={fKy}
+                        onChange={(e) => {
+                          setFKy(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      >
                         <option value="">Tất cả</option>
                         <option>6 tháng</option>
                         <option>Cả năm</option>
                       </select>
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fTT} onChange={(e) => { setFTT(e.target.value); setCurrentPage(1); }}>
+                      <select
+                        className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                        value={fTT}
+                        onChange={(e) => {
+                          setFTT(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      >
                         <option value="">Tất cả</option>
                         <option>Đang báo cáo</option>
                         <option>Đã nộp</option>
@@ -216,25 +285,58 @@ export default function AccidentReportPage() {
                 </thead>
                 <tbody>
                   {paged.length === 0 ? (
-                    <tr><td colSpan={6} className="px-3.5 py-8 text-center text-[13.5px] text-muted">Không có dữ liệu</td></tr>
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-3.5 py-8 text-center text-[13.5px] text-muted"
+                      >
+                        Không có dữ liệu
+                      </td>
+                    </tr>
                   ) : (
                     paged.map((r) => (
-                      <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
-                        <td className="px-3.5 py-2.5"><TriCheckbox checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
+                      <tr
+                        key={r.id}
+                        className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]"
+                      >
                         <td className="px-3.5 py-2.5">
-                          <button type="button" onClick={() => setView("detail")} title="Xem" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <TriCheckbox
+                            checked={selectedIds.has(r.id)}
+                            onChange={() => toggleSelect(r.id)}
+                          />
+                        </td>
+                        <td className="px-3.5 py-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setView("detail")}
+                            title="Xem"
+                            className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
                               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                               <circle cx="12" cy="12" r="3" />
                             </svg>
                           </button>
                         </td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">{r.mst}</td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">
+                          {r.ten}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">
+                          {r.mst}
+                        </td>
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
                         <td className="px-3.5 py-2.5">
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
-                            <span className={`inline-block h-2 w-2 rounded-full ${r.tt === "Đang báo cáo" ? "bg-[#d1d5db]" : r.tt === "Đã nộp" ? "bg-[#f59e0b]" : "bg-[#3b82f6]"}`} />
+                            <span
+                              className={`inline-block h-2 w-2 rounded-full ${r.tt === "Đang báo cáo" ? "bg-[#d1d5db]" : r.tt === "Đã nộp" ? "bg-[#f59e0b]" : "bg-[#3b82f6]"}`}
+                            />
                             {r.tt}
                           </span>
                         </td>
@@ -245,17 +347,56 @@ export default function AccidentReportPage() {
               </table>
 
               <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#374151]">
-                <select className="h-[30px] cursor-pointer rounded-[5px] border border-line px-1.5 text-[13px] outline-none" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}>
+                <select
+                  className="h-[30px] cursor-pointer rounded-[5px] border border-line px-1.5 text-[13px] outline-none"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                 </select>
-                <span className="text-[#6b7280]">{total === 0 ? "0 of 0" : `${start + 1} - ${end} of ${total}`}</span>
+                <span className="text-[#6b7280]">
+                  {total === 0 ? "0 of 0" : `${start + 1} - ${end} of ${total}`}
+                </span>
                 <div className="flex gap-1">
-                  <button type="button" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
                   </button>
-                  <button type="button" onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))} disabled={end >= total} className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(lastPage, p + 1))
+                    }
+                    disabled={end >= total}
+                    className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -267,15 +408,30 @@ export default function AccidentReportPage() {
       {view === "detail" ? (
         <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-            <h1 className="text-base font-semibold text-ink">Báo cáo định kỳ Tai nạn lao động</h1>
+            <h1 className="text-base font-semibold text-ink">
+              Báo cáo định kỳ Tai nạn lao động
+            </h1>
             <div className="flex items-center gap-2.5">
-              <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151]">Huỷ bỏ</button>
+              <button
+                type="button"
+                onClick={() => setView("list")}
+                className="text-[13.5px] font-medium text-[#374151]"
+              >
+                Huỷ bỏ
+              </button>
               <button
                 type="button"
                 onClick={() => exportDetailDocx()}
                 className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
@@ -286,30 +442,63 @@ export default function AccidentReportPage() {
           </div>
           <div className="px-6 py-5">
             <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-              <div className="mb-1.5 text-[15px] font-bold text-ink">Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo: 6 tháng năm 2023</div>
+              <div className="mb-1.5 text-[15px] font-bold text-ink">
+                Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo: 6
+                tháng năm 2023
+              </div>
               <p className="mb-4 text-[13px] text-muted">
-                **Vui lòng đính kèm báo cáo TNLĐ có dấu mộc công ty: <a href="#" className="text-primary">baocaoTNLD.pdf</a>
+                **Vui lòng đính kèm báo cáo TNLĐ có dấu mộc công ty:{" "}
+                <a href="#" className="text-primary">
+                  baocaoTNLD.pdf
+                </a>
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr>
-                      <th className={`${CT_TH} min-w-[220px] text-left`} rowSpan={4}>Tên chỉ tiêu thống kê</th>
-                      <th className={`${CT_TH} w-[60px]`} rowSpan={4}>Mã số</th>
-                      <th className={CT_TH} colSpan={11}>Phân loại TNLĐ theo mức độ thương tật</th>
+                      <th
+                        className={`${CT_TH} min-w-[220px] text-left`}
+                        rowSpan={4}
+                      >
+                        Tên chỉ tiêu thống kê
+                      </th>
+                      <th className={`${CT_TH} w-[60px]`} rowSpan={4}>
+                        Mã số
+                      </th>
+                      <th className={CT_TH} colSpan={11}>
+                        Phân loại TNLĐ theo mức độ thương tật
+                      </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH} colSpan={3}>Số vụ (Vụ)</th>
-                      <th className={CT_TH} colSpan={8}>Số người bị nạn (Người)</th>
+                      <th className={CT_TH} colSpan={3}>
+                        Số vụ (Vụ)
+                      </th>
+                      <th className={CT_TH} colSpan={8}>
+                        Số người bị nạn (Người)
+                      </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH} rowSpan={2}>Tổng số</th>
-                      <th className={CT_TH} rowSpan={2}>Số vụ có người chết</th>
-                      <th className={CT_TH} rowSpan={2}>Số vụ có từ 2 người bị nạn trở lên</th>
-                      <th className={CT_TH} colSpan={2}>Tổng số</th>
-                      <th className={CT_TH} colSpan={2}>Số LĐ nữ</th>
-                      <th className={CT_TH} colSpan={2}>Số người bị chết</th>
-                      <th className={CT_TH} colSpan={2}>Số người bị thương nặng</th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Tổng số
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Số vụ có người chết
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Số vụ có từ 2 người bị nạn trở lên
+                      </th>
+                      <th className={CT_TH} colSpan={2}>
+                        Tổng số
+                      </th>
+                      <th className={CT_TH} colSpan={2}>
+                        Số LĐ nữ
+                      </th>
+                      <th className={CT_TH} colSpan={2}>
+                        Số người bị chết
+                      </th>
+                      <th className={CT_TH} colSpan={2}>
+                        Số người bị thương nặng
+                      </th>
                     </tr>
                     <tr>
                       <th className={CT_TH}>Tổng số</th>
@@ -327,20 +516,31 @@ export default function AccidentReportPage() {
                       if (row.kind === "sub") {
                         return (
                           <tr key={idx}>
-                            <td className={`${CT_TD} text-left ${row.bold ? "font-semibold" : "italic"}`} colSpan={13} style={{ paddingLeft: row.bold ? 20 : 32 }}>
+                            <td
+                              className={`${CT_TD} text-left ${row.bold ? "font-semibold" : "italic"}`}
+                              colSpan={13}
+                              style={{ paddingLeft: row.bold ? 20 : 32 }}
+                            >
                               {row.label}
                             </td>
                           </tr>
                         );
                       }
-                      const vals = row.vals && row.vals.length ? row.vals : EMPTY_VALS.map(() => "");
+                      const vals =
+                        row.vals && row.vals.length
+                          ? row.vals
+                          : EMPTY_VALS.map(() => "");
                       if (row.kind === "section") {
                         return (
                           <tr key={idx} className="bg-[#f9fafb]">
-                            <td className={`${CT_TD} text-left font-bold`}>{row.label}</td>
+                            <td className={`${CT_TD} text-left font-bold`}>
+                              {row.label}
+                            </td>
                             <td className={CT_TD} />
                             {vals.map((v, i) => (
-                              <td key={i} className={`${CT_TD} font-bold`}>{v}</td>
+                              <td key={i} className={`${CT_TD} font-bold`}>
+                                {v}
+                              </td>
                             ))}
                           </tr>
                         );
@@ -350,7 +550,9 @@ export default function AccidentReportPage() {
                           <td className={`${CT_TD} text-left`}>{row.label}</td>
                           <td className={CT_TD}>{row.ma || ""}</td>
                           {vals.map((v, i) => (
-                            <td key={i} className={CT_TD}>{v}</td>
+                            <td key={i} className={CT_TD}>
+                              {v}
+                            </td>
                           ))}
                         </tr>
                       );
@@ -359,22 +561,40 @@ export default function AccidentReportPage() {
                 </table>
               </div>
 
-              <div className="mb-3 mt-5 text-[15px] font-bold text-ink">II. Thiệt hại do tai nạn lao động</div>
+              <div className="mb-3 mt-5 text-[15px] font-bold text-ink">
+                II. Thiệt hại do tai nạn lao động
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr>
-                      <th className={`${CT_TH} min-w-[300px] text-left`} rowSpan={3}>Tổng số ngày nghỉ vì tai nạn lao động (kể cả ngày nghỉ chế độ)</th>
-                      <th className={CT_TH} colSpan={4}>Tổng số ngày nghỉ vì TNLĐ (1.000đ)</th>
-                      <th className={CT_TH} rowSpan={3}>Thiệt hại tài sản (1.000đ)</th>
+                      <th
+                        className={`${CT_TH} min-w-[300px] text-left`}
+                        rowSpan={3}
+                      >
+                        Tổng số ngày nghỉ vì tai nạn lao động (kể cả ngày nghỉ
+                        chế độ)
+                      </th>
+                      <th className={CT_TH} colSpan={4}>
+                        Tổng số ngày nghỉ vì TNLĐ (1.000đ)
+                      </th>
+                      <th className={CT_TH} rowSpan={3}>
+                        Thiệt hại tài sản (1.000đ)
+                      </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH} rowSpan={2}>Tổng số</th>
-                      <th className={CT_TH} colSpan={3}>Khoảng chi cụ thể của cơ sở</th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Tổng số
+                      </th>
+                      <th className={CT_TH} colSpan={3}>
+                        Khoảng chi cụ thể của cơ sở
+                      </th>
                     </tr>
                     <tr>
                       <th className={CT_TH}>Y tế</th>
-                      <th className={CT_TH}>Trả lương trong thời gian điều trị</th>
+                      <th className={CT_TH}>
+                        Trả lương trong thời gian điều trị
+                      </th>
                       <th className={CT_TH}>Bồi thường trợ cấp</th>
                     </tr>
                   </thead>
@@ -398,15 +618,30 @@ export default function AccidentReportPage() {
       {view === "tonghop" ? (
         <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-            <h1 className="text-base font-semibold text-ink">Báo cáo tổng hợp</h1>
+            <h1 className="text-base font-semibold text-ink">
+              Báo cáo tổng hợp
+            </h1>
             <div className="flex items-center gap-2.5">
-              <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151]">Huỷ bỏ</button>
+              <button
+                type="button"
+                onClick={() => setView("list")}
+                className="text-[13.5px] font-medium text-[#374151]"
+              >
+                Huỷ bỏ
+              </button>
               <button
                 type="button"
                 onClick={() => exportTonghopDocx(tonghopStats)}
                 className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-body"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
@@ -417,27 +652,60 @@ export default function AccidentReportPage() {
           </div>
           <div className="px-6 py-5">
             <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-              <div className="mb-4 text-[15px] font-bold text-ink">I. Thông tin tổng quan:</div>
+              <div className="mb-4 text-[15px] font-bold text-ink">
+                I. Thông tin tổng quan:
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr>
-                      <th className={`${CT_TH} min-w-[180px] text-left`} rowSpan={3}>Loại hình cơ sở</th>
-                      <th className={`${CT_TH} w-[50px]`} rowSpan={3}>Mã số</th>
-                      <th className={CT_TH} colSpan={2}>Cơ sở</th>
-                      <th className={CT_TH} colSpan={2}>Lực lượng lao động</th>
-                      <th className={CT_TH} colSpan={3}>Tổng số tai nạn lao động</th>
-                      <th className={CT_TH} colSpan={2}>Tần suất tai nạn lao động</th>
-                      <th className={`${CT_TH} min-w-[80px]`} rowSpan={3}>Ghi chú</th>
+                      <th
+                        className={`${CT_TH} min-w-[180px] text-left`}
+                        rowSpan={3}
+                      >
+                        Loại hình cơ sở
+                      </th>
+                      <th className={`${CT_TH} w-[50px]`} rowSpan={3}>
+                        Mã số
+                      </th>
+                      <th className={CT_TH} colSpan={2}>
+                        Cơ sở
+                      </th>
+                      <th className={CT_TH} colSpan={2}>
+                        Lực lượng lao động
+                      </th>
+                      <th className={CT_TH} colSpan={3}>
+                        Tổng số tai nạn lao động
+                      </th>
+                      <th className={CT_TH} colSpan={2}>
+                        Tần suất tai nạn lao động
+                      </th>
+                      <th className={`${CT_TH} min-w-[80px]`} rowSpan={3}>
+                        Ghi chú
+                      </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH} rowSpan={2}>Tổng số</th>
-                      <th className={CT_TH} rowSpan={2}>Số cơ sở tham gia</th>
-                      <th className={CT_TH} rowSpan={2}>Tổng số lao động</th>
-                      <th className={CT_TH} rowSpan={2}>Số lđ có tham gia bảo hiểm</th>
-                      <th className={CT_TH} colSpan={3}>Số người bị TNLĐ</th>
-                      <th className={CT_TH} rowSpan={2}>KTNLĐ</th>
-                      <th className={CT_TH} rowSpan={2}>KCNN</th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Tổng số
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Số cơ sở tham gia
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Tổng số lao động
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Số lđ có tham gia bảo hiểm
+                      </th>
+                      <th className={CT_TH} colSpan={3}>
+                        Số người bị TNLĐ
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        KTNLĐ
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        KCNN
+                      </th>
                     </tr>
                     <tr>
                       <th className={CT_TH}>Tổng số</th>
@@ -447,17 +715,39 @@ export default function AccidentReportPage() {
                   </thead>
                   <tbody>
                     <tr className="bg-[#f9fafb]">
-                      <td className={`${CT_TD} text-left font-bold`}>Tổng số</td>
+                      <td className={`${CT_TD} text-left font-bold`}>
+                        Tổng số
+                      </td>
                       <td className={CT_TD} />
                       <td className={CT_TD}>{tonghopStats.total.coSoTongSo}</td>
-                      <td className={CT_TD}>{tonghopStats.total.coSoThamGia}</td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.coSoThamGia}
+                      </td>
                       <td className={CT_TD}>{tonghopStats.total.soLaoDong}</td>
-                      <td className={CT_TD}>{tonghopStats.total.soLDCoBaoHiem}</td>
-                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiNan}</td>
-                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiChet}</td>
-                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiThuongNang}</td>
-                      <td className={CT_TD}>{fmtRate(tonghopStats.total.soNguoiBiNan, tonghopStats.total.soLaoDong)}</td>
-                      <td className={CT_TD}>{fmtRate(tonghopStats.total.soNguoiBiChet, tonghopStats.total.soLaoDong)}</td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.soLDCoBaoHiem}
+                      </td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.soNguoiBiNan}
+                      </td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.soNguoiBiChet}
+                      </td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.soNguoiBiThuongNang}
+                      </td>
+                      <td className={CT_TD}>
+                        {fmtRate(
+                          tonghopStats.total.soNguoiBiNan,
+                          tonghopStats.total.soLaoDong,
+                        )}
+                      </td>
+                      <td className={CT_TD}>
+                        {fmtRate(
+                          tonghopStats.total.soNguoiBiChet,
+                          tonghopStats.total.soLaoDong,
+                        )}
+                      </td>
                       <td className={CT_TD} />
                     </tr>
                     {TONGHOP_I_ROWS.map((name, i) => {
@@ -465,17 +755,44 @@ export default function AccidentReportPage() {
                       const hasData = row.coSoTongSo > 0;
                       return (
                         <tr key={name}>
-                          <td className={`${CT_TD} text-left`} style={{ paddingLeft: 16 }}>{name}</td>
+                          <td
+                            className={`${CT_TD} text-left`}
+                            style={{ paddingLeft: 16 }}
+                          >
+                            {name}
+                          </td>
                           <td className={CT_TD} />
-                          <td className={CT_TD}>{hasData ? row.coSoTongSo : ""}</td>
-                          <td className={CT_TD}>{hasData ? row.coSoThamGia : ""}</td>
-                          <td className={CT_TD}>{hasData ? row.soLaoDong : ""}</td>
-                          <td className={CT_TD}>{hasData ? row.soLDCoBaoHiem : ""}</td>
-                          <td className={CT_TD}>{hasData ? row.soNguoiBiNan : ""}</td>
-                          <td className={CT_TD}>{hasData ? row.soNguoiBiChet : ""}</td>
-                          <td className={CT_TD}>{hasData ? row.soNguoiBiThuongNang : ""}</td>
-                          <td className={CT_TD}>{hasData ? fmtRate(row.soNguoiBiNan, row.soLaoDong) : ""}</td>
-                          <td className={CT_TD}>{hasData ? fmtRate(row.soNguoiBiChet, row.soLaoDong) : ""}</td>
+                          <td className={CT_TD}>
+                            {hasData ? row.coSoTongSo : ""}
+                          </td>
+                          <td className={CT_TD}>
+                            {hasData ? row.coSoThamGia : ""}
+                          </td>
+                          <td className={CT_TD}>
+                            {hasData ? row.soLaoDong : ""}
+                          </td>
+                          <td className={CT_TD}>
+                            {hasData ? row.soLDCoBaoHiem : ""}
+                          </td>
+                          <td className={CT_TD}>
+                            {hasData ? row.soNguoiBiNan : ""}
+                          </td>
+                          <td className={CT_TD}>
+                            {hasData ? row.soNguoiBiChet : ""}
+                          </td>
+                          <td className={CT_TD}>
+                            {hasData ? row.soNguoiBiThuongNang : ""}
+                          </td>
+                          <td className={CT_TD}>
+                            {hasData
+                              ? fmtRate(row.soNguoiBiNan, row.soLaoDong)
+                              : ""}
+                          </td>
+                          <td className={CT_TD}>
+                            {hasData
+                              ? fmtRate(row.soNguoiBiChet, row.soLaoDong)
+                              : ""}
+                          </td>
                           <td className={CT_TD} />
                         </tr>
                       );
@@ -486,66 +803,132 @@ export default function AccidentReportPage() {
             </div>
 
             <div className="mt-4 rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-              <div className="mb-4 text-[15px] font-bold text-ink">II. Phân loại TNLĐ:</div>
+              <div className="mb-4 text-[15px] font-bold text-ink">
+                II. Phân loại TNLĐ:
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr>
-                      <th className={`${CT_TH} min-w-[140px] text-left`} rowSpan={3}>Tên chỉ tiêu thống kê</th>
-                      <th className={`${CT_TH} w-[50px]`} rowSpan={3}>Mã số</th>
-                      <th className={CT_TH} colSpan={7}>Phân loại TNLĐ theo mức độ thương tật</th>
-                      <th className={CT_TH} colSpan={6}>Theo mức độ thương tật</th>
+                      <th
+                        className={`${CT_TH} min-w-[140px] text-left`}
+                        rowSpan={3}
+                      >
+                        Tên chỉ tiêu thống kê
+                      </th>
+                      <th className={`${CT_TH} w-[50px]`} rowSpan={3}>
+                        Mã số
+                      </th>
+                      <th className={CT_TH} colSpan={7}>
+                        Phân loại TNLĐ theo mức độ thương tật
+                      </th>
+                      <th className={CT_TH} colSpan={6}>
+                        Theo mức độ thương tật
+                      </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH} colSpan={3}>Số vụ TNLĐ</th>
-                      <th className={CT_TH} colSpan={4}>Số người bị nạn (Người)</th>
-                      <th className={CT_TH} rowSpan={2}>Tổng số ngày nghỉ vì TNLĐ</th>
-                      <th className={CT_TH} rowSpan={2}>Tổng số tiền</th>
-                      <th className={CT_TH} colSpan={3}>Tổng số ngày nghỉ vì TNLĐ</th>
-                      <th className={CT_TH} rowSpan={2}>Thiệt hại tài sản (1.000 đ)</th>
+                      <th className={CT_TH} colSpan={3}>
+                        Số vụ TNLĐ
+                      </th>
+                      <th className={CT_TH} colSpan={4}>
+                        Số người bị nạn (Người)
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Tổng số ngày nghỉ vì TNLĐ
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Tổng số tiền
+                      </th>
+                      <th className={CT_TH} colSpan={3}>
+                        Tổng số ngày nghỉ vì TNLĐ
+                      </th>
+                      <th className={CT_TH} rowSpan={2}>
+                        Thiệt hại tài sản (1.000 đ)
+                      </th>
                     </tr>
                     <tr>
                       <th className={CT_TH}>Tổng số</th>
                       <th className={CT_TH}>Số vụ có người chết</th>
-                      <th className={CT_TH}>Số vụ có từ 2 người bị nạn trở lên</th>
+                      <th className={CT_TH}>
+                        Số vụ có từ 2 người bị nạn trở lên
+                      </th>
                       <th className={CT_TH}>Tổng số</th>
                       <th className={CT_TH}>Số LĐ nữ</th>
                       <th className={CT_TH}>Số người bị chết</th>
                       <th className={CT_TH}>Số người bị thương nặng</th>
                       <th className={CT_TH}>Y Tế</th>
-                      <th className={CT_TH}>Trả lương theo thời gian điều trị</th>
+                      <th className={CT_TH}>
+                        Trả lương theo thời gian điều trị
+                      </th>
                       <th className={CT_TH}>Bồi thường/ Trợ cấp</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="bg-[#f9fafb]">
-                      <td className={`${CT_TD} text-left font-bold`}>Tổng số</td>
+                      <td className={`${CT_TD} text-left font-bold`}>
+                        Tổng số
+                      </td>
                       <td className={CT_TD} />
                       <td className={CT_TD}>{tonghopStats.total.soVu}</td>
-                      <td className={CT_TD}>{tonghopStats.total.soVuCoNguoiChet}</td>
-                      <td className={CT_TD}>{tonghopStats.total.soVuCo2NguoiBiNan}</td>
-                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiNan}</td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.soVuCoNguoiChet}
+                      </td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.soVuCo2NguoiBiNan}
+                      </td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.soNguoiBiNan}
+                      </td>
                       <td className={CT_TD}>{tonghopStats.total.soLDNu}</td>
-                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiChet}</td>
-                      <td className={CT_TD}>{tonghopStats.total.soNguoiBiThuongNang}</td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.soNguoiBiChet}
+                      </td>
+                      <td className={CT_TD}>
+                        {tonghopStats.total.soNguoiBiThuongNang}
+                      </td>
                       <td className={CT_TD}>{tonghopStats.total.soNgayNghi}</td>
-                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.tongSoTien)}</td>
-                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.chiPhiYTe)}</td>
-                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.chiPhiTraLuong)}</td>
-                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.boiThuongTroCap)}</td>
-                      <td className={CT_TD}>{fmtMoney(tonghopStats.total.thiethaiTaiSan)}</td>
+                      <td className={CT_TD}>
+                        {fmtMoney(tonghopStats.total.tongSoTien)}
+                      </td>
+                      <td className={CT_TD}>
+                        {fmtMoney(tonghopStats.total.chiPhiYTe)}
+                      </td>
+                      <td className={CT_TD}>
+                        {fmtMoney(tonghopStats.total.chiPhiTraLuong)}
+                      </td>
+                      <td className={CT_TD}>
+                        {fmtMoney(tonghopStats.total.boiThuongTroCap)}
+                      </td>
+                      <td className={CT_TD}>
+                        {fmtMoney(tonghopStats.total.thiethaiTaiSan)}
+                      </td>
                     </tr>
                     {TONGHOP_II_GROUPS.map((group) => (
                       <Fragment key={group.category}>
                         <tr className="bg-[#f1f5f9]">
-                          <td className={`${CT_TD} text-left font-semibold`} colSpan={15}>{group.category}</td>
+                          <td
+                            className={`${CT_TD} text-left font-semibold`}
+                            colSpan={15}
+                          >
+                            {group.category}
+                          </td>
                         </tr>
                         {group.items.map((item) => (
                           <tr key={item.ma}>
-                            <td className={`${CT_TD} text-left`} style={{ paddingLeft: 20 }}>{item.label}</td>
+                            <td
+                              className={`${CT_TD} text-left`}
+                              style={{ paddingLeft: 20 }}
+                            >
+                              {item.label}
+                            </td>
                             <td className={CT_TD}>{item.ma}</td>
-                            {(tonghopStats.phanLoai[item.ma] ?? Array.from({ length: 13 }, () => 0)).map((v, i) => (
-                              <td key={i} className={CT_TD}>{v || ""}</td>
+                            {(
+                              tonghopStats.phanLoai[item.ma] ??
+                              Array.from({ length: 13 }, () => 0)
+                            ).map((v, i) => (
+                              <td key={i} className={CT_TD}>
+                                {v || ""}
+                              </td>
                             ))}
                           </tr>
                         ))}

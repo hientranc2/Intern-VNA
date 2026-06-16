@@ -77,11 +77,19 @@ ON CONFLICT (ma) DO NOTHING;
 -- ---------------------------------------------------------------------------
 -- report_configs (tùy chọn) — khớp FE libs/tts/report-config/reportConfigData.ts
 -- ---------------------------------------------------------------------------
-INSERT INTO report_configs (nam, ten, ky, bat_dau, ket_thuc, active) VALUES
+-- Idempotent theo khóa tự nhiên (nam, ten, ky) — report_configs không có unique constraint
+-- nên ON CONFLICT vô tác dụng; dùng NOT EXISTS để không chèn trùng khi chạy lại seed.
+INSERT INTO report_configs (nam, ten, ky, bat_dau, ket_thuc, active)
+SELECT v.nam, v.ten, v.ky, v.bat_dau, v.ket_thuc, v.active
+FROM (VALUES
   ('2022', 'Báo cáo tai nạn lao động', 'Cả năm', '15/12/2023', '10/01/2024', true),
   ('2022', 'Báo cáo TNLĐ',            '6 tháng', '01/07/2022', '15/07/2022', true),
   ('2023', 'Báo cáo tai nạn lao động', 'Cả năm', '01/01/2024', '28/02/2024', false)
-ON CONFLICT DO NOTHING;
+) AS v(nam, ten, ky, bat_dau, ket_thuc, active)
+WHERE NOT EXISTS (
+  SELECT 1 FROM report_configs rc
+  WHERE rc.nam = v.nam AND rc.ten = v.ten AND rc.ky = v.ky
+);
 
 -- ---------------------------------------------------------------------------
 -- injury_factors (tùy chọn) — khớp FE libs/tts/category/categoryData.ts

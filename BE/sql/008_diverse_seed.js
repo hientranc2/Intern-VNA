@@ -5,7 +5,9 @@
 //   - Doanh nghiệp đa tỉnh / loại hình / ngành nghề (+ account đăng nhập DN).
 //   - Báo cáo TNLĐ (accident_reports) + ATVSLĐ (atvsld_reports) trải năm 2022..2025,
 //     nhiều trạng thái khác nhau.
-// Đánh dấu riêng để không đụng dữ liệu cũ: tax_code 'DN-SEED-%', username 'role_%' / 'dn_seed_%'.
+// Quy ước: username DN = MST (đúng 10 chữ số, dải '03800002xx'); user Sở = 'role_*';
+// mật khẩu mặc định mọi tài khoản seed = 12345678.
+// Idempotent: DN nhận diện theo tax_code; reports dọn theo enterprise_id của DN seed.
 //
 // Chạy:  node sql/008_diverse_seed.js
 const { Client } = require('pg');
@@ -109,22 +111,24 @@ async function seedRoleUsers(c, hash) {
     const r = await c.query(
       `INSERT INTO users (username, password, email, full_name, job_title, role, role_id, is_active)
        VALUES ($1,$2,$3,$4,$5,$6,$7,true)
-       ON CONFLICT (username) DO UPDATE SET role_id = EXCLUDED.role_id, role = EXCLUDED.role, job_title = EXCLUDED.job_title`,
+       ON CONFLICT (username) DO UPDATE SET role_id = EXCLUDED.role_id, role = EXCLUDED.role,
+         job_title = EXCLUDED.job_title, password = EXCLUDED.password`,
       [username, hash, `${username}@vna.local`, fullName, jobTitle, roleStr, roleId],
     );
     n += r.rowCount;
   }
-  console.log(`✓ users theo role: ${ROLE_USERS.length} user (role_*), mật khẩu 123456`);
+  console.log(`✓ users theo role: ${ROLE_USERS.length} user (role_*), mật khẩu 12345678`);
 }
 
 async function seedBusinesses(c, hash) {
   const ids = [];
   for (let i = 0; i < BIZ.length; i++) {
     const [name, type, industry] = BIZ[i];
-    const tax = `DN-SEED-${2001 + i}`;
+    // MST hợp lệ: đúng 10 chữ số (khớp regex /^\d{10}$/ của form đăng ký DN).
+    const tax = String(380000201 + i).padStart(10, '0');
     const [province, ward] = PROVINCES[i % PROVINCES.length];
-    // account đăng nhập DN
-    const accUser = `dn_seed_${i + 1}`;
+    // Tài khoản đăng nhập DN: username = MST (đúng quy ước business.service đăng ký).
+    const accUser = tax;
     let acc = await c.query('SELECT id FROM accounts WHERE username=$1', [accUser]);
     let accountId;
     if (acc.rowCount > 0) {
@@ -149,7 +153,7 @@ async function seedBusinesses(c, hash) {
     );
     ids.push({ id: biz.rows[0].id, name, tax, type, province, ward });
   }
-  console.log(`✓ businesses seed: ${ids.length} DN (tax DN-SEED-*), account dn_seed_* / 123456`);
+  console.log(`✓ businesses seed: ${ids.length} DN (MST 10 số 03800002xx) — đăng nhập bằng MST / 12345678`);
   return ids;
 }
 
@@ -166,12 +170,18 @@ async function getConfigByYear(c) {
 }
 
 async function seedAccidentReports(c, businesses, cfgByYear) {
-  // Xóa report cũ của DN seed để idempotent
-  await c.query(`DELETE FROM accident_reports WHERE mst LIKE 'DN-SEED-%'`);
+  // Xóa report cũ của DN seed (theo enterprise_id) để idempotent
+  await c.query(`DELETE FROM accident_reports WHERE enterprise_id = ANY($1)`, [
+    businesses.map((b) => b.id),
+  ]);
   let n = 0;
   let seed = 1;
-  for (const b of businesses) {
-    for (const y of YEARS) {
+  for (let bi = 0; bi < businesses.length; bi++) {
+    const b = businesses[bi];
+    for (let yi = 0; yi < YEARS.length; yi++) {
+      const y = YEARS[yi];
+      // Mỗi DN vắng mặt đúng 1 năm khác nhau (bi%4) → tập DN mỗi năm khác nhau, filter nhìn rõ.
+      if (bi % 4 === yi) continue;
       const cfg = cfgByYear[y];
       if (!cfg) continue;
       const status = STATUSES_TNLD[seed % STATUSES_TNLD.length];
@@ -197,11 +207,13 @@ async function seedAccidentReports(c, businesses, cfgByYear) {
       n++; seed++;
     }
   }
-  console.log(`✓ accident_reports seed: +${n} báo cáo TNLĐ (DN-SEED-*, 2022..2025, đủ trạng thái)`);
+  console.log(`✓ accident_reports seed: +${n} báo cáo TNLĐ (DN seed, 2022..2025, đủ trạng thái)`);
 }
 
 async function seedAtvsldReports(c, businesses) {
-  await c.query(`DELETE FROM atvsld_reports WHERE mst LIKE 'DN-SEED-%'`);
+  await c.query(`DELETE FROM atvsld_reports WHERE enterprise_id = ANY($1)`, [
+    businesses.map((b) => b.id),
+  ]);
   const declTemplate = (seed) => JSON.stringify({
     tongLaoDong: String(50 + ri(seed, 200)), nguoiATVSLD: String(ri(seed, 3)), nguoiYTe: String(ri(seed + 1, 2)),
     laoDongNu: String(ri(seed + 2, 80)), tnldTongVu: String(ri(seed * 1.5, 4)),
@@ -211,8 +223,11 @@ async function seedAtvsldReports(c, businesses) {
     thoiDiemDanhGia: `0${1 + ri(seed, 8)}/2024`,
   });
   let n = 0, seed = 100;
-  for (const b of businesses) {
-    for (const y of YEARS) {
+  for (let bi = 0; bi < businesses.length; bi++) {
+    const b = businesses[bi];
+    for (let yi = 0; yi < YEARS.length; yi++) {
+      const y = YEARS[yi];
+      if (bi % 4 === yi) continue; // mỗi DN vắng 1 năm → tập DN mỗi năm khác nhau
       for (const ky of ['6 tháng', 'Cả năm']) {
         const status = STATUSES_ATVSLD[seed % STATUSES_ATVSLD.length];
         const batDau = `01/01/${y}`;
@@ -234,12 +249,13 @@ async function seedAtvsldReports(c, businesses) {
       }
     }
   }
-  console.log(`✓ atvsld_reports seed: +${n} báo cáo ATVSLĐ (DN-SEED-*, 2022..2025, 6 tháng + Cả năm, đủ trạng thái)`);
+  console.log(`✓ atvsld_reports seed: +${n} báo cáo ATVSLĐ (DN seed, 2022..2025, 6 tháng + Cả năm, đủ trạng thái)`);
 }
 
 // Seed toàn bộ dữ liệu đa dạng trên một client đã kết nối sẵn (tái dùng trong seed.js).
 async function seedDiverse(c) {
-  const hash = await bcrypt.hash('123456', 10);
+  // Mật khẩu mặc định cho mọi tài khoản seed (user Sở role_* và DN dn_seed_*) = 12345678.
+  const hash = await bcrypt.hash('12345678', 10);
   await seedSectors(c);
   await seedRoleUsers(c, hash);
   const businesses = await seedBusinesses(c, hash);

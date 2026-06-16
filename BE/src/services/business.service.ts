@@ -256,4 +256,26 @@ export class BusinessService {
 
     return { username: business.account.username };
   }
+
+  // Admin đặt lại mật khẩu tài khoản DN. Chặn trùng mật khẩu cũ + vô hiệu phiên cũ.
+  async resetAccountPassword(id: string, newPassword: string) {
+    const business = await this.businessRepository.findOne({
+      where: { id },
+      relations: { account: true },
+    });
+    if (!business) throw new NotFoundException('Không tìm thấy doanh nghiệp');
+    if (!business.account)
+      throw new NotFoundException('Doanh nghiệp chưa có tài khoản');
+
+    const isSame = await bcrypt.compare(newPassword, business.account.password);
+    if (isSame)
+      throw new BadRequestException(
+        'Mật khẩu mới không được trùng mật khẩu cũ',
+      );
+
+    business.account.password = await bcrypt.hash(newPassword, 10);
+    business.account.passwordChangedAt = new Date();
+    await this.accountRepository.save(business.account);
+    return { message: 'Đặt lại mật khẩu tài khoản doanh nghiệp thành công' };
+  }
 }

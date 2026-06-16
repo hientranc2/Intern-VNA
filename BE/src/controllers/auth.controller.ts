@@ -89,6 +89,13 @@ export class AuthController {
     return this.authService.changePassword(req.user.userId, dto);
   }
 
+  // DN tự đổi mật khẩu (tài khoản doanh nghiệp).
+  @UseGuards(AuthGuard('jwt'))
+  @Post('business/change-password')
+  changeBusinessPassword(@Request() req, @Body() dto: ChangePasswordDto) {
+    return this.authService.changeBusinessPassword(req.user.userId, dto);
+  }
+
   @UseGuards(AuthGuard('jwt'))
   @Post('request-change-email')
   requestChangeEmailOtp(@Request() req) {

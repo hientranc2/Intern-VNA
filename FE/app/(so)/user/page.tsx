@@ -333,7 +333,10 @@ export default function UserPage() {
       await resetUserPassword(resetTarget.id, resetPwd.trim());
       setResetTarget(null);
       setResetPwd("");
-      setToast({ message: "Đặt lại mật khẩu thành công", variant: "success" });
+      setToast({
+        message: "Đặt lại mật khẩu thành công. Người dùng sẽ phải đăng nhập lại.",
+        variant: "success",
+      });
     } catch (err) {
       setToast({
         message: err instanceof ApiError ? err.message : "Đặt lại mật khẩu thất bại",

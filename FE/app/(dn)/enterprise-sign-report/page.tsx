@@ -101,7 +101,7 @@ export default function EnterpriseSignReportPage() {
   );
 
   const loadReports = useCallback(() => {
-    getMyAtvsldReports({ nam: Number(year) })
+    getMyAtvsldReports({ nam: year ? Number(year) : undefined })
       .then(setReports)
       .catch(() => setToast("Không tải được danh sách báo cáo"));
   }, [year]);
@@ -188,11 +188,20 @@ export default function EnterpriseSignReportPage() {
       {view === "list" ? (
         <>
           <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-            <h1 className="text-base font-semibold text-ink">Danh sách báo cáo ATVSLĐ</h1>
-            <select className={YEAR_SELECT} value={year} onChange={(e) => setYear(e.target.value)}>
-              <option>2022</option>
-              <option>2023</option>
-              <option>2024</option>
+            <h1 className="text-base font-semibold text-ink">
+              Danh sách báo cáo ATVSLĐ
+            </h1>
+            <select
+              className={YEAR_SELECT}
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+            >
+              <option value="">Tất cả</option>
+              <option value="2022">2022</option>
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
             </select>
           </div>
 
@@ -202,8 +211,20 @@ export default function EnterpriseSignReportPage() {
                 <table className="w-full border-collapse text-[13.5px]">
                   <thead>
                     <tr>
-                      {["Thao tác", "Trạng thái", "Tên doanh nghiệp", "Ngày bắt đầu", "Ngày kết thúc", "Kỳ báo cáo", "Ngày cập nhật", "Người chỉnh sửa"].map((h) => (
-                        <th key={h} className="whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      {[
+                        "Thao tác",
+                        "Trạng thái",
+                        "Tên doanh nghiệp",
+                        "Ngày bắt đầu",
+                        "Ngày kết thúc",
+                        "Kỳ báo cáo",
+                        "Ngày cập nhật",
+                        "Người chỉnh sửa",
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]"
+                        >
                           {h}
                         </th>
                       ))}
@@ -211,22 +232,44 @@ export default function EnterpriseSignReportPage() {
                     <tr>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <select className={`${FILTER_INPUT} cursor-pointer bg-white`} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+                        <select
+                          className={`${FILTER_INPUT} cursor-pointer bg-white`}
+                          value={fStatus}
+                          onChange={(e) => setFStatus(e.target.value)}
+                        >
                           <option value="">Tất cả</option>
-                          {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                          {STATUS_OPTIONS.map((s) => (
+                            <option key={s}>{s}</option>
+                          ))}
                         </select>
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT} value={fTen} onChange={(e) => setFTen(e.target.value)} />
+                        <input
+                          className={FILTER_INPUT}
+                          value={fTen}
+                          onChange={(e) => setFTen(e.target.value)}
+                        />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT} placeholder="dd/MM/yyyy" disabled />
+                        <input
+                          className={FILTER_INPUT}
+                          placeholder="dd/MM/yyyy"
+                          disabled
+                        />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT} placeholder="dd/MM/yyyy" disabled />
+                        <input
+                          className={FILTER_INPUT}
+                          placeholder="dd/MM/yyyy"
+                          disabled
+                        />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <select className={`${FILTER_INPUT} cursor-pointer bg-white`} value={fKy} onChange={(e) => setFKy(e.target.value)}>
+                        <select
+                          className={`${FILTER_INPUT} cursor-pointer bg-white`}
+                          value={fKy}
+                          onChange={(e) => setFKy(e.target.value)}
+                        >
                           <option value="">Cả năm</option>
                           <option>6 tháng</option>
                           <option>Cả năm</option>
@@ -234,28 +277,67 @@ export default function EnterpriseSignReportPage() {
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input className={FILTER_INPUT} value={fNguoi} onChange={(e) => setFNguoi(e.target.value)} />
+                        <input
+                          className={FILTER_INPUT}
+                          value={fNguoi}
+                          onChange={(e) => setFNguoi(e.target.value)}
+                        />
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.length === 0 ? (
-                      <tr><td colSpan={8} className="px-3.5 py-8 text-center text-[13.5px] text-muted">Không có dữ liệu</td></tr>
+                      <tr>
+                        <td
+                          colSpan={8}
+                          className="px-3.5 py-8 text-center text-[13.5px] text-muted"
+                        >
+                          Không có dữ liệu
+                        </td>
+                      </tr>
                     ) : (
                       filtered.map((r) => {
                         const canEdit = EDITABLE_STATUSES.includes(r.status);
                         return (
-                          <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]">
+                          <tr
+                            key={r.id}
+                            className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]"
+                          >
                             <td className="whitespace-nowrap px-3.5 py-2.5">
                               <div className="flex gap-1">
-                                <button type="button" onClick={() => openForm(r, true)} title="Xem" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                                <button
+                                  type="button"
+                                  onClick={() => openForm(r, true)}
+                                  title="Xem"
+                                  className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                                >
+                                  <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                  >
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                    <circle cx="12" cy="12" r="3" />
                                   </svg>
                                 </button>
                                 {canEdit ? (
-                                  <button type="button" onClick={() => openForm(r, false)} title="Nhập liệu" className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openForm(r, false)}
+                                    title="Nhập liệu"
+                                    className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                                  >
+                                    <svg
+                                      width="14"
+                                      height="14"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                    >
                                       <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                                       <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                                     </svg>
@@ -263,13 +345,27 @@ export default function EnterpriseSignReportPage() {
                                 ) : null}
                               </div>
                             </td>
-                            <td className="whitespace-nowrap px-3.5 py-2.5"><StatusCell status={r.status} /></td>
-                            <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
-                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.ngayBatDau}</td>
-                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.ngayKetThuc}</td>
-                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
-                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.ngayCapNhat || "–"}</td>
-                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">{r.nguoiChinhSua || "–"}</td>
+                            <td className="whitespace-nowrap px-3.5 py-2.5">
+                              <StatusCell status={r.status} />
+                            </td>
+                            <td className="px-3.5 py-2.5 text-[#374151]">
+                              {r.ten}
+                            </td>
+                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
+                              {r.ngayBatDau}
+                            </td>
+                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
+                              {r.ngayKetThuc}
+                            </td>
+                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
+                              {r.ky}
+                            </td>
+                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
+                              {r.ngayCapNhat || "–"}
+                            </td>
+                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
+                              {r.nguoiChinhSua || "–"}
+                            </td>
                           </tr>
                         );
                       })
@@ -278,7 +374,9 @@ export default function EnterpriseSignReportPage() {
                 </table>
               </div>
               <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#6b7280]">
-                <span>1 - {filtered.length} of {filtered.length}</span>
+                <span>
+                  1 - {filtered.length} of {filtered.length}
+                </span>
               </div>
             </div>
           </div>
@@ -294,28 +392,92 @@ export default function EnterpriseSignReportPage() {
                 const active = step === s.id;
                 return (
                   <div key={s.id} className="flex items-center gap-2">
-                    <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-semibold ${active ? "bg-primary text-white" : "bg-[#e5e7eb] text-[#6b7280]"}`}>{s.n}</span>
-                    <span className={`text-[13.5px] ${active ? "font-semibold text-ink" : "text-muted"}`}>{s.label}</span>
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-semibold ${active ? "bg-primary text-white" : "bg-[#e5e7eb] text-[#6b7280]"}`}
+                    >
+                      {s.n}
+                    </span>
+                    <span
+                      className={`text-[13.5px] ${active ? "font-semibold text-ink" : "text-muted"}`}
+                    >
+                      {s.label}
+                    </span>
                   </div>
                 );
               })}
             </div>
             <div className="flex items-center gap-2.5">
-              <button type="button" onClick={() => setView("list")} className="text-[13.5px] font-medium text-[#374151] hover:text-ink">Huỷ bỏ</button>
+              <button
+                type="button"
+                onClick={() => setView("list")}
+                className="text-[13.5px] font-medium text-[#374151] hover:text-ink"
+              >
+                Huỷ bỏ
+              </button>
               {step === "khaibao" ? (
-                <button type="button" onClick={() => { if (validateDeclaration()) setStep("xembaocao"); }} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]">
-                  Tiếp tục <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6" /></svg>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (validateDeclaration()) setStep("xembaocao");
+                  }}
+                  className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+                >
+                  Tiếp tục{" "}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
                 </button>
               ) : (
                 <>
-                  <button type="button" onClick={() => setStep("khaibao")} className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] font-medium text-[#374151] hover:bg-body">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6" /></svg> Quay lại
+                  <button
+                    type="button"
+                    onClick={() => setStep("khaibao")}
+                    className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] font-medium text-[#374151] hover:bg-body"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>{" "}
+                    Quay lại
                   </button>
-                  <button type="button" onClick={saveDraft} disabled={saving} className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-semibold text-primary hover:bg-[#eff6ff] disabled:cursor-not-allowed disabled:opacity-50">
+                  <button
+                    type="button"
+                    onClick={saveDraft}
+                    disabled={saving}
+                    className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-semibold text-primary hover:bg-[#eff6ff] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
                     Lưu nháp
                   </button>
-                  <button type="button" onClick={sendReport} disabled={saving} className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                  <button
+                    type="button"
+                    onClick={sendReport}
+                    disabled={saving}
+                    className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <line x1="22" y1="2" x2="11" y2="13" />
+                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                    </svg>
                     Gửi báo cáo
                   </button>
                 </>
@@ -327,14 +489,33 @@ export default function EnterpriseSignReportPage() {
             {step === "khaibao" ? (
               <div className="space-y-4">
                 {DECLARATION_SECTIONS.map((section) => (
-                  <div key={section.no} className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+                  <div
+                    key={section.no}
+                    className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]"
+                  >
                     <div className="mb-3 flex items-start justify-between gap-4">
-                      <div className="text-[14px] font-bold text-ink">{section.no}. {section.title}</div>
-                      {section.note ? <div className="shrink-0 text-[12px] font-medium text-danger">{section.note}</div> : null}
+                      <div className="text-[14px] font-bold text-ink">
+                        {section.no}. {section.title}
+                      </div>
+                      {section.note ? (
+                        <div className="shrink-0 text-[12px] font-medium text-danger">
+                          {section.note}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="grid grid-cols-3 gap-x-3.5 gap-y-3.5">
                       {section.fields.map((f) => (
-                        <DeclarationField key={f.key} field={f} value={values[f.key] ?? ""} onChange={(v) => setField(f.key, v)} invalid={triedSubmit && !!f.required && !(values[f.key] ?? "").trim()} />
+                        <DeclarationField
+                          key={f.key}
+                          field={f}
+                          value={values[f.key] ?? ""}
+                          onChange={(v) => setField(f.key, v)}
+                          invalid={
+                            triedSubmit &&
+                            !!f.required &&
+                            !(values[f.key] ?? "").trim()
+                          }
+                        />
                       ))}
                     </div>
                   </div>

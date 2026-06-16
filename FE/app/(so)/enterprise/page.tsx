@@ -15,6 +15,7 @@ import {
   updateBusiness,
   toggleBusinessStatus,
   deleteBusiness,
+  resetBusinessPassword,
 } from "@/libs/tts/enterprise/enterpriseApi";
 import { ApiError } from "@/libs/tts/auth/apiClient";
 import { getEnterpriseTypeList } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
@@ -330,14 +331,31 @@ export default function EnterprisePage() {
     }
   };
 
-  const confirmResetPwd = () => {
-    if (!resetPwd.trim()) {
+  const confirmResetPwd = async () => {
+    const pwd = resetPwd.trim();
+    if (!pwd) {
       setResetPwdError("Vui lòng nhập mật khẩu mới");
       return;
     }
-    setResetTarget(null);
-    setResetPwd("");
-    setToast({ message: "Đặt lại mật khẩu thành công", variant: "success" });
+    if (pwd.length < 6) {
+      setResetPwdError("Mật khẩu mới phải từ 6 ký tự");
+      return;
+    }
+    if (!resetTarget) return;
+    try {
+      await resetBusinessPassword(resetTarget.id, pwd);
+      setResetTarget(null);
+      setResetPwd("");
+      setResetPwdError(null);
+      setToast({
+        message: "Đặt lại mật khẩu thành công. Doanh nghiệp sẽ phải đăng nhập lại.",
+        variant: "success",
+      });
+    } catch (err) {
+      setResetPwdError(
+        err instanceof ApiError ? err.message : "Đặt lại mật khẩu thất bại",
+      );
+    }
   };
 
   const deleteSelected = async () => {

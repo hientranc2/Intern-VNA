@@ -88,3 +88,11 @@ export function toggleBusinessStatus(id: string, isActive: boolean) {
 export function deleteBusiness(id: string) {
   return request<{ message: string }>(`/businesses/${id}`, { method: "DELETE" });
 }
+
+// Admin đặt lại mật khẩu tài khoản DN (BE chặn trùng mật khẩu cũ + vô hiệu phiên cũ).
+export function resetBusinessPassword(id: string, newPassword: string) {
+  return request<{ message: string }>(`/businesses/${id}/reset-password`, {
+    method: "PATCH",
+    body: { newPassword },
+  });
+}

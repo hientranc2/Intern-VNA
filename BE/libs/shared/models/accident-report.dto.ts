@@ -38,6 +38,10 @@ export class AccidentReportQueryDto {
   @IsOptional()
   @IsString()
   tt?: string;
+
+  @IsOptional()
+  @IsString()
+  nam?: string;
 }
 
 export class SummaryQueryDto {

@@ -125,6 +125,13 @@ export class BusinessController {
     return this.businessService.toggleStatus(id, dto);
   }
 
+  @Patch(':id/reset-password')
+  resetPassword(@Param('id') id: string, @Body() dto: { newPassword: string }) {
+    if (!dto?.newPassword || dto.newPassword.length < 6)
+      throw new BadRequestException('Mật khẩu mới phải từ 6 ký tự');
+    return this.businessService.resetAccountPassword(id, dto.newPassword);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.businessService.remove(id);

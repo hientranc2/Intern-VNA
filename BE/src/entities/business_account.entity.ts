@@ -24,6 +24,10 @@ export class Account {
   @OneToOne(() => Business, (b) => b.account)
   business: Business;
 
+  // Mốc đổi mật khẩu gần nhất — token phát hành trước mốc này bị vô hiệu.
+  @Column({ name: 'password_changed_at', type: 'timestamptz', nullable: true })
+  passwordChangedAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

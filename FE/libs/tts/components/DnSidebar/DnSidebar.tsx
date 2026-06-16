@@ -12,6 +12,7 @@ type DnSidebarProps = {
   collapsed?: boolean;
   onToggle?: () => void;
   onLogout?: () => void;
+  onChangePassword?: () => void;
 };
 
 export function DnSidebar({
@@ -22,6 +23,7 @@ export function DnSidebar({
   collapsed = false,
   onToggle,
   onLogout,
+  onChangePassword,
 }: DnSidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ "Hệ thống": true, "Tai nạn lao động": true });
   const [showMenu, setShowMenu] = useState(false);
@@ -96,6 +98,19 @@ export function DnSidebar({
       <div ref={menuRef} className="relative shrink-0">
         {showMenu && (
           <div className="absolute bottom-full left-3 right-3 mb-1 overflow-hidden rounded-lg bg-white shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
+            {onChangePassword ? (
+              <button
+                type="button"
+                onClick={() => { setShowMenu(false); onChangePassword(); }}
+                className="flex w-full items-center gap-2.5 border-b border-[#f3f4f6] px-3.5 py-2.5 text-left text-[13px] text-[#374151] transition-colors hover:bg-[#f9fafb]"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+                Đổi mật khẩu
+              </button>
+            ) : null}
             {onLogout ? (
               <button
                 type="button"

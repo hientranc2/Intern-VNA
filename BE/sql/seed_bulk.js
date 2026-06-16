@@ -77,22 +77,22 @@ async function seedAccountsAndBusinesses(c) {
   let accAdded = 0;
   let bizAdded = 0;
   for (let i = 0; i < companies.length; i++) {
-    const [bizName, username] = companies[i];
-    // account
-    const existAcc = await c.query('SELECT id FROM accounts WHERE username = $1', [username]);
+    const [bizName, slug] = companies[i];
+    // MST đúng 10 chữ số (dải 03100000xx) — đồng thời là username đăng nhập DN.
+    const taxCode = String(310000001 + i).padStart(10, '0');
+    // account (username = MST)
+    const existAcc = await c.query('SELECT id FROM accounts WHERE username = $1', [taxCode]);
     let accountId;
     if (existAcc.rowCount > 0) {
       accountId = existAcc.rows[0].id;
     } else {
       const ins = await c.query(
         `INSERT INTO accounts (username, password, role) VALUES ($1,$2,'DoanhNghiep') RETURNING id`,
-        [username, hash],
+        [taxCode, hash],
       );
       accountId = ins.rows[0].id;
       accAdded++;
     }
-    // business
-    const taxCode = `DN-${String(1001 + i)}`;
     const r = await c.query(
       `INSERT INTO businesses
          (business_name, tax_code, business_type, main_industry,
@@ -105,7 +105,7 @@ async function seedAccountsAndBusinesses(c) {
         etypes[i % etypes.length] ?? fallbackType,
         sectors[i % (sectors.length || 1)] ?? fallbackSector,
         PROVINCES[i % PROVINCES.length], WARDS[i % WARDS.length],
-        `${username}@business.local`,
+        `${slug}@business.local`,
         'Nguyễn Văn Đại Diện', `028${String(38000000 + i)}`,
         accountId,
       ],
