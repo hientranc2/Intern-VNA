@@ -76,7 +76,7 @@ export function DateInput({
         <line x1="8" y1="2" x2="8" y2="6" />
         <line x1="3" y1="10" x2="21" y2="10" />
       </svg>
-      {/* Input neo sát phải → popup lịch bung ra phía bên phải field. */}
+      {/* Input phủ full field → lịch native bung ra thẳng hàng dưới mép trái field. */}
       <input
         ref={inputRef}
         type="date"
@@ -87,7 +87,7 @@ export function DateInput({
         disabled={disabled}
         readOnly={readOnly}
         tabIndex={disabled || readOnly ? -1 : 0}
-        className="absolute right-0 top-0 h-full w-10 cursor-pointer opacity-0 outline-none disabled:cursor-default"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0 outline-none disabled:cursor-default"
       />
     </div>
   );

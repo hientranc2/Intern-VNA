@@ -382,6 +382,8 @@ bấm đúng calendar-indicator (góc phải) → bấm vùng còn lại không 
 phủ full `inset-0` → popup lịch bung ra **bên phải** field (trước neo trái che nội dung).
 Component dùng chung nên áp cho mọi trang có DateInput.
 
+> Cập nhật mục 19: đổi lại input phủ full field cho lịch mở thẳng hàng (right-anchor làm lệch).
+
 **Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
 
 ---
@@ -399,5 +401,37 @@ Component dùng chung nên áp cho mọi trang có DateInput.
 - `app/(so)/role/page.tsx`: modal thêm/sửa vai trò.
 - `app/(dn)/layout.tsx`: modal đổi MK DN.
 - `app/(so)/enterprise/create/page.tsx`: backdrop popup tài khoản.
+
+**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
+
+---
+
+### 18. Lỗi "Tài khoản doanh nghiệp bị vô hiệu hóa" → Toast góc phải trên (không alert inline)
+
+**Vấn đề:** Đăng nhập bằng tài khoản DN đã bị khóa → lỗi hiện trong alert inline bên trong
+form đăng nhập. Yêu cầu: hiện ở **góc phải trên** (Toast) như các thông báo khác.
+
+**Cách xử lý:** `app/login/page.tsx`
+- Thêm helper `isLockedMessage(msg)` (`/khóa|vô hiệu/i`).
+- Trong `catch` của `handleLogin`: nếu là `ApiError` và message khớp khóa → `setLockedMessage`
+  (đi vào Toast); lỗi khác (sai mật khẩu...) vẫn `setApiError` inline như cũ.
+- Thay **modal giữa màn hình** (khi bị đá giữa phiên) bằng `<Toast variant="error" duration={5000}>`
+  góc phải trên → gộp cả 2 luồng (đăng nhập + bị đá giữa phiên) vào 1 Toast.
+- Import thêm `Toast`.
+
+**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
+
+---
+
+### 19. DateInput: lịch mở thẳng hàng dưới field (sửa lại mục 16)
+
+**Vấn đề:** Bấm ô "Ngày cấp GPKD", lịch native bung ra lệch sang phải, đè lên cột
+"Tỉnh/Thành phố" — do mục 16 neo `<input>` sát phải (`right-0 w-10`), trình duyệt mở
+lịch theo vị trí thẻ input (mép phải).
+
+**Cách xử lý:** `DateInput.tsx` — đổi `<input>` về phủ full field
+(`absolute inset-0 h-full w-full opacity-0`) → lịch bung ra thẳng hàng dưới mép trái field.
+Vẫn giữ `<span>` hiển thị giá trị + container `onClick` mở lịch nên input trong suốt phủ
+full không che nội dung. Component dùng chung → áp mọi trang có DateInput.
 
 **Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).

@@ -7,11 +7,15 @@ import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { login, loginBusiness, setToken, setBusinessId, setPermissions, setIsSuper, getToken, getBusinessId, markLoginSuccess, consumeAccountLocked, ApiError } from "@/libs/tts/auth/authApi";
 
 type FieldErrors = { username?: string; password?: string };
 
 const isEnterpriseUsername = (username: string) => /^\d+$/.test(username);
+
+// Lỗi tài khoản bị khóa/vô hiệu hóa → hiển thị Toast góc phải, không phải alert inline.
+const isLockedMessage = (msg: string) => /khóa|vô hiệu/i.test(msg);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -66,9 +70,10 @@ export default function LoginPage() {
         router.push("/account");
       }
     } catch (err) {
-      setApiError(
-        err instanceof ApiError ? err.message : "Đã có lỗi xảy ra. Vui lòng thử lại.",
-      );
+      const message =
+        err instanceof ApiError ? err.message : "Đã có lỗi xảy ra. Vui lòng thử lại.";
+      if (err instanceof ApiError && isLockedMessage(message)) setLockedMessage(message);
+      else setApiError(message);
       setPassword("");
     } finally {
       setLoading(false);
@@ -178,26 +183,13 @@ export default function LoginPage() {
       </a>
     </AuthShell>
 
-    {/* Popup khi tài khoản bị khóa giữa phiên */}
-    {lockedMessage ? (
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/45 px-4">
-        <div className="w-[360px] max-w-full overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
-          <div className="bg-danger px-5 py-4 text-center">
-            <h3 className="text-base font-semibold text-white">Tài khoản bị khóa</h3>
-          </div>
-          <div className="px-6 py-5 text-center text-[13.5px] text-[#374151]">{lockedMessage}</div>
-          <div className="flex justify-center px-6 pb-5">
-            <button
-              type="button"
-              onClick={() => setLockedMessage(null)}
-              className="h-[38px] rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af]"
-            >
-              Đã hiểu
-            </button>
-          </div>
-        </div>
-      </div>
-    ) : null}
+    {/* Tài khoản bị khóa (lúc đăng nhập hoặc bị đá giữa phiên) → Toast góc phải trên */}
+    <Toast
+      message={lockedMessage}
+      variant="error"
+      duration={5000}
+      onDone={() => setLockedMessage(null)}
+    />
     </>
   );
 }
