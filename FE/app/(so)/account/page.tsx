@@ -91,7 +91,11 @@ export default function AccountPage() {
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
-  const [pwdFieldErrors, setPwdFieldErrors] = useState<{ oldPwd?: string; newPwd?: string; confirmPwd?: string }>({});
+  const [pwdFieldErrors, setPwdFieldErrors] = useState<{
+    oldPwd?: string;
+    newPwd?: string;
+    confirmPwd?: string;
+  }>({});
 
   const [otpOpen, setOtpOpen] = useState(false);
   const [otp, setOtp] = useState("");
@@ -119,7 +123,10 @@ export default function AccountPage() {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (provinceRef.current && !provinceRef.current.contains(e.target as Node)) {
+      if (
+        provinceRef.current &&
+        !provinceRef.current.contains(e.target as Node)
+      ) {
         setProvinceOpen(false);
         setProvinceSearch("");
       }
@@ -142,7 +149,9 @@ export default function AccountPage() {
   );
   const wardDisabled = !form.province || currentWards.length === 0;
   const wardPlaceholder =
-    form.province && currentWards.length === 0 ? "Chưa có dữ liệu phường/xã" : "Chọn phường / xã";
+    form.province && currentWards.length === 0
+      ? "Chưa có dữ liệu phường/xã"
+      : "Chọn phường / xã";
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -211,8 +220,20 @@ export default function AccountPage() {
   const saveProfile = async () => {
     if (saving) return;
     const errors: { fullName?: string; dob?: string } = {};
-    if (!form.fullName.trim())
+    const fullName = form.fullName.trim();
+    if (!fullName) {
       errors.fullName = "Họ và tên không được để trống";
+    } else if (/\d/.test(fullName)) {
+      errors.fullName = "Họ và tên không được chứa số";
+    } else if (/\s/.test(fullName)) {
+      errors.fullName = "Họ và tên không được chứa khoảng trắng";
+    } else if (
+      !/^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ]+$/.test(
+        fullName,
+      )
+    ) {
+      errors.fullName = "Họ và tên chỉ được chứa chữ cái";
+    }
     if (form.dob) {
       const today = localISODate(new Date());
       if (form.dob > today)
@@ -255,9 +276,11 @@ export default function AccountPage() {
     const errors: typeof pwdFieldErrors = {};
     if (!oldPwd) errors.oldPwd = "Vui lòng nhập mật khẩu cũ";
     if (!newPwd) errors.newPwd = "Vui lòng nhập mật khẩu mới";
-    else if (oldPwd && newPwd === oldPwd) errors.newPwd = "Mật khẩu mới không được trùng với mật khẩu cũ";
+    else if (oldPwd && newPwd === oldPwd)
+      errors.newPwd = "Mật khẩu mới không được trùng với mật khẩu cũ";
     if (!confirmPwd) errors.confirmPwd = "Vui lòng nhập lại mật khẩu mới";
-    else if (newPwd && newPwd !== confirmPwd) errors.confirmPwd = "Mật khẩu mới không khớp";
+    else if (newPwd && newPwd !== confirmPwd)
+      errors.confirmPwd = "Mật khẩu mới không khớp";
     if (Object.keys(errors).length > 0) {
       setPwdFieldErrors(errors);
       return;
@@ -274,7 +297,8 @@ export default function AccountPage() {
       router.replace("/login");
     } catch (err) {
       setToast({
-        message: err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
+        message:
+          err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
         variant: "error",
       });
     }
@@ -288,7 +312,8 @@ export default function AccountPage() {
     otpCountdown.start();
     requestChangeEmailOtp().catch((err) => {
       setToast({
-        message: err instanceof ApiError ? err.message : "Không gửi được mã OTP",
+        message:
+          err instanceof ApiError ? err.message : "Không gửi được mã OTP",
         variant: "error",
       });
     });
@@ -325,7 +350,8 @@ export default function AccountPage() {
       setToast({ message: "Thay đổi email thành công!", variant: "success" });
     } catch (err) {
       setToast({
-        message: err instanceof ApiError ? err.message : "Thay đổi email thất bại",
+        message:
+          err instanceof ApiError ? err.message : "Thay đổi email thất bại",
         variant: "error",
       });
     }
@@ -552,7 +578,9 @@ export default function AccountPage() {
                       }}
                       className={`${FIELD_CLASS} flex w-full items-center justify-between text-left`}
                     >
-                      <span className={form.province ? "text-ink" : "text-muted"}>
+                      <span
+                        className={form.province ? "text-ink" : "text-muted"}
+                      >
                         {form.province || "Chọn tỉnh / thành phố"}
                       </span>
                       <svg
@@ -747,12 +775,18 @@ export default function AccountPage() {
           </label>
           <PasswordField
             value={oldPwd}
-            onChange={(v) => { setOldPwd(v); if (pwdFieldErrors.oldPwd) setPwdFieldErrors((p) => ({ ...p, oldPwd: undefined })); }}
+            onChange={(v) => {
+              setOldPwd(v);
+              if (pwdFieldErrors.oldPwd)
+                setPwdFieldErrors((p) => ({ ...p, oldPwd: undefined }));
+            }}
             placeholder="Mật khẩu cũ"
             hasError={!!pwdFieldErrors.oldPwd}
           />
           {pwdFieldErrors.oldPwd && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.oldPwd}</FormHelperText>
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
+              {pwdFieldErrors.oldPwd}
+            </FormHelperText>
           )}
         </div>
         <div className="mb-4">
@@ -761,13 +795,19 @@ export default function AccountPage() {
           </label>
           <PasswordField
             value={newPwd}
-            onChange={(v) => { setNewPwd(v); if (pwdFieldErrors.newPwd) setPwdFieldErrors((p) => ({ ...p, newPwd: undefined })); }}
+            onChange={(v) => {
+              setNewPwd(v);
+              if (pwdFieldErrors.newPwd)
+                setPwdFieldErrors((p) => ({ ...p, newPwd: undefined }));
+            }}
             placeholder="Mật khẩu mới"
             autoComplete="new-password"
             hasError={!!pwdFieldErrors.newPwd}
           />
           {pwdFieldErrors.newPwd && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.newPwd}</FormHelperText>
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
+              {pwdFieldErrors.newPwd}
+            </FormHelperText>
           )}
         </div>
         <div>
@@ -776,13 +816,19 @@ export default function AccountPage() {
           </label>
           <PasswordField
             value={confirmPwd}
-            onChange={(v) => { setConfirmPwd(v); if (pwdFieldErrors.confirmPwd) setPwdFieldErrors((p) => ({ ...p, confirmPwd: undefined })); }}
+            onChange={(v) => {
+              setConfirmPwd(v);
+              if (pwdFieldErrors.confirmPwd)
+                setPwdFieldErrors((p) => ({ ...p, confirmPwd: undefined }));
+            }}
             placeholder="Nhập lại mật khẩu mới"
             autoComplete="new-password"
             hasError={!!pwdFieldErrors.confirmPwd}
           />
           {pwdFieldErrors.confirmPwd && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{pwdFieldErrors.confirmPwd}</FormHelperText>
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
+              {pwdFieldErrors.confirmPwd}
+            </FormHelperText>
           )}
         </div>
       </Modal>
@@ -833,11 +879,16 @@ export default function AccountPage() {
             className={`${MODAL_INPUT_CLASS}${otpError ? " border-danger" : ""}`}
             value={otp}
             maxLength={6}
-            onChange={(event) => { setOtp(event.target.value); if (otpError) setOtpError(null); }}
+            onChange={(event) => {
+              setOtp(event.target.value);
+              if (otpError) setOtpError(null);
+            }}
             placeholder="Nhập mã OTP"
           />
           {otpError && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{otpError}</FormHelperText>
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
+              {otpError}
+            </FormHelperText>
           )}
         </div>
         <div className="mb-1.5 text-center text-sm font-bold text-primary">
@@ -891,11 +942,16 @@ export default function AccountPage() {
             className={`${MODAL_INPUT_CLASS}${newEmailError ? " border-danger" : ""}`}
             type="email"
             value={newEmail}
-            onChange={(event) => { setNewEmail(event.target.value); if (newEmailError) setNewEmailError(null); }}
+            onChange={(event) => {
+              setNewEmail(event.target.value);
+              if (newEmailError) setNewEmailError(null);
+            }}
             placeholder="Nhập email mới"
           />
           {newEmailError && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{newEmailError}</FormHelperText>
+            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
+              {newEmailError}
+            </FormHelperText>
           )}
         </div>
       </Modal>
