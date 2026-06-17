@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 type ToastProps = {
   message: string | null;
@@ -15,11 +15,16 @@ const STYLES = {
 };
 
 export function Toast({ message, onDone, duration = 2500, variant = "success" }: ToastProps) {
+  // Giữ onDone trong ref: nếu để trong deps, parent re-render (vd đồng hồ đếm ngược tick
+  // mỗi giây) sẽ tạo onDone mới → reset timer liên tục → toast không bao giờ tự tắt.
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
   useEffect(() => {
     if (!message) return;
-    const timer = setTimeout(onDone, duration);
+    const timer = setTimeout(() => onDoneRef.current(), duration);
     return () => clearTimeout(timer);
-  }, [message, duration, onDone]);
+  }, [message, duration]);
 
   if (!message) return null;
 

@@ -342,70 +342,6 @@ tạo mới vẫn nhập bình thường.
 
 ---
 
-### 15. Áp lại toàn bộ thay đổi (mục 1–14) sang nhánh **Toan** (2026-06-17)
-
-Nhánh Toan đã tiến xa hơn (roles `roleId`, `passwordChangedAt`, role `DoanhNghiep`,
-user API dùng FormData + avatar, `assetUrl`, permissions/CASL). Đã áp lại thích nghi:
-
-- **BE:** `business.dto` (isActive `@Transform` — #12); `jwt.strategy` thêm `assertActive`
-  tra `isActive` mỗi request, giữ logic `passwordChangedAt`, DN dùng businessRepo (#1);
-  `user-admin.dto` thêm `dob/gender/province/ward/address` cho Create+Update (#4).
-- **FE helper:** `authValidation` (`isStrongPassword` — #2); `authApi`
-  (`markLoginSuccess`/`consumeLoginSuccess`/`consumeAccountLocked` — #1); `apiClient`
-  (locked detection trên 401, giữ `assetUrl`); `userApi` (FormData thêm dob/gender/... — #4).
-- **FE page:** `login` (markLoginSuccess + popup khóa — #1); `account` + `enterprise-info`
-  (toast đăng nhập — #1); `user` (Phường/Xã, dob slice, gender bắt buộc, mật khẩu mạnh
-  tạo+reset, gửi dob/gender/..., bỏ ô trống layout — #2/3/4/5/6/13); `(so)/layout`
-  (PATH_ACTIVE /enterprise/create).
-- **Component mới:** `LoadingOverlay`, `EnterpriseWizard` (đủ #2/3/4/5/7/8/10/14),
-  route `enterprise/create` (#6/7).
-- **enterprise page (Toan có wizard inline + permissions):** áp **an toàn** — "Thêm mới"
-  → `/enterprise/create` (add dùng EnterpriseWizard, có đủ cải tiến); reset pw mạnh (#2-DN);
-  bảng "File đính kèm" ở modal Xem (#11); `LoadingOverlay` khi xóa (#8).
-
-**Khác biệt có chủ đích so với nhánh cũ:** luồng **Sửa DN** vẫn dùng wizard inline sẵn
-có của nhánh Toan (chưa gắn EnterpriseWizard) để tránh rủi ro xoá/viết lại file lớn —
-nên Sửa DN chưa có #4 stepper-sáng / #10 file-PDF-prefill / #14 taxcode-style. Add DN
-(route) thì đã đủ. Nếu muốn đồng nhất Sửa DN sang EnterpriseWizard, báo để làm tiếp.
-
-**Kiểm tra (nhánh Toan):** CHƯA tự chạy tsc/lint (user tự kiểm tra).
-
----
-
-### 16. DateInput: bấm cả ô để mở lịch (không chỉ icon góc phải)
-
-**Vấn đề:** Input `type="date"` trong suốt phủ cả ô, nhưng trình duyệt chỉ mở lịch khi
-bấm đúng calendar-indicator (góc phải) → bấm vùng còn lại không mở.
-
-**Cách xử lý:** `DateInput.tsx` — container `onClick` gọi `showPicker()` (qua ref, try/catch)
-→ bấm cả ô đều mở lịch. Thẻ `<input>` neo **sát phải** (`absolute right-0 w-10`) thay vì
-phủ full `inset-0` → popup lịch bung ra **bên phải** field (trước neo trái che nội dung).
-Component dùng chung nên áp cho mọi trang có DateInput.
-
-> Cập nhật mục 19: đổi lại input phủ full field cho lịch mở thẳng hàng (right-anchor làm lệch).
-
-**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
-
----
-
-### 17. Modal/popup KHÔNG đóng khi bấm ra ngoài (chỉ đóng bằng Hủy/X)
-
-**Yêu cầu:** Mọi modal/popup không tắt khi bấm overlay; chỉ tắt qua nút Hủy/Đóng/×.
-
-**Cách xử lý — gỡ handler đóng-khi-bấm-overlay (`e.target===e.currentTarget`):**
-- `Modal.tsx`: đổi mặc định `closeOnOverlayClick = false` → áp cho mọi modal dùng component
-  (đổi MK Sở, OTP, account...).
-- `SlidePanel.tsx`: bỏ onClick overlay.
-- `app/(so)/enterprise/page.tsx`: wizard, modal Xem, đặt lại MK, xác nhận xóa, backdrop popup tài khoản.
-- `app/(so)/user/page.tsx`: đặt lại MK, xác nhận xóa.
-- `app/(so)/role/page.tsx`: modal thêm/sửa vai trò.
-- `app/(dn)/layout.tsx`: modal đổi MK DN.
-- `app/(so)/enterprise/create/page.tsx`: backdrop popup tài khoản.
-
-**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
-
----
-
 ### 18. Lỗi "Tài khoản doanh nghiệp bị vô hiệu hóa" → Toast góc phải trên (không alert inline)
 
 **Vấn đề:** Đăng nhập bằng tài khoản DN đã bị khóa → lỗi hiện trong alert inline bên trong
@@ -423,15 +359,105 @@ form đăng nhập. Yêu cầu: hiện ở **góc phải trên** (Toast) như c�
 
 ---
 
-### 19. DateInput: lịch mở thẳng hàng dưới field (sửa lại mục 16)
+### 19. DateInput: lịch mở thẳng hàng dưới field
 
 **Vấn đề:** Bấm ô "Ngày cấp GPKD", lịch native bung ra lệch sang phải, đè lên cột
-"Tỉnh/Thành phố" — do mục 16 neo `<input>` sát phải (`right-0 w-10`), trình duyệt mở
-lịch theo vị trí thẻ input (mép phải).
+"Tỉnh/Thành phố" — do thẻ `<input>` neo sát phải (`right-0 w-10`), trình duyệt mở lịch
+theo vị trí thẻ input (mép phải).
 
 **Cách xử lý:** `DateInput.tsx` — đổi `<input>` về phủ full field
 (`absolute inset-0 h-full w-full opacity-0`) → lịch bung ra thẳng hàng dưới mép trái field.
 Vẫn giữ `<span>` hiển thị giá trị + container `onClick` mở lịch nên input trong suốt phủ
 full không che nội dung. Component dùng chung → áp mọi trang có DateInput.
+
+**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
+
+> Các mục 18–22 đã áp trên **cả 2 nhánh** `main` và `Toan` (chuyển nhánh qua lại trong phiên).
+> Riêng nhánh Toan: #18 (login Toast) + #19 (DateInput) vốn đã có sẵn; bổ sung thêm
+> #20 (BE quên MK doanh nghiệp), #21 + #22 (trang forgot-password).
+
+---
+
+### 20. Nối API quên mật khẩu cho doanh nghiệp (trang `/forgot-password` ngoài login) — BE
+
+**Yêu cầu:** Quên mật khẩu cho tài khoản doanh nghiệp hoạt động được ở trang ngoài login.
+
+**Bối cảnh:** `/login` là login hợp nhất (Sở + DN); link "Quên mật khẩu" → `/forgot-password`
+(1 trang chung theo email). BE `/auth/forgot-password` + `/auth/reset-password` trước đó
+**chỉ tra `userRepository` (Sở)**. DN: email ở `Business`, mật khẩu ở `Account`, **không có
+cột otp** → không hỗ trợ được.
+
+**Cách xử lý (BE — `src/services/auth.service.ts`):** mở rộng 2 endpoint sẵn có để fallback
+sang DN (không cần đoán vai trò ở FE, trang forgot-password chung dùng được luôn):
+- Thêm `businessForgotOtpStore = new Map<email, {code, expiresAt}>()` (in-memory, giống
+  `registerOtpStore` vì Account/Business không có cột otp).
+- `forgotPassword`: nếu email không phải user Sở → `return this.sendBusinessForgotOtp(email)`.
+- `resetPassword`: đổi sang tìm user theo email trước; nếu không có user Sở →
+  `return this.resetBusinessPassword(dto)`.
+- `sendBusinessForgotOtp(email)` (private): tìm `Business` theo email (không có → 404),
+  sinh OTP 6 số/5 phút lưu store, gửi mail (template DN), trả message.
+- `resetBusinessPassword(dto)` (private): validate OTP từ store (sai/hết hạn → 400),
+  tìm `Business` theo email → `Account` theo `business.accountId` → `bcrypt.hash` mật khẩu
+  mới, lưu Account, xóa OTP khỏi store.
+
+**FE:** KHÔNG đổi. Trang `app/forgot-password/page.tsx` vốn gọi `forgotPassword(email)` +
+`resetPassword({email, otpCode, newPassword})` đúng 2 endpoint này → DN dùng được ngay.
+
+**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra). Cần **restart BE**. Test: dùng email
+của 1 DN (vd tài khoản `0300000001`) ở `/forgot-password` → nhận OTP (xem log BE
+`[OTP QUÊN MẬT KHẨU DN ...]`) → đặt lại mật khẩu → đăng nhập DN bằng mật khẩu mới.
+
+---
+
+### 21. Disable nút "Gửi lại" OTP trong lúc còn đếm ngược (quên mật khẩu)
+
+**Vấn đề:** Bước 2 trang `/forgot-password`, nút "Chưa nhận được mã? Gửi lại" bấm được ngay
+cả khi đồng hồ 5 phút chưa hết.
+
+**Cách xử lý:** `app/forgot-password/page.tsx` — `useCountdown` đã expose `seconds`. Thêm
+`disabled={countdown.seconds > 0}` cho nút Gửi lại (chỉ bấm được khi về 00:00) + style
+disabled (`disabled:cursor-not-allowed disabled:text-muted disabled:no-underline`).
+
+**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
+
+---
+
+### 22. Quên mật khẩu: thông báo kết quả → Toast góc phải; lỗi validate → inline dưới input
+
+**Yêu cầu (quy ước chung):** Mọi thông báo thành công/thất bại từ API dùng **Toast góc phải
+trên**; chỉ lỗi **validate** mới báo inline dưới input.
+
+**Cách xử lý:** Viết lại `app/forgot-password/page.tsx`:
+- Bỏ `Alert` inline (`notice`) → thay bằng state `toast` + component `Toast`
+  (`message`/`variant`/`onDone`) đặt cuối, ngoài `AuthShell`.
+  - Toast: "Gửi email thành công" / "Gửi email thất bại" / "Đặt lại mật khẩu thành công"
+    (delay 1s rồi `router.push("/login")`) / lỗi reset / "Đã gửi lại mã OTP" / "Gửi lại thất bại".
+- Validate inline (mỗi field 1 state lỗi string, viền `border-danger`, text-[11px] text-danger,
+  tự xóa khi gõ lại):
+  - Bước 1: `emailError` ("Vui lòng nhập email" / "Email không đúng định dạng").
+  - Bước 2: `otpError`, `newPasswordError`, `confirmPasswordError`
+    (bỏ trống + "Mật khẩu xác nhận không khớp").
+- Tách handler `resendOtp` ra ngoài (gọn JSX), giữ disable theo `countdown.seconds` (mục 21).
+- Lưu ý: đặt `type ToastState` (không trùng tên component `Toast`).
+
+> Đây là quy ước chung — các trang khác cũng nên theo (đã lưu memory `feedback-toast-vs-inline`).
+
+**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
+
+---
+
+### 23. Fix: Toast không tự tắt khi parent re-render liên tục (đồng hồ đếm ngược)
+
+**Vấn đề:** Ở bước 2 quên mật khẩu, toast "Gửi email thành công" không tự biến mất.
+
+**Nguyên nhân:** `Toast` có `useEffect(setTimeout(onDone, duration), [message, duration, onDone])`.
+Đồng hồ đếm ngược tick mỗi 1s → `ForgotPasswordPage` re-render → `onDone` (`() => setToast(null)`)
+là hàm mới mỗi lần → effect chạy lại, clear + đặt lại timer 2.5s. Timer bị reset mỗi giây nên
+không bao giờ chạy hết → toast treo mãi.
+
+**Cách xử lý:** `libs/shared/core/components/Toast/Toast.tsx` — giữ `onDone` trong `useRef`
+(`onDoneRef.current = onDone` mỗi render), `setTimeout(() => onDoneRef.current(), duration)`,
+deps effect chỉ còn `[message, duration]`. Timer chỉ đặt lại khi message/duration đổi, không bị
+reset bởi re-render. Component dùng chung → fix cho mọi nơi dùng Toast.
 
 **Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).

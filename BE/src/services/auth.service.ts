@@ -68,6 +68,12 @@ export class AuthService {
     { code: string; expiresAt: Date }
   >();
 
+  // OTP quên mật khẩu cho tài khoản doanh nghiệp (Account/Business không có cột otp).
+  private businessForgotOtpStore = new Map<
+    string,
+    { code: string; expiresAt: Date }
+  >();
+
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Account) private accountRepository: Repository<Account>,
@@ -217,8 +223,8 @@ export class AuthService {
     const user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
-    if (!user)
-      throw new NotFoundException('Không tìm thấy tài khoản với email này');
+    // Email không thuộc tài khoản Sở → thử tài khoản doanh nghiệp.
+    if (!user) return this.sendBusinessForgotOtp(dto.email);
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date();
@@ -287,10 +293,13 @@ export class AuthService {
 
   async resetPassword(dto: ResetPasswordDto) {
     const user = await this.userRepository.findOne({
-      where: { email: dto.email, otpCode: dto.otpCode },
+      where: { email: dto.email },
     });
+    // Email không thuộc tài khoản Sở → đặt lại mật khẩu cho tài khoản doanh nghiệp.
+    if (!user) return this.resetBusinessPassword(dto);
 
-    if (!user) throw new BadRequestException('Mã OTP không chính xác');
+    if (user.otpCode !== dto.otpCode)
+      throw new BadRequestException('Mã OTP không chính xác');
     if (new Date() > user.otpExpiresAt)
       throw new BadRequestException('Mã OTP đã hết hạn');
 
@@ -299,6 +308,86 @@ export class AuthService {
     user.otpExpiresAt = null;
 
     await this.userRepository.save(user);
+    return { message: 'Đặt lại mật khẩu thành công!' };
+  }
+
+  // --- Quên mật khẩu cho tài khoản doanh nghiệp (email ở Business, mật khẩu ở Account) ---
+
+  private async sendBusinessForgotOtp(email: string) {
+    const business = await this.businessRepository.findOne({ where: { email } });
+    if (!business)
+      throw new NotFoundException('Không tìm thấy tài khoản với email này');
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 5);
+    this.businessForgotOtpStore.set(email, { code: otp, expiresAt });
+
+    console.log(`[OTP QUÊN MẬT KHẨU DN cho ${email}]: ${otp}`);
+
+    const htmlTemplate = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
+  <div style="text-align: center; border-bottom: 2px solid #f4f4f4; padding-bottom: 20px;">
+    <img src="https://ziroujfjpyvswzjjsorf.supabase.co/storage/v1/object/public/assets/khong%20nen%20_%20sang.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
+  </div>
+  <div style="padding: 20px 0; color: #333; line-height: 1.6;">
+    <h2 style="color: #002b5e;">Xin chào, ${business.businessName}</h2>
+    <p>Bạn vừa yêu cầu khôi phục mật khẩu cho tài khoản doanh nghiệp. Dưới đây là mã OTP của bạn:</p>
+    <div style="font-size: 32px; font-weight: bold; color: #000; margin: 20px 0;">${otp}</div>
+    <p><strong>Lưu ý quan trọng:</strong> Mã OTP có hiệu lực trong <strong>5 phút</strong></p>
+    <p>Không chia sẻ mã này với bất kỳ ai, kể cả nhân viên hỗ trợ.</p>
+    <p>Nếu bạn không yêu cầu khôi phục mật khẩu, vui lòng bỏ qua email này.</p>
+  </div>
+  <div style="border-top: 2px solid #f4f4f4; padding-top: 20px; font-size: 13px; color: #777;">
+    <p style="margin: 0;">© 2026 VNA GROUP. Tất cả các quyền được bảo lưu.</p>
+  </div>
+</div>`;
+
+    try {
+      await this.transporter.sendMail({
+        from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
+        to: email,
+        subject: 'Mã OTP khôi phục mật khẩu - VNA GROUP',
+        html: htmlTemplate,
+      });
+    } catch (error) {
+      console.log(
+        'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
+      );
+    }
+
+    return { message: 'Mã OTP đã được gửi đến email của bạn!' };
+  }
+
+  private async resetBusinessPassword(dto: ResetPasswordDto) {
+    const stored = this.businessForgotOtpStore.get(dto.email);
+    if (!stored)
+      throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    if (new Date() > stored.expiresAt) {
+      this.businessForgotOtpStore.delete(dto.email);
+      throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng yêu cầu gửi lại');
+    }
+    if (stored.code !== dto.otpCode)
+      throw new BadRequestException('Mã OTP không chính xác');
+
+    const business = await this.businessRepository.findOne({
+      where: { email: dto.email },
+    });
+    if (!business)
+      throw new NotFoundException('Không tìm thấy tài khoản với email này');
+
+    const account = await this.accountRepository.findOne({
+      where: { id: business.accountId },
+    });
+    if (!account)
+      throw new NotFoundException(
+        'Không tìm thấy tài khoản đăng nhập của doanh nghiệp',
+      );
+
+    account.password = await bcrypt.hash(dto.newPassword, 10);
+    await this.accountRepository.save(account);
+    this.businessForgotOtpStore.delete(dto.email);
+
     return { message: 'Đặt lại mật khẩu thành công!' };
   }
 
