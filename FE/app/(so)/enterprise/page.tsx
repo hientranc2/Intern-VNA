@@ -388,9 +388,10 @@ export default function EnterprisePage() {
         variant: "success",
       });
     } catch (err) {
-      setResetPwdError(
-        err instanceof ApiError ? err.message : "Đặt lại mật khẩu thất bại",
-      );
+      setToast({
+        message: err instanceof ApiError ? err.message : "Đặt lại mật khẩu thất bại",
+        variant: "error",
+      });
     }
   };
 

@@ -458,6 +458,67 @@ không bao giờ chạy hết → toast treo mãi.
 **Cách xử lý:** `libs/shared/core/components/Toast/Toast.tsx` — giữ `onDone` trong `useRef`
 (`onDoneRef.current = onDone` mỗi render), `setTimeout(() => onDoneRef.current(), duration)`,
 deps effect chỉ còn `[message, duration]`. Timer chỉ đặt lại khi message/duration đổi, không bị
-reset bởi re-render. Component dùng chung → fix cho mọi nơi dùng Toast.
+reset bởi re-render. Component dùng chung → fix cho mọi nơi dùng Toast. (Áp trên cả `main` + `Toan`.)
 
 **Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
+
+---
+
+### 24. Đăng ký DN: lỗi xác nhận → Toast góc phải + trùng email/MST quay về bước 1 bôi đỏ field
+
+**Vấn đề:** Trang `/enterprise-register` bước 2, lỗi API "Email đã được sử dụng cho doanh nghiệp
+khác" / trùng MST hiển thị `Alert` inline cuối form → (1) phải dùng Toast theo quy ước; (2) email/MST
+là field bước 1 nên phải quay về bước 1 + bôi đỏ inline tại field (như mục #5).
+
+**Cách xử lý:** `app/enterprise-register/page.tsx`
+- Bỏ khối `Alert variant="error"` của `saveError`; render `<Toast message={saveError} variant="error"
+  duration={4000} onDone={() => setSaveError(null)}>` cuối component. Import thêm `Toast`
+  (giữ `Alert` cho `otpError` trong modal OTP).
+- Thêm `mapServerErrorToStep1Field(message)` ("email" → `email`, "mã số thuế"/"thuế" → `mst`).
+- `confirmWizard` catch: map được field → `setWizardFieldErrors[field]` + `setWizardStep(1)`
+  (bôi đỏ inline); lỗi khác → `setSaveError` (Toast).
+
+**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
+
+---
+
+### 25. Đăng ký DN: stepper node bước hiện tại tô nền xanh đặc (đồng bộ mục #4)
+
+**Vấn đề:** Bước 1, node "1" chỉ hiển thị viền (nền trắng, chữ xanh) → không giống thiết kế đúng
+(node bước đang đứng tô nền primary đặc, chữ trắng).
+
+**Cách xử lý:** `app/enterprise-register/page.tsx` — Stepper:
+- Node 1: luôn `border-primary bg-primary text-white` (luôn ở bước ≥ 1); "1" ở bước 1, dấu check khi qua bước 2.
+- Node 2: `wizardStep === 2` → `border-primary bg-primary text-white` (đặc), chưa tới thì xám.
+
+**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra).
+
+> Lưu ý: file change này từng bị ghi đè nhầm thành 1 dòng "RoutesResolver" trên nhánh Toan —
+> đã khôi phục từ git (`git checkout`) rồi bổ sung #24 + #25.
+
+---
+
+### 26. Rà toàn hệ thống: mọi thông báo kết quả API → Toast; chỉ validate → inline
+
+**Yêu cầu:** Thống nhất toàn FE — thành công/thất bại từ API đều dùng Toast góc phải; chỉ
+lỗi validate client mới hiện inline dưới input.
+
+**Đã chuyển sang Toast (trước đó là Alert inline / div đỏ tự chế):**
+- `app/login/page.tsx`: `apiError` (sai TK/mật khẩu, lỗi server) → Toast (bỏ `Alert`, bỏ import Alert).
+- `app/(so)/user/page.tsx`: `listError` (không tải được DS) → `setToast` (bỏ state `listError` + `Alert`).
+- `app/(so)/layout.tsx`: đổi MK — bỏ `pwdFieldErrors.api` inline → Toast; thành công cũng Toast
+  rồi delay 1s mới logout. Thêm state `toast` + import `Toast`.
+- `app/(dn)/layout.tsx`: đổi MK DN — bỏ div đỏ `pwdErrors.api` → Toast; thành công Toast + delay logout.
+- `app/(dn)/enterprise-info/page.tsx`: `fetchError` (lỗi tải trang) → Toast + fallback text trung tính
+  (thay `Alert` full-page). `otpError` chỉ là validate → giữ inline.
+- `app/enterprise-register/page.tsx`: gom `saveError` → state `toast {message,variant}`; lỗi verify OTP
+  + "Không thể gửi lại OTP" → Toast (trước set vào `otpError` inline), "Đã gửi lại mã OTP" → Toast success.
+  `otpError` còn lại chỉ là "Vui lòng nhập mã OTP" (validate) → giữ inline.
+- `app/(so)/enterprise/page.tsx`: lỗi API reset mật khẩu DN → Toast (trước set `resetPwdError` inline);
+  validate (trống/mật khẩu yếu) vẫn `resetPwdError` inline.
+
+**Giữ nguyên (đúng quy ước):** các page CRUD (role, category, business-sector, enterprise-type,
+report-config, account, enterprise create...) vốn đã dùng Toast. 2 `Alert` còn lại đều là
+`otpError` = "Vui lòng nhập mã OTP" (validate) trong modal OTP.
+
+**Kiểm tra:** CHƯA tự chạy tsc/lint (user tự kiểm tra). Áp trên nhánh hiện tại (Toan).

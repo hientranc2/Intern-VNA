@@ -201,7 +201,10 @@ export default function EnterpriseInfoPage() {
         setAttachments(makeAttachments(detail.licenseFile, detail.otherFile));
       })
       .catch((err) => {
-        setFetchError(err instanceof ApiError ? err.message : "Không thể tải thông tin doanh nghiệp");
+        const msg = err instanceof ApiError ? err.message : "Không thể tải thông tin doanh nghiệp";
+        setFetchError(msg);
+        setToastVariant("error");
+        setToast(msg);
       })
       .finally(() => setLoading(false));
   }, [router]);
@@ -348,9 +351,12 @@ export default function EnterpriseInfoPage() {
 
   if (fetchError) {
     return (
-      <div className="px-6 py-5">
-        <Alert variant="error" message={fetchError} onClose={() => setFetchError(null)} />
-      </div>
+      <>
+        <div className="flex min-h-screen items-center justify-center px-6 text-center">
+          <span className="text-[13px] text-muted">{fetchError}</span>
+        </div>
+        <Toast message={toast} variant={toastVariant} onDone={() => setToast(null)} />
+      </>
     );
   }
 

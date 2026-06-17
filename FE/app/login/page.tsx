@@ -6,7 +6,6 @@ import { FormHelperText } from "@mui/material";
 import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
-import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { login, loginBusiness, setToken, setBusinessId, setPermissions, setIsSuper, getToken, getBusinessId, markLoginSuccess, consumeAccountLocked, ApiError } from "@/libs/tts/auth/authApi";
 
@@ -94,10 +93,6 @@ export default function LoginPage() {
       <div className="mb-3.5 w-full text-[13px] font-semibold tracking-wide text-[#374151]">
         ĐĂNG NHẬP
       </div>
-
-      {apiError ? (
-        <Alert variant="error" message={apiError} onClose={() => setApiError(null)} />
-      ) : null}
 
       <div className="mb-3.5 w-full">
         <label className="mb-1 block text-xs text-muted" htmlFor="username">
@@ -189,6 +184,12 @@ export default function LoginPage() {
       variant="error"
       duration={5000}
       onDone={() => setLockedMessage(null)}
+    />
+    {/* Lỗi đăng nhập khác (sai TK/mật khẩu, lỗi server) → Toast góc phải trên */}
+    <Toast
+      message={apiError}
+      variant="error"
+      onDone={() => setApiError(null)}
     />
     </>
   );

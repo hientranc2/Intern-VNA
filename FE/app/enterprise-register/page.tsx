@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FormHelperText } from "@mui/material";
 import { Alert } from "@/libs/shared/core/components/Alert/Alert";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail, isValidPhone } from "@/libs/tts/auth/authValidation";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
@@ -50,6 +51,15 @@ function FieldGroup({
       )}
     </div>
   );
+}
+
+// Map thông điệp lỗi BE về field thuộc bước 1 → quay về bước 1 + bôi đỏ inline tại field.
+// Khớp message BE: "Email đã được sử dụng cho doanh nghiệp khác", "Mã số thuế đã tồn tại".
+function mapServerErrorToStep1Field(message: string): "email" | "mst" | null {
+  const msg = message.toLowerCase();
+  if (msg.includes("email")) return "email";
+  if (msg.includes("mã số thuế") || msg.includes("thuế")) return "mst";
+  return null;
 }
 
 export default function EnterpriseRegisterPage() {
@@ -99,7 +109,7 @@ export default function EnterpriseRegisterPage() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   const [accountPopup, setAccountPopup] = useState<{ username: string; password: string } | null>(null);
 
@@ -159,14 +169,14 @@ export default function EnterpriseRegisterPage() {
       countdown.stop();
       setWizardStep(2);
     } catch (e) {
-      setOtpError(e instanceof Error ? e.message : "Xác thực OTP thất bại");
+      setToast({ message: e instanceof Error ? e.message : "Xác thực OTP thất bại", variant: "error" });
     } finally {
       setIsVerifyingOtp(false);
     }
   };
 
   const confirmWizard = async () => {
-    setSaveError(null);
+    setToast(null);
     setIsSaving(true);
     try {
       const fd = new FormData();
@@ -194,7 +204,15 @@ export default function EnterpriseRegisterPage() {
       const result = await createBusiness(fd);
       setAccountPopup({ username: result.account.username, password: result.account.password });
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Đã có lỗi xảy ra. Vui lòng thử lại.");
+      const message = e instanceof Error ? e.message : "Đã có lỗi xảy ra. Vui lòng thử lại.";
+      const field = mapServerErrorToStep1Field(message);
+      // Lỗi thuộc field bước 1 (trùng email/MST) → quay về bước 1, bôi đỏ inline tại field.
+      if (field) {
+        setWizardFieldErrors((prev) => ({ ...prev, [field]: message }));
+        setWizardStep(1);
+      } else {
+        setToast({ message, variant: "error" });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -261,9 +279,7 @@ export default function EnterpriseRegisterPage() {
         <div className="flex items-center justify-center gap-0 pb-3 pt-2">
           <div className="flex items-center gap-2">
             <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[13px] font-bold ${
-                wizardStep === 1 ? "border-primary bg-white text-primary" : "border-primary bg-primary text-white"
-              }`}
+              className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-primary bg-primary text-[13px] font-bold text-white"
             >
               {wizardStep === 1 ? (
                 "1"
@@ -280,7 +296,7 @@ export default function EnterpriseRegisterPage() {
             <div
               className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[13px] font-bold ${
                 wizardStep === 2
-                  ? "border-primary bg-white text-primary"
+                  ? "border-primary bg-primary text-white"
                   : "border-line bg-white text-[#9ca3af]"
               }`}
             >
@@ -636,15 +652,10 @@ export default function EnterpriseRegisterPage() {
                 </table>
               </div>
             </div>
-            {saveError ? (
-              <div className="px-7 pb-2">
-                <Alert variant="error" message={saveError} />
-              </div>
-            ) : null}
             <div className="flex justify-end gap-2.5 border-t border-[#e5e7eb] px-7 py-4">
               <button
                 type="button"
-                onClick={() => { setWizardStep(1); setSaveError(null); }}
+                onClick={() => { setWizardStep(1); setToast(null); }}
                 disabled={isSaving}
                 className="h-[38px] rounded-md border border-line px-4.5 text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-60"
               >
@@ -700,8 +711,9 @@ export default function EnterpriseRegisterPage() {
                   await sendRegisterOtp(form.email.trim());
                   countdown.start();
                   setOtpError(null);
+                  setToast({ message: "Đã gửi lại mã OTP", variant: "success" });
                 } catch (e) {
-                  setOtpError(e instanceof Error ? e.message : "Không thể gửi lại OTP");
+                  setToast({ message: e instanceof Error ? e.message : "Không thể gửi lại OTP", variant: "error" });
                 } finally {
                   setIsSendingOtp(false);
                 }
@@ -766,6 +778,14 @@ export default function EnterpriseRegisterPage() {
           </div>
         </>
       ) : null}
+
+      {/* Thông báo kết quả (lỗi xác nhận/OTP, gửi lại OTP...) → Toast góc phải trên */}
+      <Toast
+        message={toast?.message ?? null}
+        variant={toast?.variant ?? "error"}
+        duration={4000}
+        onDone={() => setToast(null)}
+      />
     </div>
   );
 }

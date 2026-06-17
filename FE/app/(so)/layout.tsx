@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/libs/tts/components/AppSidebar/AppSidebar";
 import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import {
   getToken,
   clearToken,
@@ -68,8 +69,11 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
     oldPwd?: string;
     newPwd?: string;
     confirmPwd?: string;
-    api?: string;
   }>({});
+  const [toast, setToast] = useState<{
+    message: string;
+    variant: "success" | "error";
+  } | null>(null);
 
   useEffect(() => {
     if (!getToken()) {
@@ -143,11 +147,16 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
         confirmPassword: confirmPwd,
       });
       setPwdOpen(false);
-      clearToken();
-      router.replace("/login");
+      setToast({ message: "Đổi mật khẩu thành công", variant: "success" });
+      // Đổi mật khẩu thành công → vô hiệu phiên cũ, tự đăng xuất sau khi kịp hiện toast.
+      setTimeout(() => {
+        clearToken();
+        router.replace("/login");
+      }, 1000);
     } catch (err) {
-      setPwdFieldErrors({
-        api: err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
+      setToast({
+        message: err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
+        variant: "error",
       });
     }
   };
@@ -260,13 +269,14 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
                 {pwdFieldErrors.confirmPwd}
               </FormHelperText>
             )}
-            {pwdFieldErrors.api && (
-              <FormHelperText error sx={{ mt: 1, mx: 0, fontSize: "11px" }}>
-                {pwdFieldErrors.api}
-              </FormHelperText>
-            )}
           </div>
         </Modal>
+
+        <Toast
+          message={toast?.message ?? null}
+          variant={toast?.variant}
+          onDone={() => setToast(null)}
+        />
       </SidebarOverrideContext.Provider>
     </AbilityContext.Provider>
   );

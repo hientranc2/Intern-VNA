@@ -6,7 +6,6 @@ import { FormHelperText } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
-import { Alert } from "@/libs/shared/core/components/Alert/Alert";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { GENDER_OPTIONS, type User } from "@/libs/tts/user/userData";
 import { type Role } from "@/libs/tts/role/roleData";
@@ -113,7 +112,6 @@ export default function UserPage() {
     variant: "success" | "error";
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
 
   // Server-side pagination
   const [pageSize, setPageSize] = useState(10);
@@ -167,7 +165,6 @@ export default function UserPage() {
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
-    setListError(null);
     try {
       const isActiveParam =
         fActive === "1" ? true : fActive === "0" ? false : undefined;
@@ -186,11 +183,13 @@ export default function UserPage() {
       setTotalItems(res.meta.totalItems);
       setTotalPages(res.meta.totalPages);
     } catch (err) {
-      setListError(
-        err instanceof ApiError
-          ? err.message
-          : "Không thể tải danh sách người dùng",
-      );
+      setToast({
+        message:
+          err instanceof ApiError
+            ? err.message
+            : "Không thể tải danh sách người dùng",
+        variant: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -348,7 +347,15 @@ export default function UserPage() {
       errors.username =
         "Tên đăng nhập chỉ được chứa chữ cái, chữ số và dấu gạch dưới (_)";
     }
-    if (!fullName) errors.fullName = "Họ và tên không được để trống";
+    if (!fullName) {
+      errors.fullName = "Họ và tên không được để trống";
+    } else if (/\d/.test(fullName)) {
+      errors.fullName = "Họ và tên không được chứa số";
+    } else if (/\s/.test(fullName)) {
+      errors.fullName = "Họ và tên không được chứa khoảng trắng";
+    } else if (!/^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ]+$/.test(fullName)) {
+      errors.fullName = "Họ và tên chỉ được chứa chữ cái";
+    }
     if (!email) errors.email = "Email không được để trống";
     else if (!isValidEmail(email)) errors.email = "Email không đúng định dạng";
     // Tạo mới: bắt buộc giới tính + mật khẩu mạnh. Sửa: đổi mật khẩu xử lý ở luồng riêng.
@@ -549,14 +556,6 @@ export default function UserPage() {
           </div>
 
           <div className="px-6 py-5">
-            {listError ? (
-              <Alert
-                variant="error"
-                message={listError}
-                onClose={() => setListError(null)}
-              />
-            ) : null}
-
             <div className="overflow-hidden rounded-lg bg-white shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-[13.5px]">

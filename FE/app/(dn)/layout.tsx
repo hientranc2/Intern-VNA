@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { DnSidebar } from "@/libs/tts/components/DnSidebar/DnSidebar";
 import { AppTopbar } from "@/libs/tts/components/AppTopbar/AppTopbar";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
+import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { getToken, clearToken, getBusinessId, changeBusinessPassword } from "@/libs/tts/auth/authApi";
 import { getBusinessById } from "@/libs/tts/enterprise/enterpriseApi";
 import { ApiError } from "@/libs/tts/auth/apiClient";
@@ -36,8 +37,9 @@ export default function DnLayout({ children }: { children: React.ReactNode }) {
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
-  const [pwdErrors, setPwdErrors] = useState<{ old?: string; new?: string; confirm?: string; api?: string }>({});
+  const [pwdErrors, setPwdErrors] = useState<{ old?: string; new?: string; confirm?: string }>({});
   const [pwdSaving, setPwdSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   const openChangePassword = () => {
     setOldPwd(""); setNewPwd(""); setConfirmPwd(""); setPwdErrors({});
@@ -58,11 +60,17 @@ export default function DnLayout({ children }: { children: React.ReactNode }) {
     try {
       await changeBusinessPassword({ oldPassword: oldPwd, newPassword: newPwd, confirmPassword: confirmPwd });
       setPwdOpen(false);
-      // Đổi mật khẩu thành công -> buộc đăng nhập lại.
-      clearToken();
-      router.replace("/enterprise-login");
+      setToast({ message: "Đổi mật khẩu thành công", variant: "success" });
+      // Đổi mật khẩu thành công -> buộc đăng nhập lại (chờ kịp hiện toast).
+      setTimeout(() => {
+        clearToken();
+        router.replace("/enterprise-login");
+      }, 1000);
     } catch (err) {
-      setPwdErrors({ api: err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại" });
+      setToast({
+        message: err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
+        variant: "error",
+      });
     } finally {
       setPwdSaving(false);
     }
@@ -119,9 +127,6 @@ export default function DnLayout({ children }: { children: React.ReactNode }) {
             <button type="button" onClick={() => setPwdOpen(false)} className="text-xl leading-none text-[#9ca3af] hover:text-[#374151]" aria-label="Đóng">×</button>
           </div>
           <div className="space-y-3.5 px-5 py-5">
-            {pwdErrors.api ? (
-              <div className="rounded-md border border-[#fca5a5] bg-[#fff1f0] px-3 py-2 text-[12.5px] text-danger">{pwdErrors.api}</div>
-            ) : null}
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium text-[#374151]">Mật khẩu cũ <span className="text-danger">*</span></label>
               <PasswordField value={oldPwd} onChange={(v) => { setOldPwd(v); setPwdErrors((p) => ({ ...p, old: undefined })); }} placeholder="Nhập mật khẩu cũ" hasError={!!pwdErrors.old} />
@@ -144,6 +149,12 @@ export default function DnLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
+
+      <Toast
+        message={toast?.message ?? null}
+        variant={toast?.variant}
+        onDone={() => setToast(null)}
+      />
     </div>
   );
 }
