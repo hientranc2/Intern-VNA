@@ -11,7 +11,7 @@ import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
-import { getBusinessId, ApiError } from "@/libs/tts/auth/authApi";
+import { getBusinessId, consumeLoginSuccess, ApiError } from "@/libs/tts/auth/authApi";
 import { getBusinessById, updateBusiness, type BusinessDetail } from "@/libs/tts/enterprise/enterpriseApi";
 import { getEnterpriseTypeList } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
 import { getBusinessSectorList } from "@/libs/tts/business-sector/businessSectorApi";
@@ -167,6 +167,14 @@ export default function EnterpriseInfoPage() {
         ),
       )
       .catch(() => {});
+  }, []);
+
+  // Hiển thị toast "Đăng nhập thành công" khi vừa điều hướng từ trang login sang.
+  useEffect(() => {
+    if (consumeLoginSuccess()) {
+      setToastVariant("success");
+      setToast("Đăng nhập thành công!");
+    }
   }, []);
 
   const [otpOpen, setOtpOpen] = useState(false);

@@ -14,9 +14,6 @@ type SlidePanelProps = {
 export function SlidePanel({ open, title, onClose, children, footer, width = 380 }: SlidePanelProps) {
   return (
     <div
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
       className={`fixed inset-0 z-[200] bg-black/30 transition-opacity duration-200 ${
         open ? "opacity-100" : "pointer-events-none opacity-0"
       }`}

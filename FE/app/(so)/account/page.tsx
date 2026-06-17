@@ -18,6 +18,7 @@ import {
   requestChangeEmailOtp,
   changeEmail,
   clearToken,
+  consumeLoginSuccess,
   ApiError,
 } from "@/libs/tts/auth/authApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
@@ -152,6 +153,12 @@ export default function AccountPage() {
 
   const setField = (key: keyof ProfileForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  // Hiển thị toast "Đăng nhập thành công" khi vừa điều hướng từ trang login sang.
+  useEffect(() => {
+    if (consumeLoginSuccess())
+      setToast({ message: "Đăng nhập thành công!", variant: "success" });
+  }, []);
 
   // Nạp thông tin tài khoản từ API khi mở trang.
   useEffect(() => {

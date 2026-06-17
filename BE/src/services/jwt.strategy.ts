@@ -5,6 +5,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Account } from '../entities/business_account.entity';
+import { Business } from '../entities/business.entity';
+
+const LOCKED_MESSAGE = 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin!';
 
 interface JwtPayload {
   sub: string;
@@ -19,6 +22,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Account)
     private readonly accountRepo: Repository<Account>,
+    @InjectRepository(Business)
+    private readonly businessRepo: Repository<Business>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -28,6 +33,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    // Tra DB mỗi request: tài khoản bị khóa giữa phiên → chặn ngay (văng ra ở thao tác kế tiếp).
+    await this.assertActive(payload);
+
     const changedAt = await this.getPasswordChangedAt(payload);
     // Token phát hành trước thời điểm đổi mật khẩu => buộc đăng nhập lại.
     if (
@@ -44,6 +52,24 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       username: payload.username,
       role: payload.role,
     };
+  }
+
+  private async assertActive(payload: JwtPayload): Promise<void> {
+    if (payload.role === 'DoanhNghiep') {
+      const account = await this.accountRepo.findOne({
+        where: { id: payload.sub },
+      });
+      if (!account) throw new UnauthorizedException(LOCKED_MESSAGE);
+      const business = await this.businessRepo.findOne({
+        where: { accountId: account.id },
+      });
+      if (!business || !business.isActive) {
+        throw new UnauthorizedException(LOCKED_MESSAGE);
+      }
+      return;
+    }
+    const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+    if (!user || !user.isActive) throw new UnauthorizedException(LOCKED_MESSAGE);
   }
 
   private async getPasswordChangedAt(

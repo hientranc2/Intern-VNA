@@ -23,6 +23,11 @@ export type CreateUserInput = {
   jobTitle?: string;
   isActive?: boolean;
   avatar?: File | null;
+  dob?: string;
+  gender?: string;
+  province?: string;
+  ward?: string;
+  address?: string;
 };
 
 export type UpdateUserInput = {
@@ -33,6 +38,11 @@ export type UpdateUserInput = {
   jobTitle?: string;
   isActive?: boolean;
   avatar?: File | null;
+  dob?: string;
+  gender?: string;
+  province?: string;
+  ward?: string;
+  address?: string;
 };
 
 export function getUserList(params?: {
@@ -80,6 +90,11 @@ function buildUserFormData(
   if (input.isActive !== undefined)
     fd.append("isActive", String(input.isActive));
   if (input.avatar) fd.append("avatar", input.avatar);
+  if (input.dob) fd.append("dob", input.dob);
+  if (input.gender) fd.append("gender", input.gender);
+  if (input.province) fd.append("province", input.province);
+  if (input.ward) fd.append("ward", input.ward);
+  if (input.address) fd.append("address", input.address);
   return fd;
 }
 

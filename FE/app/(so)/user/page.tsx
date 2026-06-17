@@ -23,7 +23,7 @@ import {
 import { ApiError, assetUrl } from "@/libs/tts/auth/apiClient";
 import { getProfile, clearToken } from "@/libs/tts/auth/authApi";
 import { useCan } from "@/libs/tts/auth/abilityContext";
-import { isValidEmail } from "@/libs/tts/auth/authValidation";
+import { isValidEmail, isStrongPassword, PASSWORD_RULE_MESSAGE } from "@/libs/tts/auth/authValidation";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
@@ -52,6 +52,7 @@ type FieldErrors = {
   email?: string;
   password?: string;
   dob?: string;
+  gender?: string;
 };
 
 const EMPTY_FORM: UserForm = {
@@ -322,7 +323,7 @@ export default function UserPage() {
       roleId: user.roleId ?? "",
       jobTitle: user.jobTitle ?? "",
       isActive: user.isActive,
-      dob: user.dob ?? "",
+      dob: user.dob ? String(user.dob).slice(0, 10) : "",
       gender: user.gender ?? "",
       province: user.province ?? "",
       ward: user.ward ?? "",
@@ -350,8 +351,12 @@ export default function UserPage() {
     if (!fullName) errors.fullName = "Họ và tên không được để trống";
     if (!email) errors.email = "Email không được để trống";
     else if (!isValidEmail(email)) errors.email = "Email không đúng định dạng";
-    if (!editingId && !password)
-      errors.password = "Mật khẩu không được để trống";
+    // Tạo mới: bắt buộc giới tính + mật khẩu mạnh. Sửa: đổi mật khẩu xử lý ở luồng riêng.
+    if (!editingId && !form.gender) errors.gender = "Vui lòng chọn giới tính";
+    if (!editingId) {
+      if (!password) errors.password = "Mật khẩu không được để trống";
+      else if (!isStrongPassword(password)) errors.password = PASSWORD_RULE_MESSAGE;
+    }
     if (form.dob && form.dob > localISODate(new Date()))
       errors.dob = "Ngày sinh không được là ngày tương lai";
 
@@ -370,6 +375,11 @@ export default function UserPage() {
           jobTitle: form.jobTitle || undefined,
           isActive: form.isActive,
           avatar: avatarFile,
+          dob: form.dob || undefined,
+          gender: form.gender || undefined,
+          province: form.province || undefined,
+          ward: form.ward || undefined,
+          address: form.address || undefined,
         });
         setToast({ message: "Cập nhật thành công", variant: "success" });
       } else {
@@ -382,6 +392,11 @@ export default function UserPage() {
           jobTitle: form.jobTitle || undefined,
           isActive: form.isActive,
           avatar: avatarFile,
+          dob: form.dob || undefined,
+          gender: form.gender || undefined,
+          province: form.province || undefined,
+          ward: form.ward || undefined,
+          address: form.address || undefined,
         });
         setToast({ message: "Thêm mới thành công", variant: "success" });
       }
@@ -401,6 +416,10 @@ export default function UserPage() {
   const confirmResetPwd = async () => {
     if (!resetPwd.trim()) {
       setResetPwdError("Vui lòng nhập mật khẩu mới");
+      return;
+    }
+    if (!isStrongPassword(resetPwd.trim())) {
+      setResetPwdError(PASSWORD_RULE_MESSAGE);
       return;
     }
     if (!resetTarget) return;
@@ -1068,9 +1087,7 @@ export default function UserPage() {
                         </FormHelperText>
                       )}
                     </div>
-                  ) : (
-                    <div />
-                  )}
+                  ) : null}
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-muted">
                       Họ và tên<span className="text-danger">*</span>
@@ -1115,11 +1132,16 @@ export default function UserPage() {
                     )}
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">Giới tính</label>
+                    <label className="text-xs text-muted">
+                      Giới tính{!editingId ? <span className="text-danger">*</span> : null}
+                    </label>
                     <select
-                      className={SELECT_CLASS}
+                      className={`${SELECT_CLASS}${fieldErrors.gender ? " border-danger" : ""}`}
                       value={form.gender}
-                      onChange={(e) => setField("gender", e.target.value)}
+                      onChange={(e) => {
+                        setField("gender", e.target.value);
+                        clearFieldError("gender");
+                      }}
                     >
                       <option value="">Giới tính</option>
                       {GENDER_OPTIONS.map((g) => (
@@ -1128,6 +1150,11 @@ export default function UserPage() {
                         </option>
                       ))}
                     </select>
+                    {fieldErrors.gender && (
+                      <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>
+                        {fieldErrors.gender}
+                      </FormHelperText>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-muted">Chức danh</label>
@@ -1219,12 +1246,12 @@ export default function UserPage() {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">Quận / Huyện</label>
+                    <label className="text-xs text-muted">Phường / Xã</label>
                     <SearchableSelect
                       dropUp
                       options={WARDS_BY_PROVINCE[form.province] ?? []}
                       value={form.ward}
-                      placeholder="-- Chọn quận/huyện --"
+                      placeholder="-- Chọn phường/xã --"
                       disabled={!form.province}
                       onChange={(v) => setField("ward", v)}
                     />
@@ -1247,9 +1274,6 @@ export default function UserPage() {
 
       {/* Modal đặt lại mật khẩu */}
       <div
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setResetTarget(null);
-        }}
         className={`fixed inset-0 z-[200] flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
           resetTarget ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
@@ -1358,9 +1382,6 @@ export default function UserPage() {
 
       {/* Modal xác nhận xóa */}
       <div
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setDeleteConfirmOpen(false);
-        }}
         className={`fixed inset-0 z-400 flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
           deleteConfirmOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}

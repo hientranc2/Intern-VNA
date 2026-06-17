@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FormHelperText } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
@@ -25,9 +26,21 @@ import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
-import { isValidEmail } from "@/libs/tts/auth/authValidation";
+import { isValidEmail, isStrongPassword, PASSWORD_RULE_MESSAGE } from "@/libs/tts/auth/authValidation";
 import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
 import { useCan } from "@/libs/tts/auth/abilityContext";
+import { LoadingOverlay } from "@/libs/shared/core/components/LoadingOverlay/LoadingOverlay";
+
+function filenameFromUrl(url?: string | null): string {
+  if (!url) return "";
+  try {
+    return decodeURIComponent(new URL(url).pathname.split("/").pop() || "File đã tải lên");
+  } catch {
+    return url.split("/").pop() || "File đã tải lên";
+  }
+}
+
+const VIEW_FILE_ROWS = ["Giấy phép kinh doanh", "Giấy tờ khác"] as const;
 
 type WizardMode = "add" | "edit";
 
@@ -66,6 +79,7 @@ function formatLicenseDate(iso?: string): string {
 }
 
 export default function EnterprisePage() {
+  const router = useRouter();
   const canCreate = useCan("create", "ENTERPRISE");
   const canUpdate = useCan("update", "ENTERPRISE");
   const canDelete = useCan("delete", "ENTERPRISE");
@@ -170,6 +184,7 @@ export default function EnterprisePage() {
   const [resetPwdError, setResetPwdError] = useState<string | null>(null);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const setField = <K extends keyof BusinessFormData>(key: K, value: BusinessFormData[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -358,8 +373,8 @@ export default function EnterprisePage() {
       setResetPwdError("Vui lòng nhập mật khẩu mới");
       return;
     }
-    if (pwd.length < 6) {
-      setResetPwdError("Mật khẩu mới phải từ 6 ký tự");
+    if (!isStrongPassword(pwd)) {
+      setResetPwdError(PASSWORD_RULE_MESSAGE);
       return;
     }
     if (!resetTarget) return;
@@ -381,6 +396,7 @@ export default function EnterprisePage() {
 
   const deleteSelected = async () => {
     const ids = Array.from(selectedIds);
+    setIsDeleting(true);
     try {
       await Promise.all(ids.map((id) => deleteBusiness(id)));
       setSelectedIds(new Set());
@@ -390,6 +406,8 @@ export default function EnterprisePage() {
     } catch (err) {
       setToast({ message: err instanceof ApiError ? err.message : "Không thể xóa doanh nghiệp", variant: "error" });
       setDeleteConfirmOpen(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -458,7 +476,7 @@ export default function EnterprisePage() {
             </button>
             <button
               type="button"
-              onClick={() => openWizard("add")}
+              onClick={() => router.push("/enterprise/create")}
               disabled={!canCreate}
               title={canCreate ? undefined : "Bạn không có quyền thêm"}
               className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
@@ -682,9 +700,6 @@ export default function EnterprisePage() {
 
       {/* Wizard */}
       <div
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setWizardOpen(false);
-        }}
         className={`fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/50 pt-10 transition-opacity duration-200 ${
           wizardOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
@@ -1022,7 +1037,6 @@ export default function EnterprisePage() {
 
       {/* View enterprise modal */}
       <div
-        onClick={(ev) => { if (ev.target === ev.currentTarget) setViewModalOpen(false); }}
         className={`fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/50 pt-10 transition-opacity duration-200 ${viewModalOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
       >
         <div className={`mb-10 w-[760px] max-w-[96vw] overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)] transition-transform duration-200 ${viewModalOpen ? "translate-y-0" : "translate-y-3"}`}>
@@ -1106,6 +1120,46 @@ export default function EnterprisePage() {
                   </FieldGroup>
                 </div>
               </div>
+
+              <div className="my-3 text-[13.5px] font-semibold text-[#374151]">File đính kèm</div>
+              <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr>
+                      <th className="w-[200px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Tên file</th>
+                      <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Thông tin file</th>
+                      <th className="w-20 border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {VIEW_FILE_ROWS.map((name, idx) => {
+                      const url = idx === 0 ? viewDetail.licenseFile : viewDetail.otherFile;
+                      return (
+                        <tr key={name} className="border-b border-[#f3f4f6] last:border-b-0">
+                          <td className="px-3 py-2 text-[#374151]">{name}</td>
+                          <td className="px-3 py-2 text-[13px] text-[#374151]">
+                            {url ? filenameFromUrl(url) : <span className="text-muted">Chưa có file</span>}
+                          </td>
+                          <td className="px-3 py-2">
+                            <button
+                              type="button"
+                              title="Xem"
+                              onClick={() => url && window.open(url, "_blank")}
+                              disabled={!url}
+                              className={url ? "text-muted hover:text-primary" : "cursor-not-allowed opacity-40"}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : null}
 
@@ -1124,7 +1178,7 @@ export default function EnterprisePage() {
       {/* Account popup */}
       {accountInfo ? (
         <>
-          <div className="fixed inset-0 z-[399] bg-black/50" onClick={() => setAccountInfo(null)} />
+          <div className="fixed inset-0 z-[399] bg-black/50" />
           <div className="fixed left-1/2 top-1/2 z-[400] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
             <div className="rounded-t-[10px] bg-primary px-5 py-3.5">
               <h3 className="text-center text-[15px] font-bold text-white">Thông tin tài khoản</h3>
@@ -1148,7 +1202,6 @@ export default function EnterprisePage() {
 
       {/* Modal đặt lại mật khẩu */}
       <div
-        onClick={(e) => { if (e.target === e.currentTarget) setResetTarget(null); }}
         className={`fixed inset-0 z-[300] flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
           resetTarget ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
@@ -1241,7 +1294,6 @@ export default function EnterprisePage() {
 
       {/* Modal xác nhận xóa */}
       <div
-        onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirmOpen(false); }}
         className={`fixed inset-0 z-[400] flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
           deleteConfirmOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
@@ -1280,6 +1332,8 @@ export default function EnterprisePage() {
 
       <input ref={fileRef0} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => handleFileSelect(0, e)} />
       <input ref={fileRef1} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => handleFileSelect(1, e)} />
+
+      <LoadingOverlay open={isDeleting} message="Đang xóa..." />
 
       <Toast message={toast?.message ?? null} variant={toast?.variant} onDone={() => setToast(null)} />
     </>

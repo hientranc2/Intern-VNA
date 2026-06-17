@@ -105,7 +105,6 @@ export default function DnLayout({ children }: { children: React.ReactNode }) {
 
       {/* Modal đổi mật khẩu DN */}
       <div
-        onClick={(e) => { if (e.target === e.currentTarget) setPwdOpen(false); }}
         className={`fixed inset-0 z-[200] flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
           pwdOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}

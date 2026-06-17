@@ -21,13 +21,26 @@ export class ApiError extends Error {
   }
 }
 
-function handle401(): never {
+export const ACCOUNT_LOCKED_KEY = "tts_account_locked";
+
+function extractMessage(data: unknown): string | undefined {
+  const payload = data as { message?: string | string[] } | null;
+  if (!payload?.message) return undefined;
+  return Array.isArray(payload.message) ? payload.message[0] : payload.message;
+}
+
+function handle401(message?: string): never {
   const isBusiness = typeof window !== "undefined" && !!getBusinessId();
+  // Tài khoản bị khóa giữa phiên: đánh dấu để trang login hiện popup thông báo.
+  const locked = !!message && /(kh[oó]a|vô hiệu)/i.test(message);
+  if (locked && typeof window !== "undefined") {
+    window.sessionStorage.setItem(ACCOUNT_LOCKED_KEY, message as string);
+  }
   clearToken();
   if (typeof window !== "undefined") {
     window.location.href = isBusiness ? "/enterprise-login" : "/login";
   }
-  throw new ApiError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401);
+  throw new ApiError(message ?? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401);
 }
 
 export async function request<T>(
@@ -54,8 +67,6 @@ export async function request<T>(
     throw new ApiError("Không thể kết nối tới máy chủ. Vui lòng thử lại.", 0);
   }
 
-  if (res.status === 401 && auth) return handle401();
-
   let data: unknown = null;
   const text = await res.text();
   if (text) {
@@ -66,15 +77,10 @@ export async function request<T>(
     }
   }
 
+  if (res.status === 401 && auth) return handle401(extractMessage(data));
+
   if (!res.ok) {
-    const payload = data as { message?: string | string[] } | null;
-    let message = "Đã có lỗi xảy ra. Vui lòng thử lại.";
-    if (payload?.message) {
-      message = Array.isArray(payload.message)
-        ? payload.message[0]
-        : payload.message;
-    }
-    throw new ApiError(message, res.status);
+    throw new ApiError(extractMessage(data) ?? "Đã có lỗi xảy ra. Vui lòng thử lại.", res.status);
   }
 
   return data as T;
@@ -96,8 +102,6 @@ export async function requestFormData<T>(path: string, formData: FormData, metho
     throw new ApiError("Không thể kết nối tới máy chủ. Vui lòng thử lại.", 0);
   }
 
-  if (res.status === 401) return handle401();
-
   let data: unknown = null;
   const text = await res.text();
   if (text) {
@@ -108,15 +112,10 @@ export async function requestFormData<T>(path: string, formData: FormData, metho
     }
   }
 
+  if (res.status === 401) return handle401(extractMessage(data));
+
   if (!res.ok) {
-    const payload = data as { message?: string | string[] } | null;
-    let message = "Đã có lỗi xảy ra. Vui lòng thử lại.";
-    if (payload?.message) {
-      message = Array.isArray(payload.message)
-        ? payload.message[0]
-        : payload.message;
-    }
-    throw new ApiError(message, res.status);
+    throw new ApiError(extractMessage(data) ?? "Đã có lỗi xảy ra. Vui lòng thử lại.", res.status);
   }
 
   return data as T;

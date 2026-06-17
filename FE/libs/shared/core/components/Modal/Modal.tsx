@@ -8,12 +8,22 @@ type ModalProps = {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  /** Mặc định false: bấm ra ngoài (overlay) KHÔNG đóng modal — chỉ đóng bằng nút Hủy/X. */
+  closeOnOverlayClick?: boolean;
 };
 
-export function Modal({ open, title, onClose, children, footer }: ModalProps) {
+export function Modal({
+  open,
+  title,
+  onClose,
+  children,
+  footer,
+  closeOnOverlayClick = false,
+}: ModalProps) {
   return (
     <div
       onClick={(event) => {
+        if (!closeOnOverlayClick) return;
         if (event.target === event.currentTarget) onClose();
       }}
       className={`fixed inset-0 z-[200] flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
@@ -26,7 +36,9 @@ export function Modal({ open, title, onClose, children, footer }: ModalProps) {
         }`}
       >
         <div className="bg-primary px-5 py-4 text-center">
-          <h3 className="text-base font-semibold tracking-wide text-white">{title}</h3>
+          <h3 className="text-base font-semibold tracking-wide text-white">
+            {title}
+          </h3>
         </div>
         <div className="px-7 py-6">{children}</div>
         {footer ? <div className="px-7 pb-6">{footer}</div> : null}

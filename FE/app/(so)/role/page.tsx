@@ -523,9 +523,6 @@ export default function RolePage() {
 
       {/* Modal thêm / chỉnh sửa vai trò */}
       <div
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setModalOpen(false);
-        }}
         className={`fixed inset-0 z-[200] flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
           modalOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}

@@ -186,7 +186,15 @@ export class BusinessQueryDto {
   @Transform(emptyToUndefined)
   @IsString()
   registeredWard?: string;
-  @IsOptional() @IsBoolean() @Type(() => Boolean) isActive?: boolean;
+  @IsOptional()
+  @Transform(({ value }) => {
+    // Query string là chuỗi: Boolean("false") === true nên KHÔNG dùng @Type(() => Boolean).
+    if (value === true || value === 'true') return true;
+    if (value === false || value === 'false') return false;
+    return undefined;
+  })
+  @IsBoolean()
+  isActive?: boolean;
   @IsOptional() @Type(() => Number) page?: number = 1;
   @IsOptional() @Type(() => Number) limit?: number = 10;
 }

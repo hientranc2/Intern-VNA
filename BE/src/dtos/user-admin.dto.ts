@@ -8,8 +8,12 @@ import {
   IsEmail,
   MinLength,
   IsBoolean,
+  IsDateString,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+
+const emptyToUndefined = ({ value }: { value: unknown }) =>
+  typeof value === 'string' && value.trim() === '' ? undefined : value;
 
 // 1. DTO hứng bộ lọc tìm kiếm và phân trang
 export class GetUsersFilterDto {
@@ -102,6 +106,31 @@ export class CreateUserAdminDto {
   })
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsDateString({}, { message: 'Ngày sinh không hợp lệ' })
+  dob?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  gender?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  province?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  ward?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  address?: string;
 }
 
 // 3. DTO cho API Cập Nhật User
@@ -135,6 +164,31 @@ export class UpdateUserAdminDto {
   })
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsDateString({}, { message: 'Ngày sinh không hợp lệ' })
+  dob?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  gender?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  province?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  ward?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  address?: string;
 }
 export class ResetPasswordAdminDto {
   @IsNotEmpty({ message: 'Mật khẩu mới không được để trống' })

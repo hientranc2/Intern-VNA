@@ -85,6 +85,31 @@ export function getBusinessId(): string | null {
   return window.localStorage.getItem(BUSINESS_ID_KEY);
 }
 
+const LOGIN_SUCCESS_KEY = "tts_login_success";
+
+// Trang login điều hướng ngay sau khi đăng nhập nên không kịp hiện toast.
+// Đánh dấu cờ ở đây, trang đích đọc đúng 1 lần để hiển thị "Đăng nhập thành công".
+export function markLoginSuccess(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(LOGIN_SUCCESS_KEY, "1");
+}
+
+export function consumeLoginSuccess(): boolean {
+  if (typeof window === "undefined") return false;
+  if (!window.sessionStorage.getItem(LOGIN_SUCCESS_KEY)) return false;
+  window.sessionStorage.removeItem(LOGIN_SUCCESS_KEY);
+  return true;
+}
+
+// apiClient set cờ này khi bị đá ra do tài khoản bị khóa giữa phiên.
+// Trang login đọc đúng 1 lần để hiện popup thông báo.
+export function consumeAccountLocked(): string | null {
+  if (typeof window === "undefined") return null;
+  const message = window.sessionStorage.getItem("tts_account_locked");
+  if (message) window.sessionStorage.removeItem("tts_account_locked");
+  return message;
+}
+
 export type BusinessAccount = {
   id: string;
   username: string;

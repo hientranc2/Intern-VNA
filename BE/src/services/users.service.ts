@@ -96,8 +96,11 @@ export class UsersService {
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
+    // dob từ DTO là chuỗi yyyy-MM-dd; cột entity là Date → ép kiểu.
+    const { dob, ...rest } = dto;
     const newUser = this.userRepository.create({
-      ...dto,
+      ...rest,
+      ...(dob && { dob: new Date(dob) }),
       password: hashedPassword,
       ...(avatar && { avatarUrl: `${AVATAR_URL_PREFIX}/${avatar.filename}` }),
     });
@@ -124,7 +127,10 @@ export class UsersService {
         throw new ConflictException('Email này đã được người khác sử dụng!');
     }
 
-    const updatePayload: Partial<User> = { ...dto };
+    // dob từ DTO là chuỗi yyyy-MM-dd; cột entity là Date → ép kiểu.
+    const { dob, ...rest } = dto;
+    const updatePayload: Partial<User> = { ...rest };
+    if (dob !== undefined) updatePayload.dob = new Date(dob);
     if (avatar)
       updatePayload.avatarUrl = `${AVATAR_URL_PREFIX}/${avatar.filename}`;
     await this.userRepository.update(id, updatePayload);
