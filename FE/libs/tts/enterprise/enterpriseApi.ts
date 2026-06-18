@@ -96,3 +96,12 @@ export function resetBusinessPassword(id: string, newPassword: string) {
     body: { newPassword },
   });
 }
+
+// Check email / MST trùng trước khi đăng ký (public, không cần auth).
+export function checkBusinessEmail(email: string) {
+  return request<{ exists: boolean }>(`/businesses/check-email?email=${encodeURIComponent(email)}`);
+}
+
+export function checkBusinessTaxCode(taxCode: string) {
+  return request<{ exists: boolean }>(`/businesses/check-tax-code?taxCode=${encodeURIComponent(taxCode)}`);
+}

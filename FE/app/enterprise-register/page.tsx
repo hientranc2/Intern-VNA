@@ -15,7 +15,7 @@ import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { getEnterpriseTypeList } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
 import { getBusinessSectorList } from "@/libs/tts/business-sector/businessSectorApi";
 import { sendRegisterOtp, verifyRegisterOtp } from "@/libs/tts/auth/authApi";
-import { createBusiness } from "@/libs/tts/enterprise/enterpriseApi";
+import { createBusiness, checkBusinessEmail, checkBusinessTaxCode } from "@/libs/tts/enterprise/enterpriseApi";
 
 const FILE_NAMES = ["Giấy phép kinh doanh", "Giấy tờ khác"];
 
@@ -142,6 +142,20 @@ export default function EnterpriseRegisterPage() {
     setWizardFieldErrors({});
     setIsSendingOtp(true);
     try {
+      // Check email + MST tồn tại trước khi gửi OTP (tránh lãng phí OTP).
+      const [emailCheck, mstCheck] = await Promise.all([
+        checkBusinessEmail(form.email.trim()),
+        checkBusinessTaxCode(form.mst.trim()),
+      ]);
+      const preErrors: typeof wizardFieldErrors = {};
+      if (emailCheck.exists) preErrors.email = "Email đã được sử dụng cho doanh nghiệp khác";
+      if (mstCheck.exists) preErrors.mst = "Mã số thuế đã tồn tại";
+      if (Object.keys(preErrors).length > 0) {
+        setWizardFieldErrors(preErrors);
+        setIsSendingOtp(false);
+        return;
+      }
+
       await sendRegisterOtp(form.email.trim());
       setOtp("");
       setOtpError(null);

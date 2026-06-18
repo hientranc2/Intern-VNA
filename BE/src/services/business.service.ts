@@ -87,6 +87,26 @@ export class BusinessService {
     };
   }
 
+  // --- Pre-registration checks (public) ---
+
+  async checkEmailExists(email: string): Promise<{ exists: boolean }> {
+    if (!email) return { exists: false };
+    const found = await this.businessRepository.findOne({
+      where: { email: email.trim().toLowerCase() },
+      select: { id: true },
+    });
+    return { exists: Boolean(found) };
+  }
+
+  async checkTaxCodeExists(taxCode: string): Promise<{ exists: boolean }> {
+    if (!taxCode) return { exists: false };
+    const found = await this.businessRepository.findOne({
+      where: { taxCode: taxCode.trim() },
+      select: { id: true },
+    });
+    return { exists: Boolean(found) };
+  }
+
   async findAll(query: BusinessQueryDto) {
     const {
       businessName,
