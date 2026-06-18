@@ -180,18 +180,25 @@ export class UsersService {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
 
-    // Không xóa người dùng cấp cao (ADMIN/CEO) — trừ khi người gọi cũng là Super Admin.
+    // Tài khoản Super Admin (vai trò SUPER_ADMIN) — bất khả xâm phạm, không ai được xóa.
+    if (await this.isSuperAdminUser(user)) {
+      throw new ForbiddenException(
+        'Không thể xóa tài khoản Super Admin',
+      );
+    }
+
+    // Người dùng cấp cao (isSuper) — chỉ Super Admin mới xóa được, admin cùng cấp không được.
     if (await this.isHighRoleUser(user)) {
-      const callerIsSuper = requester
-        ? await this.isHighRoleUser(
+      const callerIsSuperAdmin = requester
+        ? await this.isSuperAdminUser(
             (await this.userRepository.findOne({
               where: { id: requester.userId },
             }))!,
           )
         : false;
-      if (!callerIsSuper) {
+      if (!callerIsSuperAdmin) {
         throw new ForbiddenException(
-          'Không thể xóa người dùng cấp cao. Hãy đổi vai trò của họ về cấp thường trước khi xóa.',
+          'Chỉ Super Admin mới được xóa người dùng cấp cao.',
         );
       }
     }
@@ -208,5 +215,14 @@ export class UsersService {
       where: { id: user.roleId },
     });
     return Boolean(role?.isSuper);
+  }
+
+  // User giữ vai trò SUPER_ADMIN cụ thể — quyền cao nhất, bất khả xâm phạm.
+  private async isSuperAdminUser(user: User): Promise<boolean> {
+    if (!user.roleId) return false;
+    const role = await this.roleRepository.findOne({
+      where: { id: user.roleId },
+    });
+    return role?.ma === 'SUPER_ADMIN';
   }
 }

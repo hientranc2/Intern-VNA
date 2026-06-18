@@ -229,15 +229,44 @@ export default function UserPage() {
   const roleName = (u: User) =>
     roles.find((r) => r.id === u.roleId)?.ten ?? u.role ?? "—";
 
-  // User cấp cao (ADMIN / CEO / Quản trị viên hệ thống): không được xóa — trừ khi người gọi cũng là Super Admin.
+  // User cấp cao (ADMIN / CEO / Quản trị viên hệ thống): vai trò is_super.
   const isHighRoleUser = (u: User) =>
     u.role === "ADMIN" ||
     Boolean(roles.find((r) => r.id === u.roleId)?.isSuper);
 
+  // User giữ vai trò SUPER_ADMIN cụ thể — bất khả xâm phạm, không ai được xóa/reset pw.
+  const isSuperAdminUser = (u: User) =>
+    roles.find((r) => r.id === u.roleId)?.ma === "SUPER_ADMIN";
+
+  // Người đang đăng nhập có phải Super Admin không? (chỉ Super Admin mới quản lý được admin cùng cấp)
+  const currentIsSuperAdmin = Boolean(
+    currentUserId &&
+    users.find(
+      (u) =>
+        u.id === currentUserId &&
+        roles.find((r) => r.id === u.roleId)?.ma === "SUPER_ADMIN",
+    ),
+  );
+
+  // Khi đang edit: target user có phải admin cùng cấp không?
+  // → Nếu có + người gọi KHÔNG phải Super Admin → disable Vai trò + Email.
+  const editingIsHighRole = Boolean(
+    editingId &&
+    users.find((u) => u.id === editingId && isHighRoleUser(u)),
+  );
+  const lockRoleAndEmail = editingIsHighRole && !currentIsSuperAdmin;
+
+  // Cho phép chọn user để xóa:
+  // - Không chọn chính mình
+  // - Không chọn Super Admin (bất khả xâm phạm)
+  // - Chỉ Super Admin mới chọn được admin cùng cấp
   const start = (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalItems);
   const selectableUsers = users.filter(
-    (u) => u.id !== currentUserId && (!isHighRoleUser(u) || isPrivileged),
+    (u) =>
+      u.id !== currentUserId &&
+      !isSuperAdminUser(u) &&
+      (!isHighRoleUser(u) || currentIsSuperAdmin),
   );
   const allPageChecked =
     selectableUsers.length > 0 &&
@@ -255,7 +284,12 @@ export default function UserPage() {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       users.forEach((u) => {
-        if (u.id === currentUserId || (isHighRoleUser(u) && !isPrivileged)) return;
+        if (
+          u.id === currentUserId ||
+          isSuperAdminUser(u) ||
+          (isHighRoleUser(u) && !currentIsSuperAdmin)
+        )
+          return;
         checked ? next.add(u.id) : next.delete(u.id);
       });
       return next;
@@ -481,10 +515,13 @@ export default function UserPage() {
 
   const deleteSelected = async () => {
     setIsDeleting(true);
-    // Phòng thủ: loại bỏ user cấp cao (đối với người gọi không phải Super Admin) — BE vẫn là chốt chặn cuối.
+    // Phòng thủ: loại Super Admin + admin cùng cấp (nếu người gọi không phải Super Admin).
     const ids = Array.from(selectedIds).filter((id) => {
       const u = users.find((x) => x.id === id);
-      return !u || !isHighRoleUser(u) || isPrivileged;
+      if (!u) return true;
+      if (isSuperAdminUser(u)) return false;
+      if (isHighRoleUser(u) && !currentIsSuperAdmin) return false;
+      return true;
     });
     const results = await Promise.allSettled(ids.map((id) => deleteUser(id)));
     const failed = results.filter((r) => r.status === "rejected").length;
@@ -725,14 +762,18 @@ export default function UserPage() {
                             className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}
                           >
                             <td className="px-3.5 py-2.5">
-                              {u.id === currentUserId || (isHighRoleUser(u) && !isPrivileged) ? (
+                              {u.id === currentUserId ||
+                               isSuperAdminUser(u) ||
+                               (isHighRoleUser(u) && !currentIsSuperAdmin) ? (
                                 <input
                                   type="checkbox"
                                   disabled
                                   title={
                                     u.id === currentUserId
                                       ? "Không thể tự xóa tài khoản của bạn"
-                                      : "Người dùng cấp cao — đổi vai trò về cấp thường trước khi xóa"
+                                      : isSuperAdminUser(u)
+                                        ? "Tài khoản Super Admin không thể xóa"
+                                        : "Chỉ Super Admin mới được xóa người dùng cấp cao"
                                   }
                                   className="h-[15px] w-[15px] cursor-not-allowed opacity-30 accent-primary"
                                 />
@@ -777,18 +818,21 @@ export default function UserPage() {
                                   }}
                                   disabled={
                                     !canUpdate ||
+                                    (isSuperAdminUser(u) && u.id !== currentUserId) ||
                                     (isHighRoleUser(u) &&
-                                      !isPrivileged &&
+                                      !currentIsSuperAdmin &&
                                       u.id !== currentUserId)
                                   }
                                   title={
                                     !canUpdate
                                       ? "Bạn không có quyền sửa"
-                                      : isHighRoleUser(u) &&
-                                          !isPrivileged &&
-                                          u.id !== currentUserId
-                                        ? "Không thể đặt lại mật khẩu người dùng cấp cao"
-                                        : "Đặt lại mật khẩu"
+                                      : isSuperAdminUser(u) && u.id !== currentUserId
+                                        ? "Không thể đặt lại mật khẩu tài khoản Super Admin"
+                                        : isHighRoleUser(u) &&
+                                            !currentIsSuperAdmin &&
+                                            u.id !== currentUserId
+                                          ? "Chỉ Super Admin mới được đặt lại mật khẩu người dùng cấp cao"
+                                          : "Đặt lại mật khẩu"
                                   }
                                   className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
                                 >
@@ -1189,6 +1233,7 @@ export default function UserPage() {
                     <select
                       className={SELECT_CLASS}
                       value={form.roleId}
+                      disabled={lockRoleAndEmail}
                       onChange={(e) =>
                         setField(
                           "roleId",
@@ -1203,6 +1248,9 @@ export default function UserPage() {
                         </option>
                       ))}
                     </select>
+                    {lockRoleAndEmail && (
+                      <p className="mt-0.5 text-[11px] text-muted">Chỉ Super Admin mới đổi được vai trò</p>
+                    )}
                   </div>
                   <div className="col-span-2 flex flex-col gap-1">
                     <label className="text-xs text-muted">
@@ -1213,13 +1261,13 @@ export default function UserPage() {
                         type="email"
                         className={`${FORM_CONTROL_CLASS} flex-1${fieldErrors.email ? " border-danger" : ""}`}
                         value={form.email}
-                        disabled={editingId !== null}
+                        disabled={editingId !== null || lockRoleAndEmail}
                         onChange={(e) => {
                           setField("email", e.target.value);
                           clearFieldError("email");
                         }}
                       />
-                      {editingId !== null ? (
+                      {editingId !== null && !lockRoleAndEmail ? (
                         <button
                           type="button"
                           onClick={() =>
