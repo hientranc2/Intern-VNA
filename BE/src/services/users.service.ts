@@ -173,15 +173,28 @@ export class UsersService {
   }
 
   // 5. XÓA NGƯỜI DÙNG
-  async deleteUser(id: string) {
+  async deleteUser(
+    id: string,
+    requester?: { userId: string; role: string },
+  ) {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
 
-    // Không xóa người dùng cấp cao (ADMIN/CEO) — phải đổi vai trò về cấp thường trước.
-    if (await this.isHighRoleUser(user))
-      throw new ForbiddenException(
-        'Không thể xóa người dùng cấp cao. Hãy đổi vai trò của họ về cấp thường trước khi xóa.',
-      );
+    // Không xóa người dùng cấp cao (ADMIN/CEO) — trừ khi người gọi cũng là Super Admin.
+    if (await this.isHighRoleUser(user)) {
+      const callerIsSuper = requester
+        ? await this.isHighRoleUser(
+            (await this.userRepository.findOne({
+              where: { id: requester.userId },
+            }))!,
+          )
+        : false;
+      if (!callerIsSuper) {
+        throw new ForbiddenException(
+          'Không thể xóa người dùng cấp cao. Hãy đổi vai trò của họ về cấp thường trước khi xóa.',
+        );
+      }
+    }
 
     await this.userRepository.remove(user);
     return { message: 'Xóa người dùng thành công' };

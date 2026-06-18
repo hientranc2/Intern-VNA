@@ -8,6 +8,7 @@ import {
   Body,
   Param,
   Query,
+  Request,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -22,6 +23,11 @@ import {
   UpdateUserAdminDto,
   ResetPasswordAdminDto,
 } from '../dtos/user-admin.dto';
+
+interface AuthRequest {
+  user: { userId: string; username: string; role: string };
+}
+
 @Controller('admin/users')
 @UseGuards(AuthGuard('jwt'))
 export class UsersController {
@@ -64,7 +70,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  removeUser(@Param('id') id: string) {
-    return this.usersService.deleteUser(id);
+  removeUser(@Param('id') id: string, @Request() req: AuthRequest) {
+    return this.usersService.deleteUser(id, req.user);
   }
 }

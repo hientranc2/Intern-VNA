@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { FormHelperText } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
@@ -20,7 +20,7 @@ import {
   deleteUser,
 } from "@/libs/tts/user/userApi";
 import { ApiError, assetUrl } from "@/libs/tts/auth/apiClient";
-import { getProfile, clearToken } from "@/libs/tts/auth/authApi";
+import { getProfile, clearToken, getIsSuper } from "@/libs/tts/auth/authApi";
 import { useCan } from "@/libs/tts/auth/abilityContext";
 import {
   isValidEmail,
@@ -106,6 +106,12 @@ export default function UserPage() {
   const canUpdate = useCan("update", "USER");
   const canDelete = useCan("delete", "USER");
   const importRef = useRef<HTMLInputElement>(null);
+  // User hiện tại là ADMIN/Super Admin? — họ được phép sửa/xóa mọi user kể cả cấp cao.
+  const isPrivileged = useSyncExternalStore(
+    () => () => {},
+    () => getIsSuper(),
+    () => false,
+  );
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [view, setView] = useState<ViewMode>("list");
@@ -223,7 +229,7 @@ export default function UserPage() {
   const roleName = (u: User) =>
     roles.find((r) => r.id === u.roleId)?.ten ?? u.role ?? "—";
 
-  // User cấp cao (ADMIN / CEO / Quản trị viên hệ thống): không được xóa — phải đổi vai trò trước.
+  // User cấp cao (ADMIN / CEO / Quản trị viên hệ thống): không được xóa — trừ khi người gọi cũng là Super Admin.
   const isHighRoleUser = (u: User) =>
     u.role === "ADMIN" ||
     Boolean(roles.find((r) => r.id === u.roleId)?.isSuper);
@@ -231,7 +237,7 @@ export default function UserPage() {
   const start = (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalItems);
   const selectableUsers = users.filter(
-    (u) => u.id !== currentUserId && !isHighRoleUser(u),
+    (u) => u.id !== currentUserId && (!isHighRoleUser(u) || isPrivileged),
   );
   const allPageChecked =
     selectableUsers.length > 0 &&
@@ -249,7 +255,7 @@ export default function UserPage() {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       users.forEach((u) => {
-        if (u.id === currentUserId || isHighRoleUser(u)) return;
+        if (u.id === currentUserId || (isHighRoleUser(u) && !isPrivileged)) return;
         checked ? next.add(u.id) : next.delete(u.id);
       });
       return next;
@@ -475,10 +481,10 @@ export default function UserPage() {
 
   const deleteSelected = async () => {
     setIsDeleting(true);
-    // Phòng thủ: loại bỏ user cấp cao đã thấy trên trang (BE vẫn là chốt chặn cuối).
+    // Phòng thủ: loại bỏ user cấp cao (đối với người gọi không phải Super Admin) — BE vẫn là chốt chặn cuối.
     const ids = Array.from(selectedIds).filter((id) => {
       const u = users.find((x) => x.id === id);
-      return !u || !isHighRoleUser(u);
+      return !u || !isHighRoleUser(u) || isPrivileged;
     });
     const results = await Promise.allSettled(ids.map((id) => deleteUser(id)));
     const failed = results.filter((r) => r.status === "rejected").length;
@@ -719,7 +725,7 @@ export default function UserPage() {
                             className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}
                           >
                             <td className="px-3.5 py-2.5">
-                              {u.id === currentUserId || isHighRoleUser(u) ? (
+                              {u.id === currentUserId || (isHighRoleUser(u) && !isPrivileged) ? (
                                 <input
                                   type="checkbox"
                                   disabled
@@ -772,12 +778,14 @@ export default function UserPage() {
                                   disabled={
                                     !canUpdate ||
                                     (isHighRoleUser(u) &&
+                                      !isPrivileged &&
                                       u.id !== currentUserId)
                                   }
                                   title={
                                     !canUpdate
                                       ? "Bạn không có quyền sửa"
                                       : isHighRoleUser(u) &&
+                                          !isPrivileged &&
                                           u.id !== currentUserId
                                         ? "Không thể đặt lại mật khẩu người dùng cấp cao"
                                         : "Đặt lại mật khẩu"
