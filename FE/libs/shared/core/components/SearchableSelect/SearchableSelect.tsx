@@ -43,7 +43,9 @@ export function SearchableSelect({
   // Loại bỏ giá trị trùng để tránh trùng key React và mục lặp trong dropdown.
   const uniqueOptions = Array.from(new Set(options));
   const filtered = query.trim()
-    ? uniqueOptions.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()))
+    ? uniqueOptions.filter((o) =>
+        o.toLowerCase().includes(query.trim().toLowerCase()),
+      )
     : uniqueOptions;
 
   useEffect(() => {
@@ -53,8 +55,20 @@ export function SearchableSelect({
         const rect = triggerRef.current.getBoundingClientRect();
         setDropdownStyle(
           dropUp
-            ? { position: "fixed", bottom: window.innerHeight - rect.top + 4, left: rect.left, width: rect.width, zIndex: 9999 }
-            : { position: "fixed", top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 },
+            ? {
+                position: "fixed",
+                bottom: window.innerHeight - rect.top + 4,
+                left: rect.left,
+                width: rect.width,
+                zIndex: 9999,
+              }
+            : {
+                position: "fixed",
+                top: rect.bottom + 4,
+                left: rect.left,
+                width: rect.width,
+                zIndex: 9999,
+              },
         );
       }
     }
@@ -108,7 +122,9 @@ export function SearchableSelect({
           </button>
         )}
         {filtered.length === 0 ? (
-          <div className="px-3 py-3 text-center text-[13px] text-muted">{emptyText}</div>
+          <div className="px-3 py-3 text-center text-[13px] text-muted">
+            {emptyText}
+          </div>
         ) : (
           filtered.map((opt) => (
             <button
@@ -116,7 +132,9 @@ export function SearchableSelect({
               type="button"
               onClick={() => select(opt)}
               className={`w-full px-3 py-2 text-left text-[13px] hover:bg-[#f0f7ff] ${
-                opt === value ? "bg-[#eff6ff] font-medium text-primary" : "text-ink"
+                opt === value
+                  ? "bg-[#eff6ff] font-medium text-primary"
+                  : "text-ink"
               }`}
             >
               {opt}
@@ -128,15 +146,16 @@ export function SearchableSelect({
   );
 
   return (
-    <div ref={containerRef} className={`relative${className ? ` ${className}` : ""}`}>
+    <div
+      ref={containerRef}
+      className={`relative${className ? ` ${className}` : ""}`}
+    >
       <button
         ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={toggle}
-        className={`flex w-full items-center justify-between gap-2 border bg-white text-ink outline-none transition-colors focus:border-[#3b82f6] disabled:cursor-not-allowed disabled:bg-body disabled:text-muted ${
-          error ? "border-danger" : "border-line"
-        } ${
+        className={`flex w-full items-center justify-between gap-2 border border-line bg-white text-ink outline-none transition-colors focus:border-[#3b82f6] disabled:cursor-not-allowed disabled:bg-body disabled:text-muted ${
           compact
             ? "h-7 rounded-[5px] px-1.5 text-xs"
             : "h-10 rounded-md px-3 text-sm focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"

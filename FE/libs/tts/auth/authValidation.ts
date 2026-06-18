@@ -32,9 +32,9 @@ export function isValidPhone(phone: string): boolean {
 }
 
 // Mật khẩu mạnh: tối thiểu 8 ký tự, có chữ hoa, chữ thường và ký tự đặc biệt.
-export const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/;
+export const PASSWORD_REGEX = /^\S{8,}$/;
 export const PASSWORD_RULE_MESSAGE =
-  "Mật khẩu tối thiểu 8 ký tự, gồm chữ hoa, chữ thường và ký tự đặc biệt";
+  "Mật khẩu tối thiểu 8 ký tự và không chứa khoảng trắng";
 
 export function isStrongPassword(password: string): boolean {
   return PASSWORD_REGEX.test(password);

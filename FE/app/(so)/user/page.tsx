@@ -22,7 +22,11 @@ import {
 import { ApiError, assetUrl } from "@/libs/tts/auth/apiClient";
 import { getProfile, clearToken } from "@/libs/tts/auth/authApi";
 import { useCan } from "@/libs/tts/auth/abilityContext";
-import { isValidEmail, isStrongPassword, PASSWORD_RULE_MESSAGE } from "@/libs/tts/auth/authValidation";
+import {
+  isValidEmail,
+  isStrongPassword,
+  PASSWORD_RULE_MESSAGE,
+} from "@/libs/tts/auth/authValidation";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
@@ -334,27 +338,28 @@ export default function UserPage() {
   };
 
   const saveUser = async () => {
-    const fullName = form.fullName.trim();
+    // Trim đầu/cuối + gộp nhiều khoảng trắng liên tiếp thành 1 khoảng trắng.
+    const fullName = form.fullName.trim().replace(/\s+/g, " ");
     const email = form.email.trim();
     const username = form.username.trim();
 
     const errors: FieldErrors = {};
     if (!username) {
       errors.username = "Tên đăng nhập không được để trống";
-    } else if (/\s/.test(username)) {
-      errors.username = "Tên đăng nhập không được chứa khoảng trắng";
-    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    } else if (!/^[a-zA-Z0-9_ ]+$/.test(username)) {
       errors.username =
-        "Tên đăng nhập chỉ được chứa chữ cái, chữ số và dấu gạch dưới (_)";
+        "Tên đăng nhập chỉ được chứa chữ cái, chữ số, khoảng trắng và dấu gạch dưới (_)";
     }
     if (!fullName) {
       errors.fullName = "Họ và tên không được để trống";
     } else if (/\d/.test(fullName)) {
       errors.fullName = "Họ và tên không được chứa số";
-    } else if (/\s/.test(fullName)) {
-      errors.fullName = "Họ và tên không được chứa khoảng trắng";
-    } else if (!/^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ]+$/.test(fullName)) {
-      errors.fullName = "Họ và tên chỉ được chứa chữ cái";
+    } else if (
+      !/^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ ]+$/.test(
+        fullName,
+      )
+    ) {
+      errors.fullName = "Họ và tên chỉ được chứa chữ cái và khoảng trắng";
     }
     if (!email) errors.email = "Email không được để trống";
     else if (!isValidEmail(email)) errors.email = "Email không đúng định dạng";
@@ -362,7 +367,8 @@ export default function UserPage() {
     if (!editingId && !form.gender) errors.gender = "Vui lòng chọn giới tính";
     if (!editingId) {
       if (!password) errors.password = "Mật khẩu không được để trống";
-      else if (!isStrongPassword(password)) errors.password = PASSWORD_RULE_MESSAGE;
+      else if (!isStrongPassword(password))
+        errors.password = PASSWORD_RULE_MESSAGE;
     }
     if (form.dob && form.dob > localISODate(new Date()))
       errors.dob = "Ngày sinh không được là ngày tương lai";
@@ -372,6 +378,7 @@ export default function UserPage() {
       return;
     }
     setFieldErrors({});
+    setField("fullName", fullName); // đồng bộ lại input với giá trị đã làm sạch
     setIsSaving(true);
     try {
       if (editingId) {
@@ -764,12 +771,14 @@ export default function UserPage() {
                                   }}
                                   disabled={
                                     !canUpdate ||
-                                    (isHighRoleUser(u) && u.id !== currentUserId)
+                                    (isHighRoleUser(u) &&
+                                      u.id !== currentUserId)
                                   }
                                   title={
                                     !canUpdate
                                       ? "Bạn không có quyền sửa"
-                                      : isHighRoleUser(u) && u.id !== currentUserId
+                                      : isHighRoleUser(u) &&
+                                          u.id !== currentUserId
                                         ? "Không thể đặt lại mật khẩu người dùng cấp cao"
                                         : "Đặt lại mật khẩu"
                                   }
@@ -809,10 +818,8 @@ export default function UserPage() {
                             <td className="px-3.5 py-2.5 text-[#374151]">
                               {u.email}
                             </td>
-                            <td className="px-3.5 py-2.5">
-                              <span className="inline-block rounded-full bg-[#f3f4f6] px-2.5 py-0.5 text-xs font-medium text-[#374151]">
-                                {roleName(u)}
-                              </span>
+                            <td className="px-3.5 py-2.5 text-[#374151]">
+                              {roleName(u)}
                             </td>
                             <td className="px-3.5 py-2.5 text-[#374151]">
                               {u.jobTitle ?? "—"}
@@ -1075,7 +1082,6 @@ export default function UserPage() {
                         }}
                         placeholder="Nhập mật khẩu"
                         autoComplete="new-password"
-                        hasError={!!fieldErrors.password}
                       />
                       {fieldErrors.password && (
                         <FormHelperText
@@ -1132,7 +1138,10 @@ export default function UserPage() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-muted">
-                      Giới tính{!editingId ? <span className="text-danger">*</span> : null}
+                      Giới tính
+                      {!editingId ? (
+                        <span className="text-danger">*</span>
+                      ) : null}
                     </label>
                     <select
                       className={`${SELECT_CLASS}${fieldErrors.gender ? " border-danger" : ""}`}
@@ -1150,7 +1159,10 @@ export default function UserPage() {
                       ))}
                     </select>
                     {fieldErrors.gender && (
-                      <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>
+                      <FormHelperText
+                        error
+                        sx={{ mt: 0, mx: 0, fontSize: "11px" }}
+                      >
                         {fieldErrors.gender}
                       </FormHelperText>
                     )}

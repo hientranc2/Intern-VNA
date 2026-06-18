@@ -45,12 +45,11 @@ export class BusinessCreateDto {
   @IsNotEmpty({ message: 'Tên doanh nghiệp không được để trống' })
   businessName: string;
 
-  // Mã số thuế doanh nghiệp Việt Nam: chỉ 10 số.
-  // Không hỗ trợ dạng chi nhánh (10 số-3 số) vì mỗi MST 10 số = 1 doanh nghiệp = 1 tài khoản.
+  // Mã số thuế doanh nghiệp Việt Nam: 10 số (hoặc 10 số-1~5 số cho chi nhánh).
   @IsString()
   @IsNotEmpty({ message: 'Mã số thuế không được để trống' })
-  @Matches(/^\d{10}$/, {
-    message: 'Mã số thuế phải gồm đúng 10 chữ số',
+  @Matches(/^\d{10}(-\d{1,5})?$/, {
+    message: 'Mã số thuế gồm 10 chữ số, hoặc 10 chữ số + dấu gạch + tối đa 5 số',
   })
   taxCode: string;
 

@@ -182,6 +182,7 @@ export default function EnterprisePage() {
   const [resetTarget, setResetTarget] = useState<Business | null>(null);
   const [resetPwd, setResetPwd] = useState("");
   const [resetPwdError, setResetPwdError] = useState<string | null>(null);
+  const [isResettingPwd, setIsResettingPwd] = useState(false);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -307,8 +308,8 @@ export default function EnterprisePage() {
     if (!form.businessName.trim()) errors.businessName = "Tên doanh nghiệp không được để trống";
     if (!form.taxCode.trim()) {
       errors.taxCode = "Mã số thuế không được để trống";
-    } else if (!/^\d{10}$/.test(form.taxCode.trim())) {
-      errors.taxCode = "Mã số thuế phải gồm đúng 10 chữ số";
+    } else if (!/^\d{10}(-\d{1,5})?$/.test(form.taxCode.trim())) {
+      errors.taxCode = "Mã số thuế gồm 10 chữ số, hoặc 10 chữ số + dấu gạch + tối đa 5 số";
     }
     if (!form.businessType) errors.businessType = "Vui lòng chọn loại hình kinh doanh";
     if (!form.email.trim()) errors.email = "Email không được để trống";
@@ -378,6 +379,8 @@ export default function EnterprisePage() {
       return;
     }
     if (!resetTarget) return;
+    setIsResettingPwd(true);
+    setResetPwdError(null);
     try {
       await resetBusinessPassword(resetTarget.id, pwd);
       setResetTarget(null);
@@ -388,10 +391,12 @@ export default function EnterprisePage() {
         variant: "success",
       });
     } catch (err) {
-      setToast({
-        message: err instanceof ApiError ? err.message : "Đặt lại mật khẩu thất bại",
-        variant: "error",
-      });
+      // Hiển thị lỗi inline trong modal thay vì toast (để user thấy được lỗi)
+      setResetPwdError(
+        err instanceof ApiError ? err.message : "Đặt lại mật khẩu thất bại",
+      );
+    } finally {
+      setIsResettingPwd(false);
     }
   };
 
@@ -592,7 +597,7 @@ export default function EnterprisePage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => openWizard("edit", b)}
+                                onClick={() => router.push(`/enterprise/edit/${b.id}`)}
                                 disabled={!canUpdate}
                                 title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"}
                                 className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
@@ -768,7 +773,7 @@ export default function EnterprisePage() {
                         className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.taxCode ? " border-danger" : ""}${wizardMode === "edit" ? " bg-[#f9fafb] cursor-not-allowed" : ""}`}
                         value={form.taxCode}
                         disabled={wizardMode === "edit"}
-                        maxLength={10}
+                        maxLength={16}
                         onChange={(e) => { setField("taxCode", e.target.value); if (wizardFieldErrors.taxCode) setWizardFieldErrors((p) => ({ ...p, taxCode: undefined })); }}
                         placeholder="VD: 0310000888"
                       />
@@ -1220,6 +1225,7 @@ export default function EnterprisePage() {
               Khởi tạo mật khẩu cho tài khoản <strong>{resetTarget?.taxCode}</strong>
             </p>
             <input
+              type="password"
               className={`h-[42px] w-full rounded-md border px-3.5 text-sm outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] ${resetPwdError ? "border-danger" : "border-line"}`}
               value={resetPwd}
               onChange={(e) => { setResetPwd(e.target.value); if (resetPwdError) setResetPwdError(null); }}
@@ -1240,14 +1246,15 @@ export default function EnterprisePage() {
             <button
               type="button"
               onClick={confirmResetPwd}
-              className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af]"
+              disabled={isResettingPwd}
+              className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                 <polyline points="17 21 17 13 7 13 7 21" />
                 <polyline points="7 3 7 8 15 8" />
               </svg>
-              Lưu
+              {isResettingPwd ? "Đang xử lý..." : "Lưu"}
             </button>
           </div>
         </div>

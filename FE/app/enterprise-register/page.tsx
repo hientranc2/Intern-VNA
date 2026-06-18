@@ -123,8 +123,8 @@ export default function EnterpriseRegisterPage() {
     const errors: typeof wizardFieldErrors = {};
     if (!form.ten.trim()) errors.ten = "Tên doanh nghiệp không được để trống";
     if (!form.mst.trim()) errors.mst = "Mã số thuế không được để trống";
-    else if (!/^\d{10}$/.test(form.mst.trim()))
-      errors.mst = "Mã số thuế phải gồm đúng 10 chữ số";
+    else if (!/^\d{10}(-\d{1,5})?$/.test(form.mst.trim()))
+      errors.mst = "Mã số thuế gồm 10 chữ số, hoặc 10 chữ số + dấu gạch + tối đa 5 số";
     if (!form.loai) errors.loai = "Vui lòng chọn loại hình kinh doanh";
     if (!form.nganh) errors.nganh = "Vui lòng chọn ngành nghề kinh doanh";
     if (!form.email.trim()) errors.email = "Email không được để trống";
@@ -347,7 +347,7 @@ export default function EnterpriseRegisterPage() {
                     <input
                       className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.mst ? " border-danger" : ""}`}
                       value={form.mst}
-                      maxLength={10}
+                      maxLength={16}
                       onChange={(e) => {
                         setField("mst", e.target.value);
                         if (wizardFieldErrors.mst) setWizardFieldErrors((p) => ({ ...p, mst: undefined }));

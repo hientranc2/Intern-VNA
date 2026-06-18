@@ -220,30 +220,33 @@ export default function AccountPage() {
   const saveProfile = async () => {
     if (saving) return;
     const errors: { fullName?: string; dob?: string } = {};
-    const fullName = form.fullName.trim();
+    // Trim đầu/cuối + gộp nhiều khoảng trắng liên tiếp thành 1 khoảng trắng.
+    const fullName = form.fullName.trim().replace(/\s+/g, " ");
+
     if (!fullName) {
       errors.fullName = "Họ và tên không được để trống";
     } else if (/\d/.test(fullName)) {
       errors.fullName = "Họ và tên không được chứa số";
-    } else if (/\s/.test(fullName)) {
-      errors.fullName = "Họ và tên không được chứa khoảng trắng";
     } else if (
-      !/^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ]+$/.test(
+      !/^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ ]+$/.test(
         fullName,
       )
     ) {
       errors.fullName = "Họ và tên chỉ được chứa chữ cái";
     }
+
     if (form.dob) {
       const today = localISODate(new Date());
       if (form.dob > today)
         errors.dob = "Ngày sinh không được là ngày tương lai";
     }
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
     setFormErrors({});
+    setField("fullName", fullName); // đồng bộ lại input với giá trị đã làm sạch
     setSaving(true);
     try {
       if (avatarFile) {
@@ -252,7 +255,7 @@ export default function AccountPage() {
         if (uploaded.avatarUrl) setAvatarPreview(uploaded.avatarUrl);
       }
       await updateProfile({
-        fullName: form.fullName,
+        fullName, // dùng bản đã trim/gộp khoảng trắng
         dob: form.dob || undefined,
         gender: form.gender || undefined,
         jobTitle: form.jobTitle || undefined,
