@@ -221,6 +221,13 @@ export function requestChangeEmailOtp() {
   });
 }
 
+export function verifyChangeEmailOtp(otpCode: string) {
+  return request<{ message: string }>("/auth/verify-change-email-otp", {
+    method: "POST",
+    body: { otpCode },
+  });
+}
+
 export function changeEmail(input: { otpCode: string; newEmail: string }) {
   return request<{ message: string }>("/auth/change-email", {
     method: "POST",

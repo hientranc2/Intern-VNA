@@ -155,7 +155,8 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
       }, 1000);
     } catch (err) {
       setToast({
-        message: err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
+        message:
+          err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại",
         variant: "error",
       });
     }
@@ -217,7 +218,6 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
                 if (pwdFieldErrors.oldPwd)
                   setPwdFieldErrors((p) => ({ ...p, oldPwd: undefined }));
               }}
-              placeholder="Mật khẩu cũ"
               hasError={!!pwdFieldErrors.oldPwd}
               helperText={pwdFieldErrors.oldPwd}
               required
@@ -232,7 +232,6 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
                 if (pwdFieldErrors.newPwd)
                   setPwdFieldErrors((p) => ({ ...p, newPwd: undefined }));
               }}
-              placeholder="Mật khẩu mới"
               autoComplete="new-password"
               hasError={!!pwdFieldErrors.newPwd}
               helperText={pwdFieldErrors.newPwd}
@@ -248,7 +247,6 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
                 if (pwdFieldErrors.confirmPwd)
                   setPwdFieldErrors((p) => ({ ...p, confirmPwd: undefined }));
               }}
-              placeholder="Nhập lại mật khẩu mới"
               autoComplete="new-password"
               hasError={!!pwdFieldErrors.confirmPwd}
               helperText={pwdFieldErrors.confirmPwd}

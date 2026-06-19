@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { FormHelperText } from "@mui/material";
 
 type Props = {
   options: string[];
@@ -19,6 +20,8 @@ type Props = {
   /** Open dropdown upward instead of downward */
   dropUp?: boolean;
   label?: string;
+  required?: boolean;
+  helperText?: string;
 };
 
 export function SearchableSelect({
@@ -34,6 +37,8 @@ export function SearchableSelect({
   compact,
   label,
   dropUp,
+  required,
+  helperText,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -150,71 +155,106 @@ export function SearchableSelect({
   return (
     <div
       ref={containerRef}
-      className={`relative${className ? ` ${className}` : ""}`}
+      className={`flex flex-col ${className ? ` ${className}` : ""}`}
     >
-      {!compact && (
-        <>
-          <fieldset
-            className={`absolute inset-0 rounded-md border pointer-events-none ${
-              open
-                ? "border-[#1976d2] border-2"
-                : error
-                  ? "border-danger"
-                  : "border-line"
-            }`}
-          >
-            {label && (
-              <legend
-                className={`ml-2 px-1 text-[0px] ${open || value ? "text-[10px]" : ""}`}
-              >
-                {label}
-              </legend>
-            )}
-          </fieldset>
-
-          {label && (
-            <label
-              className={`absolute left-3 transition-all pointer-events-none bg-white px-1 ${
-                open || value
-                  ? "-top-2 text-[11px] z-10 " +
-                    (open ? "text-[#1976d2]" : "text-muted")
-                  : "top-[9px] text-sm text-muted"
+      <div
+        className="relative group w-full"
+        style={{ height: compact ? "28px" : "40px" }}
+      >
+        {!compact && (
+          <>
+            <fieldset
+              className={`absolute inset-0 m-0 p-0 rounded-md border pointer-events-none transition-colors ${
+                open
+                  ? "border-[#1976d2] border-2"
+                  : error
+                    ? "border-danger border-2"
+                    : "border-line group-hover:border-ink"
               }`}
             >
-              {label}
-            </label>
-          )}
-        </>
-      )}
+              {label && (
+                <legend
+                  className="ml-2 px-1 text-[0px] text-transparent transition-all"
+                >
+                  {label} {required ? " *" : ""}
+                </legend>
+              )}
+            </fieldset>
 
-      <button
-        ref={triggerRef}
-        type="button"
-        disabled={disabled}
-        onClick={toggle}
-        className={`flex w-full items-center justify-between gap-2 bg-white text-ink outline-none transition-colors disabled:cursor-not-allowed disabled:bg-body disabled:text-muted ${
-          compact
-            ? "h-7 rounded-[5px] border border-line px-1.5 text-xs"
-            : "h-10 rounded-md px-3 text-sm"
-        }`}
-      >
-        <span className={`truncate ${value ? "text-ink" : "text-transparent"}`}>
-          {value || placeholder}
-        </span>
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
+            {label && (
+              <label
+                className={`absolute left-3 transition-all pointer-events-none px-1 ${
+                  open || value
+                    ? "-top-2 text-[11px] z-10 bg-white " +
+                      (error
+                        ? "text-danger"
+                        : open
+                          ? "text-[#1976d2]"
+                          : "text-muted")
+                    : "top-[10px] text-sm " +
+                      (error ? "text-danger" : "text-muted")
+                }`}
+              >
+                {label} {required && <span className="text-danger">*</span>}
+              </label>
+            )}
+          </>
+        )}
+
+        <button
+          ref={triggerRef}
+          type="button"
+          disabled={disabled}
+          onClick={toggle}
+          className={`w-full h-full p-0 outline-none transition-colors disabled:cursor-not-allowed disabled:text-muted ${
+            disabled ? "bg-[#f9fafb]" : "bg-white"
+          } ${
+            compact
+              ? "rounded-[5px] border border-line text-xs"
+              : "rounded-md text-sm"
+          }`}
         >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
+          <div
+            className={`flex w-full h-full items-center justify-between gap-2 ${
+              compact ? "px-1.5" : "px-3"
+            }`}
+          >
+            <span
+              className={`truncate ${
+                value
+                  ? "text-ink"
+                  : open || !label
+                    ? "text-muted"
+                    : "text-transparent"
+              }`}
+            >
+              {value || placeholder}
+            </span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </button>
 
-      {dropdownContent}
+        {dropdownContent}
+      </div>
+
+      {helperText && (
+        <FormHelperText
+          error={error}
+          sx={{ mt: 0.5, mx: "14px", fontSize: "11px" }}
+        >
+          {helperText}
+        </FormHelperText>
+      )}
     </div>
   );
 }

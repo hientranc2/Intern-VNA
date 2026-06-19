@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { MenuItem, TextField } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
@@ -38,9 +39,6 @@ const TAB_META: Record<CategoryTab, { label: string; option: string }> = {
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
-const FORM_CONTROL_CLASS =
-  "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
-const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
 const CAP_BADGE_CLASS = ["", "bg-[#eff6ff] text-[#1d4ed8]", "bg-[#f0fdf4] text-[#166534]", "bg-[#fefce8] text-[#92400e]", "bg-[#fdf4ff] text-[#7c3aed]"];
 const INDENT_PX = ["0", "0", "14px", "28px", "42px"];
@@ -669,17 +667,15 @@ export default function CategoryPage() {
           </div>
         }
       >
-        <div className="mb-4 flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-medium text-[#374151]">
-            {tab === "factor"
-              ? "Mã yếu tố chấn thương"
-              : tab === "injuryType"
-                ? "Mã số"
-                : "Mã ngành"}{" "}
-            <span className="text-danger">*</span>
-          </label>
-          <input
-            className={`${FORM_CONTROL_CLASS}${panelErrors.ma ? " border-danger" : ""}`}
+        <div className="mb-4">
+          <TextField
+            label={
+              tab === "factor"
+                ? "Mã yếu tố chấn thương"
+                : tab === "injuryType"
+                  ? "Mã số"
+                  : "Mã ngành"
+            }
             value={inputMa}
             disabled={isEdit}
             onChange={(e) => {
@@ -687,69 +683,72 @@ export default function CategoryPage() {
               if (panelErrors.ma)
                 setPanelErrors((p) => ({ ...p, ma: undefined }));
             }}
+            error={!!panelErrors.ma}
+            helperText={panelErrors.ma}
+            size="small"
+            fullWidth
+            required
           />
-          {panelErrors.ma && (
-            <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ma}</p>
-          )}
         </div>
-        <div className="mb-4 flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-medium text-[#374151]">
-            {tab === "factor"
-              ? "Tên yếu tố chấn thương"
-              : tab === "injuryType"
-                ? "Tên loại chấn thương"
-                : "Tên ngành"}{" "}
-            <span className="text-danger">*</span>
-          </label>
-          <input
-            className={`${FORM_CONTROL_CLASS}${panelErrors.ten ? " border-danger" : ""}`}
+        <div className="mb-4">
+          <TextField
+            label={
+              tab === "factor"
+                ? "Tên yếu tố chấn thương"
+                : tab === "injuryType"
+                  ? "Tên loại chấn thương"
+                  : "Tên ngành"
+            }
             value={inputTen}
             onChange={(e) => {
               setInputTen(e.target.value);
               if (panelErrors.ten)
                 setPanelErrors((p) => ({ ...p, ten: undefined }));
             }}
+            error={!!panelErrors.ten}
+            helperText={panelErrors.ten}
+            size="small"
+            fullWidth
+            required
           />
-          {panelErrors.ten && (
-            <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ten}</p>
-          )}
         </div>
         {tab === "factor" ? (
-          <div className="mb-4 flex flex-col gap-1.5">
-            <label className="text-[12.5px] font-medium text-[#374151]">
-              Trạng thái <span className="text-danger">*</span>
-            </label>
-            <select
-              className={SELECT_CONTROL_CLASS}
+          <div className="mb-4">
+            <TextField
+              label="Trạng thái"
+              select
               value={inputActive}
               onChange={(e) => setInputActive(e.target.value)}
+              size="small"
+              fullWidth
+              required
             >
-              <option value="1">Sử dụng</option>
-              <option value="0">Ngừng sử dụng</option>
-            </select>
+              <MenuItem value="1">Sử dụng</MenuItem>
+              <MenuItem value="0">Ngừng sử dụng</MenuItem>
+            </TextField>
           </div>
         ) : (
-          <div className="mb-4 flex flex-col gap-1.5">
-            <label className="text-[12.5px] font-medium text-[#374151]">
-              {tab === "injuryType"
-                ? "Tên loại chấn thương cha"
-                : "Nhóm ngành cha"}{" "}
-              {tab === "injuryType" ? (
-                <span className="text-danger">*</span>
-              ) : null}
-            </label>
-            <select
-              className={SELECT_CONTROL_CLASS}
+          <div className="mb-4">
+            <TextField
+              label={
+                tab === "injuryType"
+                  ? "Tên loại chấn thương cha"
+                  : "Nhóm ngành cha"
+              }
+              select
               value={inputCha}
               onChange={(e) => setInputCha(e.target.value)}
+              size="small"
+              fullWidth
+              required={tab === "injuryType"}
             >
-              <option value="">-- Không có (Cấp 1) --</option>
+              <MenuItem value="">-- Không có (Cấp 1) --</MenuItem>
               {parentOptions.map((o) => (
-                <option key={o.value} value={o.value}>
+                <MenuItem key={o.value} value={o.value}>
                   {o.label}
-                </option>
+                </MenuItem>
               ))}
-            </select>
+            </TextField>
           </div>
         )}
       </Modal>

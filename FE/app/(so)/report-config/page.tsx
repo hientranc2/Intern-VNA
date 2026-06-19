@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { MenuItem, TextField } from "@mui/material";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
@@ -20,9 +21,6 @@ import { useCan } from "@/libs/tts/auth/abilityContext";
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
-const FORM_CONTROL_CLASS =
-  "h-[38px] w-full rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
-const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
 export default function ReportConfigPage() {
   const canCreate = useCan("create", "REPORT_CONFIG");
@@ -421,75 +419,68 @@ export default function ReportConfigPage() {
           </>
         }
       >
-        <div className="mb-4 flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-medium text-[#374151]">
-            Tên báo cáo <span className="text-danger">*</span>
-          </label>
-          <select
-            className={`${SELECT_CONTROL_CLASS}${panelErrors.ten ? " border-danger" : ""}`}
+        <div className="mb-4">
+          <TextField
+            label="Tên báo cáo"
+            select
             value={inputTen}
             onChange={(e) => {
               setInputTen(e.target.value);
               if (panelErrors.ten)
                 setPanelErrors((p) => ({ ...p, ten: undefined }));
             }}
+            error={!!panelErrors.ten}
+            helperText={panelErrors.ten}
+            size="small"
+            fullWidth
+            required
           >
-            <option value="">-- Chọn báo cáo --</option>
+            <MenuItem value="">-- Chọn báo cáo --</MenuItem>
             {REPORT_NAME_OPTIONS.map((o) => (
-              <option key={o} value={o}>
+              <MenuItem key={o} value={o}>
                 {o}
-              </option>
+              </MenuItem>
             ))}
-          </select>
-          {panelErrors.ten && (
-            <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ten}</p>
-          )}
+          </TextField>
         </div>
         <div className="mb-4 grid grid-cols-2 gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12.5px] font-medium text-[#374151]">
-              Năm <span className="text-danger">*</span>
-            </label>
-            <input
-              className={`${FORM_CONTROL_CLASS}${panelErrors.nam ? " border-danger" : ""}`}
-              value={inputNam}
-              onChange={(e) => {
-                setInputNam(e.target.value);
-                if (panelErrors.nam)
-                  setPanelErrors((p) => ({ ...p, nam: undefined }));
-              }}
-              placeholder="VD: 2024"
-            />
-            {panelErrors.nam && (
-              <p className="mt-0.5 text-[11px] text-danger">
-                {panelErrors.nam}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12.5px] font-medium text-[#374151]">
-              Kỳ báo cáo <span className="text-danger">*</span>
-            </label>
-            <select
-              className={`${SELECT_CONTROL_CLASS}${panelErrors.ky ? " border-danger" : ""}`}
-              value={inputKy}
-              onChange={(e) => {
-                setInputKy(e.target.value);
-                if (panelErrors.ky)
-                  setPanelErrors((p) => ({ ...p, ky: undefined }));
-              }}
-            >
-              <option value="">-- Chọn kỳ --</option>
-              {KY_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-            {panelErrors.ky && (
-              <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ky}</p>
-            )}
-          </div>
+          <TextField
+            label="Năm"
+            value={inputNam}
+            onChange={(e) => {
+              setInputNam(e.target.value);
+              if (panelErrors.nam)
+                setPanelErrors((p) => ({ ...p, nam: undefined }));
+            }}
+            error={!!panelErrors.nam}
+            helperText={panelErrors.nam}
+            placeholder="VD: 2024"
+            size="small"
+            fullWidth
+            required
+          />
+          <TextField
+            label="Kỳ báo cáo"
+            select
+            value={inputKy}
+            onChange={(e) => {
+              setInputKy(e.target.value);
+              if (panelErrors.ky)
+                setPanelErrors((p) => ({ ...p, ky: undefined }));
+            }}
+            error={!!panelErrors.ky}
+            helperText={panelErrors.ky}
+            size="small"
+            fullWidth
+            required
+          >
+            <MenuItem value="">-- Chọn kỳ --</MenuItem>
+            {KY_OPTIONS.map((o) => (
+              <MenuItem key={o} value={o}>
+                {o}
+              </MenuItem>
+            ))}
+          </TextField>
         </div>
         <div className="mb-4 grid grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
@@ -531,18 +522,18 @@ export default function ReportConfigPage() {
             )}
           </div>
         </div>
-        <div className="mb-4 flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-medium text-[#374151]">
-            Trạng thái
-          </label>
-          <select
-            className={SELECT_CONTROL_CLASS}
+        <div className="mb-4">
+          <TextField
+            label="Trạng thái"
+            select
             value={inputActive}
             onChange={(e) => setInputActive(e.target.value)}
+            size="small"
+            fullWidth
           >
-            <option value="1">Hoạt động</option>
-            <option value="0">Ngừng hoạt động</option>
-          </select>
+            <MenuItem value="1">Hoạt động</MenuItem>
+            <MenuItem value="0">Ngừng hoạt động</MenuItem>
+          </TextField>
         </div>
       </SlidePanel>
 

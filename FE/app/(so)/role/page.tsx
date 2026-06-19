@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { TextField } from "@mui/material";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { type Role } from "@/libs/tts/role/roleData";
@@ -25,8 +26,6 @@ type PermRow = {
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
-const FORM_CONTROL_CLASS =
-  "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
 
 export default function RolePage() {
   const canCreate = useCan("create", "ROLE");
@@ -410,9 +409,15 @@ export default function RolePage() {
                               fill="none"
                               stroke="#9ca3af"
                               strokeWidth="2"
-                              title="Vai trò hệ thống"
                             >
-                              <rect x="3" y="11" width="18" height="11" rx="2" />
+                              <title>Vai trò hệ thống</title>
+                              <rect
+                                x="3"
+                                y="11"
+                                width="18"
+                                height="11"
+                                rx="2"
+                              />
                               <path d="M7 11V7a5 5 0 0110 0v4" />
                             </svg>
                           ) : null}
@@ -540,47 +545,35 @@ export default function RolePage() {
 
           <div className="flex-1 overflow-y-auto p-5">
             <div className="mb-[18px] grid grid-cols-2 gap-3.5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12.5px] font-medium text-[#374151]">
-                  Mã vai trò <span className="text-danger">*</span>
-                </label>
-                <input
-                  className={`${FORM_CONTROL_CLASS}${formErrors.ma ? " border-danger" : ""}`}
-                  value={formMa}
-                  disabled={editingId !== null}
-                  onChange={(e) => {
-                    setFormMa(e.target.value);
-                    if (formErrors.ma)
-                      setFormErrors((p) => ({ ...p, ma: undefined }));
-                  }}
-                  placeholder="VD: Role1"
-                />
-                {formErrors.ma && (
-                  <p className="mt-0.5 text-[11px] text-danger">
-                    {formErrors.ma}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12.5px] font-medium text-[#374151]">
-                  Tên vai trò <span className="text-danger">*</span>
-                </label>
-                <input
-                  className={`${FORM_CONTROL_CLASS}${formErrors.ten ? " border-danger" : ""}`}
-                  value={formTen}
-                  onChange={(e) => {
-                    setFormTen(e.target.value);
-                    if (formErrors.ten)
-                      setFormErrors((p) => ({ ...p, ten: undefined }));
-                  }}
-                  placeholder="VD: Manager"
-                />
-                {formErrors.ten && (
-                  <p className="mt-0.5 text-[11px] text-danger">
-                    {formErrors.ten}
-                  </p>
-                )}
-              </div>
+              <TextField
+                label="Mã vai trò"
+                value={formMa}
+                disabled={editingId !== null}
+                onChange={(e) => {
+                  setFormMa(e.target.value);
+                  if (formErrors.ma)
+                    setFormErrors((p) => ({ ...p, ma: undefined }));
+                }}
+                error={!!formErrors.ma}
+                helperText={formErrors.ma}
+                size="small"
+                fullWidth
+                required
+              />
+              <TextField
+                label="Tên vai trò"
+                value={formTen}
+                onChange={(e) => {
+                  setFormTen(e.target.value);
+                  if (formErrors.ten)
+                    setFormErrors((p) => ({ ...p, ten: undefined }));
+                }}
+                error={!!formErrors.ten}
+                helperText={formErrors.ten}
+                size="small"
+                fullWidth
+                required
+              />
             </div>
 
             <div className="mb-2.5 text-[13px] font-semibold text-[#374151]">

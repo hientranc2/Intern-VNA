@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { MenuItem, TextField } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
@@ -18,9 +19,6 @@ import { useCan } from "@/libs/tts/auth/abilityContext";
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
-const FORM_CONTROL_CLASS =
-  "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
-const SELECT_CONTROL_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
 export default function EnterpriseTypePage() {
   const canCreate = useCan("create", "ENTERPRISE_TYPE");
@@ -424,12 +422,9 @@ export default function EnterpriseTypePage() {
           </div>
         }
       >
-        <div className="mb-4 flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-medium text-[#374151]">
-            Mã loại hình <span className="text-danger">*</span>
-          </label>
-          <input
-            className={`${FORM_CONTROL_CLASS}${panelErrors.ma ? " border-danger" : ""}`}
+        <div className="mb-4">
+          <TextField
+            label="Mã loại hình"
             value={inputMa}
             disabled={editId !== null}
             onChange={(e) => {
@@ -437,42 +432,44 @@ export default function EnterpriseTypePage() {
               if (panelErrors.ma)
                 setPanelErrors((p) => ({ ...p, ma: undefined }));
             }}
+            error={!!panelErrors.ma}
+            helperText={panelErrors.ma}
             placeholder="VD: 120"
+            size="small"
+            fullWidth
+            required
           />
-          {panelErrors.ma && (
-            <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ma}</p>
-          )}
         </div>
-        <div className="mb-4 flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-medium text-[#374151]">
-            Tên loại hình kinh doanh <span className="text-danger">*</span>
-          </label>
-          <input
-            className={`${FORM_CONTROL_CLASS}${panelErrors.ten ? " border-danger" : ""}`}
+        <div className="mb-4">
+          <TextField
+            label="Tên loại hình kinh doanh"
             value={inputTen}
             onChange={(e) => {
               setInputTen(e.target.value);
               if (panelErrors.ten)
                 setPanelErrors((p) => ({ ...p, ten: undefined }));
             }}
+            error={!!panelErrors.ten}
+            helperText={panelErrors.ten}
             placeholder="VD: Doanh nghiệp nhà nước"
+            size="small"
+            fullWidth
+            required
           />
-          {panelErrors.ten && (
-            <p className="mt-0.5 text-[11px] text-danger">{panelErrors.ten}</p>
-          )}
         </div>
-        <div className="mb-4 flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-medium text-[#374151]">
-            Trạng thái <span className="text-danger">*</span>
-          </label>
-          <select
-            className={SELECT_CONTROL_CLASS}
+        <div className="mb-4">
+          <TextField
+            label="Trạng thái"
+            select
             value={inputActive}
             onChange={(e) => setInputActive(e.target.value)}
+            size="small"
+            fullWidth
+            required
           >
-            <option value="1">Sử dụng</option>
-            <option value="0">Ngừng sử dụng</option>
-          </select>
+            <MenuItem value="1">Sử dụng</MenuItem>
+            <MenuItem value="0">Ngừng sử dụng</MenuItem>
+          </TextField>
         </div>
       </Modal>
 

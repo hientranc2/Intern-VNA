@@ -24,29 +24,89 @@ type AttachedFile = { file: File | null; displayName: string };
 
 const emptyAttachments = (): AttachedFile[] => FILE_NAMES.map(() => ({ file: null, displayName: "" }));
 
-const FORM_CONTROL_CLASS =
-  "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
+type OutlinedTextFieldProps = {
+  label: string;
+  value: string;
+  onChange?: (val: string) => void;
+  disabled?: boolean;
+  required?: boolean;
+  error?: boolean;
+  helperText?: string;
+  type?: string;
+  maxLength?: number;
+  placeholder?: string;
+};
 
-function FieldGroup({
+function OutlinedTextField({
   label,
+  value,
+  onChange,
+  disabled,
   required,
   error,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  children: React.ReactNode;
-}) {
+  helperText,
+  type = "text",
+  maxLength,
+  placeholder,
+}: OutlinedTextFieldProps) {
+  const [focused, setFocused] = useState(false);
+  const isFloated = !!value || focused;
+
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[12.5px] font-medium text-[#374151]">
-        {label} {required ? <span className="text-danger">*</span> : null}
-      </label>
-      {children}
-      {error && (
-        <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>
-          {error}
+    <div className="flex flex-col w-full">
+      <div className="relative group w-full" style={{ height: "40px" }}>
+        <input
+          type={type}
+          disabled={disabled}
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          maxLength={maxLength}
+          placeholder={focused ? placeholder : undefined}
+          className={`w-full h-full rounded-md border-0 px-3 text-[13.5px] outline-none ${
+            disabled
+              ? "bg-[#f9fafb] text-muted cursor-not-allowed"
+              : "bg-white text-ink"
+          }`}
+        />
+
+        <fieldset
+          className={`absolute inset-0 m-0 p-0 rounded-md border pointer-events-none transition-colors ${
+            focused
+              ? "border-[#1976d2] border-2"
+              : error
+                ? "border-danger border-2"
+                : "border-line group-hover:border-ink"
+          }`}
+        >
+          <legend className="ml-2 px-1 text-[0px] text-transparent transition-all">
+            {label} {required ? " *" : ""}
+          </legend>
+        </fieldset>
+
+        <label
+          className={`absolute left-3 transition-all pointer-events-none px-1 ${
+            isFloated
+              ? "-top-2 text-[11px] z-10 bg-white " +
+                (error
+                  ? "text-danger"
+                  : focused
+                    ? "text-[#1976d2]"
+                    : "text-muted")
+              : "top-[10px] text-sm " + (error ? "text-danger" : "text-muted")
+          }`}
+        >
+          {label} {required && <span className="text-danger">*</span>}
+        </label>
+      </div>
+
+      {helperText && (
+        <FormHelperText
+          error={error}
+          sx={{ mt: 0.5, mx: "14px", fontSize: "11px" }}
+        >
+          {helperText}
         </FormHelperText>
       )}
     </div>
@@ -273,8 +333,8 @@ export default function EnterpriseRegisterPage() {
   ];
 
   return (
-    <div className="min-h-screen overflow-y-auto bg-black/50 pb-10 pt-8">
-      <div className="mx-auto w-[780px] max-w-[96vw] rounded-xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
+    <div className="min-h-screen overflow-y-auto bg-[#f0f4f8] py-12">
+      <div className="mx-auto w-[940px] max-w-[96vw] rounded-xl bg-white shadow-[0_15px_45px_rgba(0,0,0,0.06)]">
         {/* Header with close button */}
         <div className="flex items-center justify-between px-7 pt-5 pb-1">
           <div />
@@ -343,187 +403,182 @@ export default function EnterpriseRegisterPage() {
             <div className="px-7 pb-6">
               <div className="mb-4 text-[15px] font-bold text-ink">Thêm mới doanh nghiệp</div>
 
-              {/* Enterprise info */}
               <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
-                <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Tên doanh nghiệp" required error={wizardFieldErrors.ten}>
-                    <input
-                      className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.ten ? " border-danger" : ""}`}
-                      value={form.ten}
-                      onChange={(e) => {
-                        setField("ten", e.target.value);
-                        if (wizardFieldErrors.ten) setWizardFieldErrors((p) => ({ ...p, ten: undefined }));
-                      }}
-                      placeholder="VD: Công ty cổ phần ABC"
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Mã số thuế" required error={wizardFieldErrors.mst}>
-                    <input
-                      className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.mst ? " border-danger" : ""}`}
-                      value={form.mst}
-                      maxLength={16}
-                      onChange={(e) => {
-                        setField("mst", e.target.value);
-                        if (wizardFieldErrors.mst) setWizardFieldErrors((p) => ({ ...p, mst: undefined }));
-                      }}
-                      placeholder="VD: 0310000888"
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Loại hình kinh doanh" required error={wizardFieldErrors.loai}>
-                    <SearchableSelect
-                      options={loaiHinhOptions}
-                      value={form.loai}
-                      placeholder="-- Chọn loại hình --"
-                      error={!!wizardFieldErrors.loai}
-                      onChange={(v) => {
-                        setField("loai", v);
-                        if (wizardFieldErrors.loai) setWizardFieldErrors((p) => ({ ...p, loai: undefined }));
-                      }}
-                    />
-                  </FieldGroup>
+                <div className="mb-6 grid grid-cols-3 gap-3.5">
+                  <OutlinedTextField
+                    label="Tên doanh nghiệp"
+                    value={form.ten}
+                    onChange={(val) => {
+                      setField("ten", val);
+                      if (wizardFieldErrors.ten) setWizardFieldErrors((p) => ({ ...p, ten: undefined }));
+                    }}
+                    error={!!wizardFieldErrors.ten}
+                    helperText={wizardFieldErrors.ten}
+                    placeholder="VD: Công ty cổ phần ABC"
+                    required
+                  />
+                  <OutlinedTextField
+                    label="Mã số thuế"
+                    value={form.mst}
+                    maxLength={16}
+                    onChange={(val) => {
+                      setField("mst", val);
+                      if (wizardFieldErrors.mst) setWizardFieldErrors((p) => ({ ...p, mst: undefined }));
+                    }}
+                    error={!!wizardFieldErrors.mst}
+                    helperText={wizardFieldErrors.mst}
+                    placeholder="VD: 0310000888"
+                    required
+                  />
+                  <SearchableSelect
+                    label="Loại hình kinh doanh"
+                    options={loaiHinhOptions}
+                    value={form.loai}
+                    placeholder="-- Chọn loại hình --"
+                    error={!!wizardFieldErrors.loai}
+                    helperText={wizardFieldErrors.loai}
+                    required
+                    onChange={(v) => {
+                      setField("loai", v);
+                      if (wizardFieldErrors.loai) setWizardFieldErrors((p) => ({ ...p, loai: undefined }));
+                    }}
+                  />
                 </div>
-                <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Ngành nghề kinh doanh chính" required error={wizardFieldErrors.nganh}>
-                    <SearchableSelect
-                      options={nganhCap4Options}
-                      value={form.nganh}
-                      placeholder="-- Chọn ngành nghề --"
-                      error={!!wizardFieldErrors.nganh}
-                      onChange={(v) => {
-                        setField("nganh", v);
-                        if (wizardFieldErrors.nganh) setWizardFieldErrors((p) => ({ ...p, nganh: undefined }));
-                      }}
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Ngày cấp GPKD">
-                    <DateInput
-                      value={form.ngayCap}
-                      onChange={(v) => setField("ngayCap", v)}
-                      max={localISODate(new Date())}
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Tỉnh/Thành phố ĐKKD" required error={wizardFieldErrors.tinh}>
-                    <SearchableSelect
-                      options={PROVINCES}
-                      value={form.tinh}
-                      placeholder="-- Chọn tỉnh/thành phố --"
-                      error={!!wizardFieldErrors.tinh}
-                      onChange={(v) => {
-                        setField("tinh", v);
-                        setField("phuong", "");
-                        if (wizardFieldErrors.tinh) setWizardFieldErrors((p) => ({ ...p, tinh: undefined }));
-                      }}
-                    />
-                  </FieldGroup>
+                <div className="mb-6 grid grid-cols-3 gap-3.5">
+                  <SearchableSelect
+                    label="Ngành nghề kinh doanh chính"
+                    options={nganhCap4Options}
+                    value={form.nganh}
+                    placeholder="-- Chọn ngành nghề --"
+                    error={!!wizardFieldErrors.nganh}
+                    helperText={wizardFieldErrors.nganh}
+                    required
+                    onChange={(v) => {
+                      setField("nganh", v);
+                      if (wizardFieldErrors.nganh) setWizardFieldErrors((p) => ({ ...p, nganh: undefined }));
+                    }}
+                  />
+                  <DateInput
+                    label="Ngày cấp GPKD"
+                    value={form.ngayCap}
+                    onChange={(v) => setField("ngayCap", v)}
+                    max={localISODate(new Date())}
+                  />
+                  <SearchableSelect
+                    label="Tỉnh/Thành phố ĐKKD"
+                    options={PROVINCES}
+                    value={form.tinh}
+                    placeholder="-- Chọn tỉnh/thành phố --"
+                    error={!!wizardFieldErrors.tinh}
+                    helperText={wizardFieldErrors.tinh}
+                    required
+                    onChange={(v) => {
+                      setField("tinh", v);
+                      setField("phuong", "");
+                      if (wizardFieldErrors.tinh) setWizardFieldErrors((p) => ({ ...p, tinh: undefined }));
+                    }}
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-3.5">
-                  <FieldGroup label="Phường/Xã ĐKKD" required error={wizardFieldErrors.phuong}>
-                    <SearchableSelect
-                      options={phuongDKKDOptions}
-                      value={form.phuong}
-                      placeholder="-- Chọn phường/xã --"
-                      disabled={!form.tinh}
-                      error={!!wizardFieldErrors.phuong}
-                      onChange={(v) => {
-                        setField("phuong", v);
-                        if (wizardFieldErrors.phuong) setWizardFieldErrors((p) => ({ ...p, phuong: undefined }));
-                      }}
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Địa chỉ">
-                    <input
-                      className={FORM_CONTROL_CLASS}
-                      value={form.diaChi}
-                      onChange={(e) => setField("diaChi", e.target.value)}
-                      placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc"
-                    />
-                  </FieldGroup>
+                <div className="mb-6 grid grid-cols-2 gap-3.5">
+                  <SearchableSelect
+                    label="Phường/Xã ĐKKD"
+                    options={phuongDKKDOptions}
+                    value={form.phuong}
+                    placeholder="-- Chọn phường/xã --"
+                    disabled={!form.tinh}
+                    error={!!wizardFieldErrors.phuong}
+                    helperText={wizardFieldErrors.phuong}
+                    required
+                    onChange={(v) => {
+                      setField("phuong", v);
+                      if (wizardFieldErrors.phuong) setWizardFieldErrors((p) => ({ ...p, phuong: undefined }));
+                    }}
+                  />
+                  <OutlinedTextField
+                    label="Địa chỉ"
+                    value={form.diaChi}
+                    onChange={(val) => setField("diaChi", val)}
+                    placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc"
+                  />
                 </div>
               </div>
 
               {/* Contact info */}
               <div className="my-3 text-[13.5px] font-semibold text-[#374151]">Thông tin liên hệ</div>
               <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
-                <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Tên viết bằng tiếng nước ngoài">
-                    <input
-                      className={FORM_CONTROL_CLASS}
-                      value={form.tenNN}
-                      onChange={(e) => setField("tenNN", e.target.value)}
-                      placeholder="VD: VNA Group"
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Email" required error={wizardFieldErrors.email}>
-                    <input
-                      type="email"
-                      className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.email ? " border-danger" : ""}`}
-                      value={form.email}
-                      onChange={(e) => {
-                        setField("email", e.target.value);
-                        if (wizardFieldErrors.email) setWizardFieldErrors((p) => ({ ...p, email: undefined }));
-                      }}
-                      placeholder="vna@gmail.com"
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Số điện thoại cơ quan" error={wizardFieldErrors.sdt}>
-                    <input
-                      className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.sdt ? " border-danger" : ""}`}
-                      value={form.sdt}
-                      onChange={(e) => {
-                        setField("sdt", e.target.value);
-                        if (wizardFieldErrors.sdt) setWizardFieldErrors((p) => ({ ...p, sdt: undefined }));
-                      }}
-                      placeholder="VD: 0283xxxxxxx"
-                    />
-                  </FieldGroup>
+                <div className="mb-6 grid grid-cols-3 gap-3.5">
+                  <OutlinedTextField
+                    label="Tên viết bằng tiếng nước ngoài"
+                    value={form.tenNN}
+                    onChange={(val) => setField("tenNN", val)}
+                    placeholder="VD: VNA Group"
+                  />
+                  <OutlinedTextField
+                    label="Email"
+                    type="email"
+                    value={form.email}
+                    onChange={(val) => {
+                      setField("email", val);
+                      if (wizardFieldErrors.email) setWizardFieldErrors((p) => ({ ...p, email: undefined }));
+                    }}
+                    error={!!wizardFieldErrors.email}
+                    helperText={wizardFieldErrors.email}
+                    placeholder="vna@gmail.com"
+                    required
+                  />
+                  <OutlinedTextField
+                    label="Số điện thoại cơ quan"
+                    value={form.sdt}
+                    onChange={(val) => {
+                      setField("sdt", val);
+                      if (wizardFieldErrors.sdt) setWizardFieldErrors((p) => ({ ...p, sdt: undefined }));
+                    }}
+                    error={!!wizardFieldErrors.sdt}
+                    helperText={wizardFieldErrors.sdt}
+                    placeholder="VD: 0283xxxxxxx"
+                  />
                 </div>
-                <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Người đứng đầu doanh nghiệp">
-                    <input
-                      className={FORM_CONTROL_CLASS}
-                      value={form.nguoiDD}
-                      onChange={(e) => setField("nguoiDD", e.target.value)}
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="SĐT liên hệ người đứng đầu" error={wizardFieldErrors.sdtDD}>
-                    <input
-                      className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.sdtDD ? " border-danger" : ""}`}
-                      value={form.sdtDD}
-                      onChange={(e) => {
-                        setField("sdtDD", e.target.value);
-                        if (wizardFieldErrors.sdtDD) setWizardFieldErrors((p) => ({ ...p, sdtDD: undefined }));
-                      }}
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Tỉnh/TP hoạt động KD">
-                    <SearchableSelect
-                      options={PROVINCES}
-                      value={form.tinhHD}
-                      placeholder="-- Chọn tỉnh --"
-                      onChange={(v) => {
-                        setField("tinhHD", v);
-                        setField("phuongHD", "");
-                      }}
-                    />
-                  </FieldGroup>
+                <div className="mb-6 grid grid-cols-3 gap-3.5">
+                  <OutlinedTextField
+                    label="Người đứng đầu doanh nghiệp"
+                    value={form.nguoiDD}
+                    onChange={(val) => setField("nguoiDD", val)}
+                  />
+                  <OutlinedTextField
+                    label="SĐT liên hệ người đứng đầu"
+                    value={form.sdtDD}
+                    onChange={(val) => {
+                      setField("sdtDD", val);
+                      if (wizardFieldErrors.sdtDD) setWizardFieldErrors((p) => ({ ...p, sdtDD: undefined }));
+                    }}
+                    error={!!wizardFieldErrors.sdtDD}
+                    helperText={wizardFieldErrors.sdtDD}
+                  />
+                  <SearchableSelect
+                    label="Tỉnh/TP hoạt động KD"
+                    options={PROVINCES}
+                    value={form.tinhHD}
+                    placeholder="-- Chọn tỉnh --"
+                    onChange={(v) => {
+                      setField("tinhHD", v);
+                      setField("phuongHD", "");
+                    }}
+                  />
                 </div>
-                <div className="grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Phường/xã hoạt động KD">
-                    <SearchableSelect
-                      options={phuongHDOptions}
-                      value={form.phuongHD}
-                      placeholder="-- Chọn phường/xã --"
-                      disabled={!form.tinhHD}
-                      onChange={(v) => setField("phuongHD", v)}
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Địa điểm kinh doanh">
-                    <input
-                      className={FORM_CONTROL_CLASS}
-                      value={form.diaDiem}
-                      onChange={(e) => setField("diaDiem", e.target.value)}
-                    />
-                  </FieldGroup>
+                <div className="mb-6 grid grid-cols-3 gap-3.5">
+                  <SearchableSelect
+                    label="Phường/xã hoạt động KD"
+                    options={phuongHDOptions}
+                    value={form.phuongHD}
+                    placeholder="-- Chọn phường/xã --"
+                    disabled={!form.tinhHD}
+                    onChange={(v) => setField("phuongHD", v)}
+                  />
+                  <OutlinedTextField
+                    label="Địa điểm kinh doanh"
+                    value={form.diaDiem}
+                    onChange={(val) => setField("diaDiem", val)}
+                  />
                   <div />
                 </div>
               </div>

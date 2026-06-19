@@ -74,6 +74,12 @@ export class AuthService {
     { code: string; expiresAt: Date }
   >();
 
+  // OTP thay đổi email cho tài khoản doanh nghiệp.
+  private businessChangeEmailOtpStore = new Map<
+    string,
+    { code: string; expiresAt: Date }
+  >();
+
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Account) private accountRepository: Repository<Account>,
@@ -457,92 +463,187 @@ export class AuthService {
   }
 
   async requestChangeEmailOtp(userId: string) {
+    // 1. Thử tìm trong bảng User (Tài khoản Sở/Admin)
     const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException('Không tìm thấy tài khoản');
+    if (user) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 5);
 
+      user.otpCode = otp;
+      user.otpExpiresAt = expiresAt;
+      await this.userRepository.save(user);
+
+      console.log(`[MÃ OTP ĐỂ ĐỔI EMAIL CỦA ${user.email} LÀ]: ${otp}`);
+
+      const htmlTemplate = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
+  <div style="text-align: center; border-bottom: 2px solid #f4f4f4; padding-bottom: 20px;">
+    <img src="https://ziroujfjpyvswzjjsorf.supabase.co/storage/v1/object/public/assets/khong%20nen%20_%20sang.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
+  </div>
+  <div style="padding: 20px 0; color: #333; line-height: 1.6;">
+    <h2 style="color: #002b5e;">Xin chào, ${user.fullName || user.username}</h2>
+    <p>Bạn vừa yêu cầu <strong>thay đổi địa chỉ Email</strong> cho tài khoản <strong>${user.username}</strong>. Dưới đây là mã OTP của bạn:</p>
+    <div style="font-size: 32px; font-weight: bold; color: #000; margin: 20px 0;">${otp}</div>
+    <p><strong>Lưu ý quan trọng:</strong> Mã OTP có hiệu lực trong <strong>5 phút</strong></p>
+    <p>Không chia sẻ mã này với bất kỳ ai, kể cả nhân viên hỗ trợ.</p>
+    <p>Nếu bạn không yêu cầu thay đổi Email, vui lòng bỏ qua email này.</p>
+  </div>
+  <div style="border-top: 2px solid #f4f4f4; padding-top: 20px; font-size: 13px; color: #777; line-height: 1.5;">
+    <p style="margin: 0;">Email này được gửi tự động. Vui lòng không trả lời email này.</p>
+    <p style="margin: 0;">© 2026 VNA GROUP. Tất cả các quyền được bảo lưu.</p>
+  </div>
+</div>`;
+
+      try {
+        await this.transporter.sendMail({
+          from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
+          to: user.email,
+          subject: 'Mã OTP xác nhận thay đổi Email - VNA GROUP',
+          html: htmlTemplate,
+        });
+      } catch (error) {
+        console.log('Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.');
+      }
+      return { message: 'Đã gửi mã OTP đến email HIỆN TẠI của bạn' };
+    }
+
+    // 2. Thử tìm trong bảng Account (Tài khoản Doanh Nghiệp)
+    const account = await this.accountRepository.findOne({
+      where: { id: userId },
+      relations: { business: true },
+    });
+    if (!account || !account.business) {
+      throw new NotFoundException('Không tìm thấy tài khoản');
+    }
+
+    const business = account.business;
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 5);
 
-    user.otpCode = otp;
-    user.otpExpiresAt = expiresAt;
-    await this.userRepository.save(user);
+    this.businessChangeEmailOtpStore.set(business.id, { code: otp, expiresAt });
 
-    console.log(`[MÃ OTP ĐỂ ĐỔI EMAIL CỦA ${user.email} LÀ]: ${otp}`);
+    console.log(`[MÃ OTP ĐỂ ĐỔI EMAIL CỦA DOANH NGHIỆP ${business.businessName} LÀ]: ${otp}`);
 
-    // --- TEMPLATE HTML CHO EMAIL ĐỔI EMAIL ---
     const htmlTemplate = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
-  
   <div style="text-align: center; border-bottom: 2px solid #f4f4f4; padding-bottom: 20px;">
     <img src="https://ziroujfjpyvswzjjsorf.supabase.co/storage/v1/object/public/assets/khong%20nen%20_%20sang.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
-    <div style="color: #c49a45; font-size: 18px; font-weight: bold; letter-spacing: 2px;">
-    
-    </div>
   </div>
-
   <div style="padding: 20px 0; color: #333; line-height: 1.6;">
-    <h2 style="color: #002b5e;">Xin chào, ${user.fullName}</h2>
-    
-    <p>Bạn vừa yêu cầu <strong>thay đổi địa chỉ Email</strong> cho tài khoản <strong>${user.username}</strong>. Dưới đây là mã OTP của bạn:</p>
-    
-    <div style="font-size: 32px; font-weight: bold; color: #000; margin: 20px 0;">
-      ${otp}
-    </div>
-    
+    <h2 style="color: #002b5e;">Xin chào, ${business.businessName}</h2>
+    <p>Bạn vừa yêu cầu <strong>thay đổi địa chỉ Email</strong> cho doanh nghiệp <strong>${business.businessName}</strong>. Dưới đây là mã OTP của bạn:</p>
+    <div style="font-size: 32px; font-weight: bold; color: #000; margin: 20px 0;">${otp}</div>
     <p><strong>Lưu ý quan trọng:</strong> Mã OTP có hiệu lực trong <strong>5 phút</strong></p>
-    
     <p>Không chia sẻ mã này với bất kỳ ai, kể cả nhân viên hỗ trợ.</p>
     <p>Nếu bạn không yêu cầu thay đổi Email, vui lòng bỏ qua email này.</p>
   </div>
-
   <div style="border-top: 2px solid #f4f4f4; padding-top: 20px; font-size: 13px; color: #777; line-height: 1.5;">
     <p style="margin: 0;">Email này được gửi tự động. Vui lòng không trả lời email này.</p>
     <p style="margin: 0;">© 2026 VNA GROUP. Tất cả các quyền được bảo lưu.</p>
-    
-    <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #999;">
-      VNA GROUP | Hệ thống Phần Mềm Quản Lý ATVSLD<br>
-      Bạn nhận được email này vì tài khoản của bạn đã yêu cầu thay đổi email.
-    </div>
   </div>
-</div>
-`;
+</div>`;
 
     try {
       await this.transporter.sendMail({
         from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
-        to: user.email,
+        to: business.email,
         subject: 'Mã OTP xác nhận thay đổi Email - VNA GROUP',
-        html: htmlTemplate, // Đổi từ text sang html
+        html: htmlTemplate,
       });
     } catch (error) {
-      console.log(
-        'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
-      );
+      console.log('Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.');
     }
     return { message: 'Đã gửi mã OTP đến email HIỆN TẠI của bạn' };
   }
 
-  async verifyAndChangeEmail(userId: string, dto: ChangeEmailDto) {
+  async verifyChangeEmailOtp(userId: string, otpCode: string) {
+    // 1. Thử tìm trong bảng User
     const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException('Không tìm thấy tài khoản');
-    if (user.otpCode !== dto.otpCode)
-      throw new BadRequestException('Mã OTP không chính xác');
-    if (new Date() > user.otpExpiresAt)
-      throw new BadRequestException('Mã OTP đã hết hạn');
+    if (user) {
+      if (user.otpCode !== otpCode)
+        throw new BadRequestException('Mã OTP không chính xác');
+      if (new Date() > user.otpExpiresAt)
+        throw new BadRequestException('Mã OTP đã hết hạn');
+      return { message: 'Xác thực OTP thành công' };
+    }
 
-    const emailExist = await this.userRepository.findOne({
+    // 2. Thử tìm trong bảng Account
+    const account = await this.accountRepository.findOne({
+      where: { id: userId },
+      relations: { business: true },
+    });
+    if (!account || !account.business) {
+      throw new NotFoundException('Không tìm thấy tài khoản');
+    }
+
+    const business = account.business;
+    const stored = this.businessChangeEmailOtpStore.get(business.id);
+    if (!stored)
+      throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    if (new Date() > stored.expiresAt) {
+      this.businessChangeEmailOtpStore.delete(business.id);
+      throw new BadRequestException('Mã OTP đã hết hạn');
+    }
+    if (stored.code !== otpCode)
+      throw new BadRequestException('Mã OTP không chính xác');
+
+    return { message: 'Xác thực OTP thành công' };
+  }
+
+  async verifyAndChangeEmail(userId: string, dto: ChangeEmailDto) {
+    // 1. Thử tìm trong bảng User
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (user) {
+      if (user.otpCode !== dto.otpCode)
+        throw new BadRequestException('Mã OTP không chính xác');
+      if (new Date() > user.otpExpiresAt)
+        throw new BadRequestException('Mã OTP đã hết hạn');
+
+      const emailExist = await this.userRepository.findOne({
+        where: { email: dto.newEmail },
+      });
+      if (emailExist)
+        throw new ConflictException('Email mới này đã được sử dụng bởi người khác!');
+
+      user.email = dto.newEmail;
+      user.otpCode = null;
+      user.otpExpiresAt = null;
+      await this.userRepository.save(user);
+
+      return { message: 'Thay đổi Email thành công!' };
+    }
+
+    // 2. Thử tìm trong bảng Account
+    const account = await this.accountRepository.findOne({
+      where: { id: userId },
+      relations: { business: true },
+    });
+    if (!account || !account.business) {
+      throw new NotFoundException('Không tìm thấy tài khoản');
+    }
+
+    const business = account.business;
+    const stored = this.businessChangeEmailOtpStore.get(business.id);
+    if (!stored)
+      throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    if (new Date() > stored.expiresAt) {
+      this.businessChangeEmailOtpStore.delete(business.id);
+      throw new BadRequestException('Mã OTP đã hết hạn');
+    }
+    if (stored.code !== dto.otpCode)
+      throw new BadRequestException('Mã OTP không chính xác');
+
+    const emailExist = await this.businessRepository.findOne({
       where: { email: dto.newEmail },
     });
-    if (emailExist)
-      throw new ConflictException(
-        'Email mới này đã được sử dụng bởi người khác!',
-      );
+    if (emailExist && emailExist.id !== business.id)
+      throw new ConflictException('Email mới này đã được sử dụng bởi doanh nghiệp khác!');
 
-    user.email = dto.newEmail;
-    user.otpCode = null;
-    user.otpExpiresAt = null;
-    await this.userRepository.save(user);
+    business.email = dto.newEmail;
+    await this.businessRepository.save(business);
+    this.businessChangeEmailOtpStore.delete(business.id);
 
     return { message: 'Thay đổi Email thành công!' };
   }

@@ -1,8 +1,13 @@
 "use client";
 
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FormHelperText } from "@mui/material";
+import {
+  Autocomplete,
+  FormHelperText,
+  MenuItem,
+  TextField,
+} from "@mui/material";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { SidebarOverrideContext } from "@/libs/tts/auth/sidebarContext";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
@@ -39,37 +44,11 @@ const EMPTY_PROFILE = {
 
 type ProfileForm = typeof EMPTY_PROFILE;
 
-const FIELD_CLASS =
-  "h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition-colors focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
-
-const DISABLED_FIELD_CLASS =
-  "h-10 w-full rounded-md border border-line bg-[#f3f4f6] px-3 text-sm text-muted outline-none cursor-not-allowed select-none";
-
-const SELECT_CLASS = `${FIELD_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-9`;
-
-const MODAL_INPUT_CLASS =
-  "h-[42px] w-full rounded-md border border-line px-3.5 text-sm text-ink outline-none transition-colors focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
-
 function getInitials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function FieldLabel({
-  children,
-  required,
-}: {
-  children: string;
-  required?: boolean;
-}) {
-  return (
-    <label className="text-xs text-muted">
-      {children}
-      {required ? <span className="text-danger">*</span> : null}
-    </label>
-  );
 }
 
 export default function AccountPage() {
@@ -78,11 +57,13 @@ export default function AccountPage() {
   const { setOverride } = useContext(SidebarOverrideContext);
 
   const [form, setForm] = useState<ProfileForm>(EMPTY_PROFILE);
+  const [originalForm, setOriginalForm] = useState<ProfileForm>(EMPTY_PROFILE);
   const [email, setEmail] = useState("");
+  const [originalEmail, setOriginalEmail] = useState("");
   const [active, setActive] = useState(true);
   const [toast, setToast] = useState<{
     message: string;
-    variant: "success" | "error";
+    variant: "success" | "error" | "warning";
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -111,47 +92,12 @@ export default function AccountPage() {
   }>({});
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [originalAvatarUrl, setOriginalAvatarUrl] = useState<string | null>(
+    null,
+  );
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
-  const [provinceSearch, setProvinceSearch] = useState("");
-  const [provinceOpen, setProvinceOpen] = useState(false);
-  const provinceRef = useRef<HTMLDivElement>(null);
-
-  const [wardSearch, setWardSearch] = useState("");
-  const [wardOpen, setWardOpen] = useState(false);
-  const wardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        provinceRef.current &&
-        !provinceRef.current.contains(e.target as Node)
-      ) {
-        setProvinceOpen(false);
-        setProvinceSearch("");
-      }
-      if (wardRef.current && !wardRef.current.contains(e.target as Node)) {
-        setWardOpen(false);
-        setWardSearch("");
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const filteredProvinces = PROVINCES.filter((p) =>
-    p.toLowerCase().includes(provinceSearch.toLowerCase()),
-  );
-
   const currentWards = WARDS_BY_PROVINCE[form.province] ?? [];
-  const filteredWards = currentWards.filter((w) =>
-    w.toLowerCase().includes(wardSearch.toLowerCase()),
-  );
-  const wardDisabled = !form.province || currentWards.length === 0;
-  const wardPlaceholder =
-    form.province && currentWards.length === 0
-      ? "Chưa có dữ liệu phường/xã"
-      : "Chọn phường / xã";
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -176,7 +122,7 @@ export default function AccountPage() {
       try {
         const p = await getProfile();
         if (cancelled) return;
-        setForm({
+        const profileData = {
           username: p.username ?? "",
           fullName: p.fullName ?? "",
           dob: p.dob ? String(p.dob).slice(0, 10) : "",
@@ -186,10 +132,16 @@ export default function AccountPage() {
           province: p.province ?? "",
           ward: p.ward ?? "",
           address: p.address ?? "",
-        });
+        };
+        setForm(profileData);
+        setOriginalForm(profileData);
         setEmail(p.email ?? "");
+        setOriginalEmail(p.email ?? "");
         setActive(p.isActive ?? true);
-        if (p.avatarUrl) setAvatarPreview(p.avatarUrl);
+        if (p.avatarUrl) {
+          setAvatarPreview(p.avatarUrl);
+          setOriginalAvatarUrl(p.avatarUrl);
+        }
       } catch (err) {
         if (cancelled) return;
         setToast({
@@ -217,8 +169,37 @@ export default function AccountPage() {
     });
   }, [form.fullName, form.username, avatarPreview, setOverride]);
 
+  // Kiểm tra xem có thay đổi gì không
+  const hasChanges = () => {
+    // Kiểm tra avatar
+    if (avatarFile) return true;
+    if (avatarPreview !== originalAvatarUrl) return true;
+
+    // Kiểm tra email
+    if (email !== originalEmail) return true;
+
+    // Kiểm tra các trường trong form
+    for (const key of Object.keys(form) as Array<keyof ProfileForm>) {
+      if (form[key] !== originalForm[key]) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const saveProfile = async () => {
     if (saving) return;
+
+    // Kiểm tra nếu không có thay đổi
+    if (!hasChanges()) {
+      setToast({
+        message: "Không có thay đổi nào để lưu",
+        variant: "warning",
+      });
+      return;
+    }
+
     const errors: { fullName?: string; dob?: string } = {};
     // Trim đầu/cuối + gộp nhiều khoảng trắng liên tiếp thành 1 khoảng trắng.
     const fullName = form.fullName.trim().replace(/\s+/g, " ");
@@ -252,7 +233,10 @@ export default function AccountPage() {
       if (avatarFile) {
         const uploaded = await uploadAvatar(avatarFile);
         setAvatarFile(null);
-        if (uploaded.avatarUrl) setAvatarPreview(uploaded.avatarUrl);
+        if (uploaded.avatarUrl) {
+          setAvatarPreview(uploaded.avatarUrl);
+          setOriginalAvatarUrl(uploaded.avatarUrl);
+        }
       }
       await updateProfile({
         fullName, // dùng bản đã trim/gộp khoảng trắng
@@ -263,6 +247,14 @@ export default function AccountPage() {
         ward: form.ward || undefined,
         address: form.address || undefined,
       });
+
+      // Cập nhật original form sau khi lưu thành công
+      setOriginalForm({
+        ...form,
+        fullName,
+      });
+      setOriginalEmail(email);
+
       setToast({ message: "Lưu thông tin thành công!", variant: "success" });
     } catch (err) {
       setToast({
@@ -349,6 +341,7 @@ export default function AccountPage() {
       await changeEmail({ otpCode: otp.trim(), newEmail: newEmail.trim() });
       otpCountdown.stop();
       setEmail(newEmail.trim());
+      setOriginalEmail(newEmail.trim());
       setNewEmailOpen(false);
       setToast({ message: "Thay đổi email thành công!", variant: "success" });
     } catch (err) {
@@ -469,35 +462,30 @@ export default function AccountPage() {
               <div className="mb-5 text-sm font-semibold text-dark">
                 Thông tin cá nhân
               </div>
-              <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+              <div className="grid grid-cols-2 gap-x-5 gap-y-6">
+                <TextField
+                  label="Tên đăng nhập"
+                  value={form.username}
+                  disabled
+                  size="small"
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Họ và tên"
+                  value={form.fullName}
+                  onChange={(e) => {
+                    setField("fullName", e.target.value);
+                    if (formErrors.fullName)
+                      setFormErrors((p) => ({ ...p, fullName: undefined }));
+                  }}
+                  error={!!formErrors.fullName}
+                  helperText={formErrors.fullName}
+                  size="small"
+                  fullWidth
+                  required
+                />
                 <div className="flex flex-col gap-1.5">
-                  <FieldLabel required>Tên đăng nhập</FieldLabel>
-                  <input
-                    className={DISABLED_FIELD_CLASS}
-                    value={form.username}
-                    readOnly
-                    tabIndex={-1}
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel required>Họ và tên</FieldLabel>
-                  <input
-                    className={`${FIELD_CLASS}${formErrors.fullName ? " border-danger focus:border-danger" : ""}`}
-                    value={form.fullName}
-                    onChange={(e) => {
-                      setField("fullName", e.target.value);
-                      if (formErrors.fullName)
-                        setFormErrors((p) => ({ ...p, fullName: undefined }));
-                    }}
-                  />
-                  {formErrors.fullName && (
-                    <p className="text-[11px] text-danger">
-                      {formErrors.fullName}
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel>Ngày tháng năm sinh</FieldLabel>
                   <DateInput
                     value={form.dob}
                     onChange={(v) => {
@@ -512,45 +500,42 @@ export default function AccountPage() {
                     <p className="text-[11px] text-danger">{formErrors.dob}</p>
                   )}
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel>Giới tính</FieldLabel>
-                  <select
-                    className={SELECT_CLASS}
-                    value={form.gender}
-                    onChange={(e) => setField("gender", e.target.value)}
-                  >
-                    <option value="">Giới tính</option>
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
-                    <option value="Khác">Khác</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel>Chức danh</FieldLabel>
-                  <input
-                    className={FIELD_CLASS}
-                    placeholder="Chức danh"
-                    value={form.jobTitle}
-                    onChange={(e) => setField("jobTitle", e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel required>Vai trò</FieldLabel>
-                  <input
-                    className={DISABLED_FIELD_CLASS}
-                    value={form.role}
-                    readOnly
-                    tabIndex={-1}
-                  />
-                </div>
-                <div className="col-span-2 flex flex-col gap-1.5">
-                  <FieldLabel>Email</FieldLabel>
+                <TextField
+                  label="Giới tính"
+                  select
+                  value={form.gender}
+                  onChange={(e) => setField("gender", e.target.value)}
+                  size="small"
+                  fullWidth
+                >
+                  <MenuItem value="">Giới tính</MenuItem>
+                  <MenuItem value="Nam">Nam</MenuItem>
+                  <MenuItem value="Nữ">Nữ</MenuItem>
+                  <MenuItem value="Khác">Khác</MenuItem>
+                </TextField>
+                <TextField
+                  label="Chức danh"
+                  value={form.jobTitle}
+                  onChange={(e) => setField("jobTitle", e.target.value)}
+                  size="small"
+                  fullWidth
+                />
+                <TextField
+                  label="Vai trò"
+                  value={form.role}
+                  disabled
+                  size="small"
+                  fullWidth
+                  required
+                />
+                <div className="col-span-2">
                   <div className="flex items-center gap-2">
-                    <input
-                      className={`${DISABLED_FIELD_CLASS} flex-1`}
+                    <TextField
+                      label="Email"
                       value={email}
-                      readOnly
-                      tabIndex={-1}
+                      disabled
+                      size="small"
+                      fullWidth
                     />
 
                     <button
@@ -569,177 +554,60 @@ export default function AccountPage() {
               <div className="mb-5 text-sm font-semibold text-dark">
                 Thông tin liên hệ
               </div>
-              <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel>Tỉnh thành phố</FieldLabel>
-                  <div ref={provinceRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProvinceOpen((prev) => !prev);
-                        setProvinceSearch("");
-                      }}
-                      className={`${FIELD_CLASS} flex w-full items-center justify-between text-left`}
-                    >
-                      <span
-                        className={form.province ? "text-ink" : "text-muted"}
-                      >
-                        {form.province || "Chọn tỉnh / thành phố"}
-                      </span>
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#6b7280"
-                        strokeWidth="2"
-                        className={`shrink-0 transition-transform duration-150 ${provinceOpen ? "" : "rotate-180"}`}
-                      >
-                        <path d="M6 9l6 6 6-6" />
-                      </svg>
-                    </button>
-                    {provinceOpen && (
-                      <div className="absolute left-0 bottom-full z-50 mb-1 w-full overflow-hidden rounded-md border border-line bg-white shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
-                        <div className="p-2">
-                          <input
-                            type="text"
-                            autoFocus
-                            className="h-8 w-full rounded border border-line px-2.5 text-sm text-ink outline-none focus:border-[#3b82f6]"
-                            placeholder="Tìm kiếm..."
-                            value={provinceSearch}
-                            onChange={(e) => setProvinceSearch(e.target.value)}
-                          />
-                        </div>
-                        <div className="max-h-48 overflow-y-auto">
-                          <div
-                            className="cursor-pointer px-3 py-1.5 text-sm text-muted hover:bg-[#f3f4f6]"
-                            onClick={() => {
-                              setField("province", "");
-                              setField("ward", "");
-                              setProvinceOpen(false);
-                              setProvinceSearch("");
-                              setWardOpen(false);
-                              setWardSearch("");
-                            }}
-                          >
-                            Chọn tỉnh / thành phố
-                          </div>
-                          {filteredProvinces.map((p) => (
-                            <div
-                              key={p}
-                              className={`cursor-pointer px-3 py-1.5 text-sm hover:bg-[#f3f4f6] ${
-                                form.province === p
-                                  ? "bg-[#eff6ff] font-medium text-primary"
-                                  : "text-ink"
-                              }`}
-                              onClick={() => {
-                                setField("province", p);
-                                setField("ward", "");
-                                setProvinceOpen(false);
-                                setProvinceSearch("");
-                                setWardOpen(false);
-                                setWardSearch("");
-                              }}
-                            >
-                              {p}
-                            </div>
-                          ))}
-                          {filteredProvinces.length === 0 && (
-                            <div className="px-3 py-3 text-center text-sm text-muted">
-                              Không tìm thấy
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel>Phường xã</FieldLabel>
-                  <div ref={wardRef} className="relative">
-                    <button
-                      type="button"
-                      disabled={wardDisabled}
-                      onClick={() => {
-                        setWardOpen((prev) => !prev);
-                        setWardSearch("");
-                      }}
-                      className={`${wardDisabled ? DISABLED_FIELD_CLASS : FIELD_CLASS} flex w-full items-center justify-between text-left`}
-                    >
-                      <span className={form.ward ? "text-ink" : "text-muted"}>
-                        {form.ward || wardPlaceholder}
-                      </span>
-                      {!wardDisabled && (
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#6b7280"
-                          strokeWidth="2"
-                          className={`shrink-0 transition-transform duration-150 ${wardOpen ? "" : "rotate-180"}`}
-                        >
-                          <path d="M6 9l6 6 6-6" />
-                        </svg>
-                      )}
-                    </button>
-                    {wardOpen && !wardDisabled && (
-                      <div className="absolute left-0 bottom-full z-50 mb-1 w-full overflow-hidden rounded-md border border-line bg-white shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
-                        <div className="p-2">
-                          <input
-                            type="text"
-                            autoFocus
-                            className="h-8 w-full rounded border border-line px-2.5 text-sm text-ink outline-none focus:border-[#3b82f6]"
-                            placeholder="Tìm kiếm..."
-                            value={wardSearch}
-                            onChange={(e) => setWardSearch(e.target.value)}
-                          />
-                        </div>
-                        <div className="max-h-48 overflow-y-auto">
-                          <div
-                            className="cursor-pointer px-3 py-1.5 text-sm text-muted hover:bg-[#f3f4f6]"
-                            onClick={() => {
-                              setField("ward", "");
-                              setWardOpen(false);
-                              setWardSearch("");
-                            }}
-                          >
-                            Chọn phường / xã
-                          </div>
-                          {filteredWards.map((w) => (
-                            <div
-                              key={w}
-                              className={`cursor-pointer px-3 py-1.5 text-sm hover:bg-[#f3f4f6] ${
-                                form.ward === w
-                                  ? "bg-[#eff6ff] font-medium text-primary"
-                                  : "text-ink"
-                              }`}
-                              onClick={() => {
-                                setField("ward", w);
-                                setWardOpen(false);
-                                setWardSearch("");
-                              }}
-                            >
-                              {w}
-                            </div>
-                          ))}
-                          {filteredWards.length === 0 && (
-                            <div className="px-3 py-3 text-center text-sm text-muted">
-                              Không tìm thấy
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="col-span-2 flex flex-col gap-1.5">
-                  <FieldLabel>Địa chỉ</FieldLabel>
-                  <input
-                    className={FIELD_CLASS}
-                    placeholder="Địa chỉ"
+              <div className="grid grid-cols-2 gap-x-5 gap-y-6">
+                <Autocomplete
+                  options={PROVINCES}
+                  value={form.province || null}
+                  onChange={(_, v) => {
+                    setField("province", v ?? "");
+                    setField("ward", "");
+                  }}
+                  slotProps={{
+                    popper: {
+                      modifiers: [
+                        { name: "offset", options: { offset: [0, 8] } },
+                      ],
+                    },
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Tỉnh/ thành phố"
+                      size="small"
+                      fullWidth
+                    />
+                  )}
+                />
+
+                <Autocomplete
+                  options={WARDS_BY_PROVINCE[form.province] ?? []}
+                  value={form.ward || null}
+                  disabled={!form.province}
+                  onChange={(_, v) => setField("ward", v ?? "")}
+                  slotProps={{
+                    popper: {
+                      modifiers: [
+                        { name: "offset", options: { offset: [0, 8] } },
+                      ],
+                    },
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Phường / Xã"
+                      size="small"
+                      fullWidth
+                    />
+                  )}
+                />
+
+                <div className="col-span-2">
+                  <TextField
+                    label="Địa chỉ"
                     value={form.address}
                     onChange={(e) => setField("address", e.target.value)}
+                    size="small"
+                    fullWidth
                   />
                 </div>
               </div>
@@ -875,24 +743,21 @@ export default function AccountPage() {
           Bạn vui lòng kiểm tra và điền mã xác thực
         </p>
         <div className="mb-4">
-          <label className="mb-1.5 block text-[12.5px] text-[#374151]">
-            OTP <span className="text-danger">*</span>
-          </label>
-          <input
-            className={`${MODAL_INPUT_CLASS}${otpError ? " border-danger" : ""}`}
+          <TextField
+            label="OTP"
             value={otp}
-            maxLength={6}
             onChange={(event) => {
               setOtp(event.target.value);
               if (otpError) setOtpError(null);
             }}
+            error={!!otpError}
+            helperText={otpError}
             placeholder="Nhập mã OTP"
+            size="small"
+            fullWidth
+            required
+            slotProps={{ htmlInput: { maxLength: 6 } }}
           />
-          {otpError && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-              {otpError}
-            </FormHelperText>
-          )}
         </div>
         <div className="mb-1.5 text-center text-sm font-bold text-primary">
           {otpCountdown.formatted}
@@ -938,24 +803,21 @@ export default function AccountPage() {
           Vui lòng nhập email mới
         </p>
         <div>
-          <label className="mb-1.5 block text-[12.5px] text-[#374151]">
-            Email <span className="text-danger">*</span>
-          </label>
-          <input
-            className={`${MODAL_INPUT_CLASS}${newEmailError ? " border-danger" : ""}`}
+          <TextField
+            label="Email"
             type="email"
             value={newEmail}
             onChange={(event) => {
               setNewEmail(event.target.value);
               if (newEmailError) setNewEmailError(null);
             }}
+            error={!!newEmailError}
+            helperText={newEmailError}
             placeholder="Nhập email mới"
+            size="small"
+            fullWidth
+            required
           />
-          {newEmailError && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-              {newEmailError}
-            </FormHelperText>
-          )}
         </div>
       </Modal>
 

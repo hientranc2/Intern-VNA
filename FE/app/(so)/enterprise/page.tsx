@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FormHelperText } from "@mui/material";
+import { Autocomplete, MenuItem, TextField } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
-import { EMPTY_BUSINESS_FORM, type BusinessFormData } from "@/libs/tts/enterprise/enterpriseData";
+import {
+  EMPTY_BUSINESS_FORM,
+  type BusinessFormData,
+} from "@/libs/tts/enterprise/enterpriseData";
 import {
   type Business,
   type BusinessDetail,
@@ -26,15 +29,22 @@ import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
-import { isValidEmail, isStrongPassword, PASSWORD_RULE_MESSAGE } from "@/libs/tts/auth/authValidation";
+import {
+  isValidEmail,
+  isStrongPassword,
+  PASSWORD_RULE_MESSAGE,
+} from "@/libs/tts/auth/authValidation";
 import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
 import { useCan } from "@/libs/tts/auth/abilityContext";
 import { LoadingOverlay } from "@/libs/shared/core/components/LoadingOverlay/LoadingOverlay";
+import { FormHelperText } from "@mui/material";
 
 function filenameFromUrl(url?: string | null): string {
   if (!url) return "";
   try {
-    return decodeURIComponent(new URL(url).pathname.split("/").pop() || "File đã tải lên");
+    return decodeURIComponent(
+      new URL(url).pathname.split("/").pop() || "File đã tải lên",
+    );
   } catch {
     return url.split("/").pop() || "File đã tải lên";
   }
@@ -46,28 +56,12 @@ type WizardMode = "add" | "edit";
 
 const FILTER_INPUT_CLASS =
   "h-7 w-full rounded-[5px] border border-line px-1.5 text-xs text-ink outline-none focus:border-[#3b82f6]";
-const FORM_CONTROL_CLASS =
-  "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
 
 const FILE_NAMES = ["Giấy phép kinh doanh", "Giấy tờ khác"] as const;
 
-
 type AttachedFile = { file: File | null; displayName: string };
-const emptyAttachments = (): AttachedFile[] => FILE_NAMES.map(() => ({ file: null, displayName: "" }));
-
-function FieldGroup({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[12.5px] font-medium text-[#374151]">
-        {label} {required ? <span className="text-danger">*</span> : null}
-      </label>
-      {children}
-      {error && (
-        <FormHelperText error sx={{ mt: 0, mx: 0, fontSize: "11px" }}>{error}</FormHelperText>
-      )}
-    </div>
-  );
-}
+const emptyAttachments = (): AttachedFile[] =>
+  FILE_NAMES.map(() => ({ file: null, displayName: "" }));
 
 function formatLicenseDate(iso?: string): string {
   if (!iso) return "";
@@ -87,7 +81,10 @@ export default function EnterprisePage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    variant: "success" | "error";
+  } | null>(null);
 
   const [loaiHinhOptions, setLoaiHinhOptions] = useState<string[]>([]);
   const [nganhCap4Options, setNganhCap4Options] = useState<string[]>([]);
@@ -95,7 +92,9 @@ export default function EnterprisePage() {
 
   useEffect(() => {
     getEnterpriseTypeList()
-      .then((types) => setLoaiHinhOptions(types.filter((t) => t.active).map((t) => t.ten)))
+      .then((types) =>
+        setLoaiHinhOptions(types.filter((t) => t.active).map((t) => t.ten)),
+      )
       .catch(() => {});
     getBusinessSectorList()
       .then((sectors) => {
@@ -143,7 +142,9 @@ export default function EnterprisePage() {
       .toLowerCase()
       .trim();
     return businesses.filter((b) => {
-      const nameOk = !normName || b.businessName.normalize("NFC").toLowerCase().includes(normName);
+      const nameOk =
+        !normName ||
+        b.businessName.normalize("NFC").toLowerCase().includes(normName);
       const storedIndustry = (b.mainIndustry ?? "")
         .replace(/^[-–]\s*/, "")
         .normalize("NFC")
@@ -165,15 +166,23 @@ export default function EnterprisePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<BusinessFormData>(EMPTY_BUSINESS_FORM);
   const [wizardFieldErrors, setWizardFieldErrors] = useState<{
-    businessName?: string; taxCode?: string; businessType?: string;
-    email?: string; registeredProvince?: string; registeredWard?: string;
+    businessName?: string;
+    taxCode?: string;
+    businessType?: string;
+    email?: string;
+    registeredProvince?: string;
+    registeredWard?: string;
   }>({});
-  const [attachments, setAttachments] = useState<AttachedFile[]>(emptyAttachments());
+  const [attachments, setAttachments] =
+    useState<AttachedFile[]>(emptyAttachments());
   const fileRef0 = useRef<HTMLInputElement>(null);
   const fileRef1 = useRef<HTMLInputElement>(null);
   const fileRefs = [fileRef0, fileRef1];
 
-  const [accountInfo, setAccountInfo] = useState<{ username: string; password: string } | null>(null);
+  const [accountInfo, setAccountInfo] = useState<{
+    username: string;
+    password: string;
+  } | null>(null);
 
   const [viewDetail, setViewDetail] = useState<BusinessDetail | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
@@ -187,16 +196,26 @@ export default function EnterprisePage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const setField = <K extends keyof BusinessFormData>(key: K, value: BusinessFormData[K]) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const setField = <K extends keyof BusinessFormData>(
+    key: K,
+    value: BusinessFormData[K],
+  ) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const phuongDKKDOptions = useMemo(() => WARDS_BY_PROVINCE[form.registeredProvince] ?? [], [form.registeredProvince]);
-  const phuongHDOptions = useMemo(() => WARDS_BY_PROVINCE[form.operatingProvince] ?? [], [form.operatingProvince]);
+  const phuongDKKDOptions = useMemo(
+    () => WARDS_BY_PROVINCE[form.registeredProvince] ?? [],
+    [form.registeredProvince],
+  );
+  const phuongHDOptions = useMemo(
+    () => WARDS_BY_PROVINCE[form.operatingProvince] ?? [],
+    [form.operatingProvince],
+  );
 
   const lastPage = Math.max(1, Math.ceil(displayTotal / pageSize));
   const start = (currentPage - 1) * pageSize;
   const end = Math.min(start + pageSize, displayTotal);
-  const allPageChecked = displayedRows.length > 0 && displayedRows.every((b) => selectedIds.has(b.id));
+  const allPageChecked =
+    displayedRows.length > 0 &&
+    displayedRows.every((b) => selectedIds.has(b.id));
 
   const fetchList = useCallback(async () => {
     const isTextFilter = Boolean(dBusinessName || dMainIndustry);
@@ -213,13 +232,30 @@ export default function EnterprisePage() {
       setBusinesses(res.data);
       setTotal(res.total);
     } catch (err) {
-      setToast({ message: err instanceof ApiError ? err.message : "Không thể tải danh sách doanh nghiệp", variant: "error" });
+      setToast({
+        message:
+          err instanceof ApiError
+            ? err.message
+            : "Không thể tải danh sách doanh nghiệp",
+        variant: "error",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [dBusinessName, dTaxCode, fBusinessType, dMainIndustry, dWard, fStatus, currentPage, pageSize]);
+  }, [
+    dBusinessName,
+    dTaxCode,
+    fBusinessType,
+    dMainIndustry,
+    dWard,
+    fStatus,
+    currentPage,
+    pageSize,
+  ]);
 
-  useEffect(() => { fetchList(); }, [fetchList]);
+  useEffect(() => {
+    fetchList();
+  }, [fetchList]);
 
   const toggleRow = (id: string, checked: boolean) =>
     setSelectedIds((prev) => {
@@ -232,16 +268,26 @@ export default function EnterprisePage() {
   const toggleAll = (checked: boolean) =>
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      displayedRows.forEach((b) => (checked ? next.add(b.id) : next.delete(b.id)));
+      displayedRows.forEach((b) =>
+        checked ? next.add(b.id) : next.delete(b.id),
+      );
       return next;
     });
 
   const handleToggleStatus = async (id: string, isActive: boolean) => {
     try {
       await toggleBusinessStatus(id, isActive);
-      setBusinesses((prev) => prev.map((b) => b.id === id ? { ...b, isActive } : b));
+      setBusinesses((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, isActive } : b)),
+      );
     } catch (err) {
-      setToast({ message: err instanceof ApiError ? err.message : "Không thể cập nhật trạng thái", variant: "error" });
+      setToast({
+        message:
+          err instanceof ApiError
+            ? err.message
+            : "Không thể cập nhật trạng thái",
+        variant: "error",
+      });
     }
   };
 
@@ -253,7 +299,11 @@ export default function EnterprisePage() {
       const detail = await getBusinessById(b.id);
       setViewDetail(detail);
     } catch (err) {
-      setToast({ message: err instanceof ApiError ? err.message : "Không thể tải thông tin", variant: "error" });
+      setToast({
+        message:
+          err instanceof ApiError ? err.message : "Không thể tải thông tin",
+        variant: "error",
+      });
       setViewModalOpen(false);
     } finally {
       setViewLoading(false);
@@ -291,7 +341,13 @@ export default function EnterprisePage() {
           representativePhone: detail.representativePhone ?? "",
         });
       } catch (err) {
-        setToast({ message: err instanceof ApiError ? err.message : "Không thể tải thông tin doanh nghiệp", variant: "error" });
+        setToast({
+          message:
+            err instanceof ApiError
+              ? err.message
+              : "Không thể tải thông tin doanh nghiệp",
+          variant: "error",
+        });
         setWizardOpen(false);
       } finally {
         setIsWizardLoading(false);
@@ -305,17 +361,23 @@ export default function EnterprisePage() {
 
   const goStep2 = () => {
     const errors: typeof wizardFieldErrors = {};
-    if (!form.businessName.trim()) errors.businessName = "Tên doanh nghiệp không được để trống";
+    if (!form.businessName.trim())
+      errors.businessName = "Tên doanh nghiệp không được để trống";
     if (!form.taxCode.trim()) {
       errors.taxCode = "Mã số thuế không được để trống";
     } else if (!/^\d{10}(-\d{1,5})?$/.test(form.taxCode.trim())) {
-      errors.taxCode = "Mã số thuế gồm 10 chữ số, hoặc 10 chữ số + dấu gạch + tối đa 5 số";
+      errors.taxCode =
+        "Mã số thuế gồm 10 chữ số, hoặc 10 chữ số + dấu gạch + tối đa 5 số";
     }
-    if (!form.businessType) errors.businessType = "Vui lòng chọn loại hình kinh doanh";
+    if (!form.businessType)
+      errors.businessType = "Vui lòng chọn loại hình kinh doanh";
     if (!form.email.trim()) errors.email = "Email không được để trống";
-    else if (!isValidEmail(form.email.trim())) errors.email = "Email không đúng định dạng";
-    if (!form.registeredProvince) errors.registeredProvince = "Vui lòng chọn tỉnh/thành phố ĐKKD";
-    if (!form.registeredWard) errors.registeredWard = "Vui lòng chọn phường/xã ĐKKD";
+    else if (!isValidEmail(form.email.trim()))
+      errors.email = "Email không đúng định dạng";
+    if (!form.registeredProvince)
+      errors.registeredProvince = "Vui lòng chọn tỉnh/thành phố ĐKKD";
+    if (!form.registeredWard)
+      errors.registeredWard = "Vui lòng chọn phường/xã ĐKKD";
     if (Object.keys(errors).length > 0) {
       setWizardFieldErrors(errors);
       return;
@@ -337,11 +399,14 @@ export default function EnterprisePage() {
     if (form.foreignName) fd.append("foreignName", form.foreignName);
     fd.append("email", form.email);
     if (form.officePhone) fd.append("officePhone", form.officePhone);
-    if (form.operatingProvince) fd.append("operatingProvince", form.operatingProvince);
+    if (form.operatingProvince)
+      fd.append("operatingProvince", form.operatingProvince);
     if (form.operatingWard) fd.append("operatingWard", form.operatingWard);
-    if (form.operatingAddress) fd.append("operatingAddress", form.operatingAddress);
+    if (form.operatingAddress)
+      fd.append("operatingAddress", form.operatingAddress);
     if (form.representative) fd.append("representative", form.representative);
-    if (form.representativePhone) fd.append("representativePhone", form.representativePhone);
+    if (form.representativePhone)
+      fd.append("representativePhone", form.representativePhone);
     if (attachments[0].file) fd.append("licenseFile", attachments[0].file);
     if (attachments[1].file) fd.append("otherFile", attachments[1].file);
     return fd;
@@ -354,7 +419,10 @@ export default function EnterprisePage() {
         const res = await createBusiness(buildFormData());
         setWizardOpen(false);
         setAccountInfo(res.account);
-        setToast({ message: "Thêm mới doanh nghiệp thành công", variant: "success" });
+        setToast({
+          message: "Thêm mới doanh nghiệp thành công",
+          variant: "success",
+        });
       } else {
         await updateBusiness(editingId!, buildFormData());
         setWizardOpen(false);
@@ -362,7 +430,10 @@ export default function EnterprisePage() {
       }
       fetchList();
     } catch (err) {
-      setToast({ message: err instanceof ApiError ? err.message : "Đã có lỗi xảy ra", variant: "error" });
+      setToast({
+        message: err instanceof ApiError ? err.message : "Đã có lỗi xảy ra",
+        variant: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -387,7 +458,8 @@ export default function EnterprisePage() {
       setResetPwd("");
       setResetPwdError(null);
       setToast({
-        message: "Đặt lại mật khẩu thành công. Doanh nghiệp sẽ phải đăng nhập lại.",
+        message:
+          "Đặt lại mật khẩu thành công. Doanh nghiệp sẽ phải đăng nhập lại.",
         variant: "success",
       });
     } catch (err) {
@@ -407,17 +479,27 @@ export default function EnterprisePage() {
       await Promise.all(ids.map((id) => deleteBusiness(id)));
       setSelectedIds(new Set());
       setDeleteConfirmOpen(false);
-      setToast({ message: `Đã xóa ${ids.length} doanh nghiệp`, variant: "success" });
+      setToast({
+        message: `Đã xóa ${ids.length} doanh nghiệp`,
+        variant: "success",
+      });
       fetchList();
     } catch (err) {
-      setToast({ message: err instanceof ApiError ? err.message : "Không thể xóa doanh nghiệp", variant: "error" });
+      setToast({
+        message:
+          err instanceof ApiError ? err.message : "Không thể xóa doanh nghiệp",
+        variant: "error",
+      });
       setDeleteConfirmOpen(false);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const handleFileSelect = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (
+    idx: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
     setAttachments((prev) => {
@@ -467,13 +549,22 @@ export default function EnterprisePage() {
     <>
       <>
         <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-          <h1 className="text-base font-semibold text-ink">Danh sách doanh nghiệp</h1>
+          <h1 className="text-base font-semibold text-ink">
+            Danh sách doanh nghiệp
+          </h1>
           <div className="flex gap-2.5">
             <button
               type="button"
               className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
@@ -487,7 +578,14 @@ export default function EnterprisePage() {
               title={canCreate ? undefined : "Bạn không có quyền thêm"}
               className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -503,7 +601,10 @@ export default function EnterprisePage() {
                 <thead>
                   <tr>
                     <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2.5 text-left">
-                      <TriCheckbox checked={allPageChecked} onChange={toggleAll} />
+                      <TriCheckbox
+                        checked={allPageChecked}
+                        onChange={toggleAll}
+                      />
                     </th>
                     <th className={`${thBase} w-24`}>Thao tác</th>
                     <th className={thBase}>Tên doanh nghiệp</th>
@@ -517,10 +618,24 @@ export default function EnterprisePage() {
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fBusinessName} onChange={(e) => { setFBusinessName(e.target.value); setCurrentPage(1); }} />
+                      <input
+                        className={FILTER_INPUT_CLASS}
+                        value={fBusinessName}
+                        onChange={(e) => {
+                          setFBusinessName(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
-                      <input className={FILTER_INPUT_CLASS} value={fTaxCode} onChange={(e) => { setFTaxCode(e.target.value); setCurrentPage(1); }} />
+                      <input
+                        className={FILTER_INPUT_CLASS}
+                        value={fTaxCode}
+                        onChange={(e) => {
+                          setFTaxCode(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
                       <SearchableSelect
@@ -528,7 +643,10 @@ export default function EnterprisePage() {
                         compact
                         options={loaiHinhOptions}
                         value={fBusinessType}
-                        onChange={(v) => { setFBusinessType(v); setCurrentPage(1); }}
+                        onChange={(v) => {
+                          setFBusinessType(v);
+                          setCurrentPage(1);
+                        }}
                         placeholder="Tất cả"
                       />
                     </th>
@@ -538,7 +656,10 @@ export default function EnterprisePage() {
                         compact
                         options={nganhCap4Options}
                         value={fMainIndustry}
-                        onChange={(v) => { setFMainIndustry(v); setCurrentPage(1); }}
+                        onChange={(v) => {
+                          setFMainIndustry(v);
+                          setCurrentPage(1);
+                        }}
                         placeholder="Tất cả"
                       />
                     </th>
@@ -548,12 +669,22 @@ export default function EnterprisePage() {
                         compact
                         options={wardOptions}
                         value={fWard}
-                        onChange={(v) => { setFWard(v); setCurrentPage(1); }}
+                        onChange={(v) => {
+                          setFWard(v);
+                          setCurrentPage(1);
+                        }}
                         placeholder="Tất cả"
                       />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
-                      <select className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`} value={fStatus} onChange={(e) => { setFStatus(e.target.value); setCurrentPage(1); }}>
+                      <select
+                        className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                        value={fStatus}
+                        onChange={(e) => {
+                          setFStatus(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      >
                         <option value="">Tất cả</option>
                         <option value="1">Hoạt động</option>
                         <option value="0">Ngừng</option>
@@ -564,13 +695,19 @@ export default function EnterprisePage() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-8 text-center text-[13px] text-muted">
+                      <td
+                        colSpan={8}
+                        className="px-3 py-8 text-center text-[13px] text-muted"
+                      >
                         Đang tải...
                       </td>
                     </tr>
                   ) : displayedRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-8 text-center text-[13px] text-muted">
+                      <td
+                        colSpan={8}
+                        className="px-3 py-8 text-center text-[13px] text-muted"
+                      >
                         Không có dữ liệu
                       </td>
                     </tr>
@@ -578,9 +715,15 @@ export default function EnterprisePage() {
                     displayedRows.map((b) => {
                       const selected = selectedIds.has(b.id);
                       return (
-                        <tr key={b.id} className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}>
+                        <tr
+                          key={b.id}
+                          className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}
+                        >
                           <td className="px-3 py-2.5">
-                            <TriCheckbox checked={selected} onChange={(c) => toggleRow(b.id, c)} />
+                            <TriCheckbox
+                              checked={selected}
+                              onChange={(c) => toggleRow(b.id, c)}
+                            />
                           </td>
                           <td className="px-3 py-2.5">
                             <div className="flex gap-0.5">
@@ -590,44 +733,93 @@ export default function EnterprisePage() {
                                 title="Xem"
                                 className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
                                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                   <circle cx="12" cy="12" r="3" />
                                 </svg>
                               </button>
                               <button
                                 type="button"
-                                onClick={() => router.push(`/enterprise/edit/${b.id}`)}
+                                onClick={() =>
+                                  router.push(`/enterprise/edit/${b.id}`)
+                                }
                                 disabled={!canUpdate}
-                                title={canUpdate ? "Chỉnh sửa" : "Bạn không có quyền sửa"}
+                                title={
+                                  canUpdate
+                                    ? "Chỉnh sửa"
+                                    : "Bạn không có quyền sửa"
+                                }
                                 className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
                                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                                   <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                                 </svg>
                               </button>
                               <button
                                 type="button"
-                                onClick={() => { setResetTarget(b); setResetPwd(""); setResetPwdError(null); }}
+                                onClick={() => {
+                                  setResetTarget(b);
+                                  setResetPwd("");
+                                  setResetPwdError(null);
+                                }}
                                 disabled={!canUpdate}
-                                title={canUpdate ? "Đặt lại mật khẩu" : "Bạn không có quyền sửa"}
+                                title={
+                                  canUpdate
+                                    ? "Đặt lại mật khẩu"
+                                    : "Bạn không có quyền sửa"
+                                }
                                 className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
                                   <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
                                 </svg>
                               </button>
                             </div>
                           </td>
-                          <td className="px-3 py-2.5 text-[#374151]">{b.businessName}</td>
-                          <td className="px-3 py-2.5 text-[#374151]">{b.taxCode}</td>
-                          <td className="px-3 py-2.5 text-[#374151]">{b.businessType}</td>
-                          <td className="px-3 py-2.5 text-[#374151]">{b.mainIndustry}</td>
-                          <td className="px-3 py-2.5 text-[#374151]">{b.registeredWard}</td>
+                          <td className="px-3 py-2.5 text-[#374151]">
+                            {b.businessName}
+                          </td>
+                          <td className="px-3 py-2.5 text-[#374151]">
+                            {b.taxCode}
+                          </td>
+                          <td className="px-3 py-2.5 text-[#374151]">
+                            {b.businessType}
+                          </td>
+                          <td className="px-3 py-2.5 text-[#374151]">
+                            {b.mainIndustry}
+                          </td>
+                          <td className="px-3 py-2.5 text-[#374151]">
+                            {b.registeredWard}
+                          </td>
                           <td className="px-3 py-2.5">
                             <div className="flex justify-center">
-                              <Switch checked={b.isActive} onChange={(c) => handleToggleStatus(b.id, c)} disabled={!canUpdate} />
+                              <Switch
+                                checked={b.isActive}
+                                onChange={(c) => handleToggleStatus(b.id, c)}
+                                disabled={!canUpdate}
+                              />
                             </div>
                           </td>
                         </tr>
@@ -644,7 +836,14 @@ export default function EnterprisePage() {
                 onClick={() => {
                   exportToExcel(
                     "danh-sach-doanh-nghiep.xlsx",
-                    ["Tên doanh nghiệp", "Mã số thuế", "Loại hình kinh doanh", "Ngành nghề kinh doanh", "Phường/xã", "Trạng thái"],
+                    [
+                      "Tên doanh nghiệp",
+                      "Mã số thuế",
+                      "Loại hình kinh doanh",
+                      "Ngành nghề kinh doanh",
+                      "Phường/xã",
+                      "Trạng thái",
+                    ],
                     businesses.map((b) => [
                       b.businessName,
                       b.taxCode,
@@ -657,7 +856,14 @@ export default function EnterprisePage() {
                 }}
                 className="flex items-center gap-1.5 text-muted hover:text-primary"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
@@ -668,14 +874,21 @@ export default function EnterprisePage() {
                 <select
                   className="h-[30px] cursor-pointer rounded-[5px] border border-line px-1.5 text-[13px] outline-none"
                   value={pageSize}
-                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>
                 </select>
-                <span className="text-[#6b7280]">{displayTotal === 0 ? "0 of 0" : `${start + 1} - ${end} of ${displayTotal}`}</span>
+                <span className="text-[#6b7280]">
+                  {displayTotal === 0
+                    ? "0 of 0"
+                    : `${start + 1} - ${end} of ${displayTotal}`}
+                </span>
                 <div className="flex gap-1">
                   <button
                     type="button"
@@ -683,17 +896,33 @@ export default function EnterprisePage() {
                     disabled={currentPage <= 1}
                     className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M15 18l-6-6 6-6" />
                     </svg>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(lastPage, p + 1))
+                    }
                     disabled={currentPage >= lastPage}
                     className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M9 18l6-6-6-6" />
                     </svg>
                   </button>
@@ -720,191 +949,390 @@ export default function EnterprisePage() {
             <div className="flex items-center gap-2">
               <div
                 className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[13px] font-bold ${
-                  wizardStep === 1 ? "border-primary bg-white text-primary" : "border-primary bg-primary text-white"
+                  wizardStep === 1
+                    ? "border-primary bg-white text-primary"
+                    : "border-primary bg-primary text-white"
                 }`}
               >
                 {wizardStep === 1 ? (
                   "1"
                 ) : (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="3"
+                  >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 )}
               </div>
-              <span className={`text-[13px] ${wizardStep >= 1 ? "font-medium text-ink" : "text-[#9ca3af]"}`}>
+              <span
+                className={`text-[13px] ${wizardStep >= 1 ? "font-medium text-ink" : "text-[#9ca3af]"}`}
+              >
                 Thông tin doanh nghiệp
               </span>
             </div>
-            <div className={`mx-2 h-0.5 w-[60px] ${wizardStep === 2 ? "bg-primary" : "bg-[#e5e7eb]"}`} />
+            <div
+              className={`mx-2 h-0.5 w-[60px] ${wizardStep === 2 ? "bg-primary" : "bg-[#e5e7eb]"}`}
+            />
             <div className="flex items-center gap-2">
               <div
                 className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[13px] font-bold ${
-                  wizardStep === 2 ? "border-primary bg-white text-primary" : "border-[#d1d5db] bg-white text-[#9ca3af]"
+                  wizardStep === 2
+                    ? "border-primary bg-white text-primary"
+                    : "border-[#d1d5db] bg-white text-[#9ca3af]"
                 }`}
               >
                 2
               </div>
-              <span className={`text-[13px] ${wizardStep === 2 ? "font-medium text-ink" : "text-[#9ca3af]"}`}>
+              <span
+                className={`text-[13px] ${wizardStep === 2 ? "font-medium text-ink" : "text-[#9ca3af]"}`}
+              >
                 Xác nhận đăng ký
               </span>
             </div>
           </div>
 
           {isWizardLoading ? (
-            <div className="flex items-center justify-center py-16 text-[13px] text-muted">Đang tải...</div>
+            <div className="flex items-center justify-center py-16 text-[13px] text-muted">
+              Đang tải...
+            </div>
           ) : wizardStep === 1 ? (
             <>
               <div className="px-7 pb-6">
                 <div className="mb-4 text-[15px] font-bold text-ink">
-                  {wizardMode === "add" ? "Thêm mới doanh nghiệp" : "Cập nhật doanh nghiệp"}
+                  {wizardMode === "add"
+                    ? "Thêm mới doanh nghiệp"
+                    : "Cập nhật doanh nghiệp"}
                 </div>
                 <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                    <FieldGroup label="Tên doanh nghiệp" required error={wizardFieldErrors.businessName}>
-                      <input
-                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.businessName ? " border-danger" : ""}`}
-                        value={form.businessName}
-                        onChange={(e) => { setField("businessName", e.target.value); if (wizardFieldErrors.businessName) setWizardFieldErrors((p) => ({ ...p, businessName: undefined })); }}
-                        placeholder="VD: Công ty cổ phần ABC"
-                      />
-                    </FieldGroup>
-                    <FieldGroup label="Mã số thuế" required error={wizardFieldErrors.taxCode}>
-                      <input
-                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.taxCode ? " border-danger" : ""}${wizardMode === "edit" ? " bg-[#f9fafb] cursor-not-allowed" : ""}`}
-                        value={form.taxCode}
-                        disabled={wizardMode === "edit"}
-                        maxLength={16}
-                        onChange={(e) => { setField("taxCode", e.target.value); if (wizardFieldErrors.taxCode) setWizardFieldErrors((p) => ({ ...p, taxCode: undefined })); }}
-                        placeholder="VD: 0310000888"
-                      />
-                    </FieldGroup>
-                    <FieldGroup label="Loại hình kinh doanh" required error={wizardFieldErrors.businessType}>
-                      <SearchableSelect
-                        options={loaiHinhOptions}
-                        value={form.businessType}
-                        placeholder="-- Chọn loại hình --"
-                        error={!!wizardFieldErrors.businessType}
-                        onChange={(v) => { setField("businessType", v); if (wizardFieldErrors.businessType) setWizardFieldErrors((p) => ({ ...p, businessType: undefined })); }}
-                      />
-                    </FieldGroup>
+                    <TextField
+                      label="Tên doanh nghiệp"
+                      required
+                      value={form.businessName}
+                      onChange={(e) => {
+                        setField("businessName", e.target.value);
+                        if (wizardFieldErrors.businessName)
+                          setWizardFieldErrors((p) => ({
+                            ...p,
+                            businessName: undefined,
+                          }));
+                      }}
+                      error={!!wizardFieldErrors.businessName}
+                      helperText={wizardFieldErrors.businessName}
+                      size="small"
+                      fullWidth
+                    />
+                    <TextField
+                      label="Mã số thuế"
+                      required
+                      value={form.taxCode}
+                      disabled={wizardMode === "edit"}
+                      onChange={(e) => {
+                        setField("taxCode", e.target.value);
+                        if (wizardFieldErrors.taxCode)
+                          setWizardFieldErrors((p) => ({
+                            ...p,
+                            taxCode: undefined,
+                          }));
+                      }}
+                      error={!!wizardFieldErrors.taxCode}
+                      helperText={wizardFieldErrors.taxCode}
+                      size="small"
+                      fullWidth
+                      slotProps={{ htmlInput: { maxLength: 16 } }}
+                    />
+
+                    <Autocomplete
+                      options={loaiHinhOptions}
+                      value={form.businessType || null}
+                      isOptionEqualToValue={(option, value) =>
+                        option.trim().toLowerCase() ===
+                        (value ?? "").trim().toLowerCase()
+                      }
+                      onChange={(_, v) => {
+                        setField("businessType", v ?? "");
+                        if (wizardFieldErrors.businessType)
+                          setWizardFieldErrors((p) => ({
+                            ...p,
+                            businessType: undefined,
+                          }));
+                      }}
+                      slotProps={{
+                        popper: {
+                          modifiers: [
+                            { name: "offset", options: { offset: [0, 8] } },
+                          ],
+                        },
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Loại hình kinh doanh"
+                          required
+                          error={!!wizardFieldErrors.businessType}
+                          helperText={wizardFieldErrors.businessType}
+                          size="small"
+                          fullWidth
+                        />
+                      )}
+                    />
                   </div>
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                    <FieldGroup label="Ngành nghề kinh doanh, chính" required>
-                      <SearchableSelect
-                        options={nganhCap4Options}
-                        value={form.mainIndustry}
-                        placeholder="-- Chọn ngành nghề --"
-                        onChange={(v) => setField("mainIndustry", v)}
+                    <Autocomplete
+                      options={nganhCap4Options}
+                      value={form.mainIndustry || null}
+                      onChange={(_, v) => setField("mainIndustry", v ?? "")}
+                      slotProps={{
+                        popper: {
+                          modifiers: [
+                            { name: "offset", options: { offset: [0, 8] } },
+                          ],
+                        },
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Ngành nghề kinh doanh, chính"
+                          required
+                          size="small"
+                          fullWidth
+                        />
+                      )}
+                    />
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[12.5px] font-medium text-[#374151]">
+                        Ngày cấp GPKD
+                      </label>
+                      <DateInput
+                        value={form.licenseDate}
+                        onChange={(v) => setField("licenseDate", v)}
+                        max={localISODate(new Date())}
                       />
-                    </FieldGroup>
-                    <FieldGroup label="Ngày cấp GPKD">
-                      <DateInput value={form.licenseDate} onChange={(v) => setField("licenseDate", v)} max={localISODate(new Date())} />
-                    </FieldGroup>
-                    <FieldGroup label="Tỉnh/Thành phố ĐKKD" required error={wizardFieldErrors.registeredProvince}>
-                      <SearchableSelect
-                        options={PROVINCES}
-                        value={form.registeredProvince}
-                        placeholder="-- Chọn tỉnh/thành phố --"
-                        error={!!wizardFieldErrors.registeredProvince}
-                        onChange={(v) => {
-                          setField("registeredProvince", v);
-                          setField("registeredWard", "");
-                          if (wizardFieldErrors.registeredProvince) setWizardFieldErrors((p) => ({ ...p, registeredProvince: undefined }));
-                        }}
-                      />
-                    </FieldGroup>
+                    </div>
+                    <Autocomplete
+                      options={PROVINCES}
+                      value={form.registeredProvince || null}
+                      onChange={(_, v) => {
+                        setField("registeredProvince", v ?? "");
+                        setField("registeredWard", "");
+                        if (wizardFieldErrors.registeredProvince)
+                          setWizardFieldErrors((p) => ({
+                            ...p,
+                            registeredProvince: undefined,
+                          }));
+                      }}
+                      slotProps={{
+                        popper: {
+                          modifiers: [
+                            { name: "offset", options: { offset: [0, 8] } },
+                          ],
+                        },
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Tỉnh/Thành phố ĐKKD"
+                          required
+                          error={!!wizardFieldErrors.registeredProvince}
+                          helperText={wizardFieldErrors.registeredProvince}
+                          size="small"
+                          fullWidth
+                        />
+                      )}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-3.5">
-                    <FieldGroup label="Phường/Xã ĐKKD" required error={wizardFieldErrors.registeredWard}>
-                      <SearchableSelect
-                        options={phuongDKKDOptions}
-                        value={form.registeredWard}
-                        placeholder="-- Chọn phường/xã --"
-                        disabled={!form.registeredProvince}
-                        error={!!wizardFieldErrors.registeredWard}
-                        onChange={(v) => {
-                          setField("registeredWard", v);
-                          if (wizardFieldErrors.registeredWard) setWizardFieldErrors((p) => ({ ...p, registeredWard: undefined }));
-                        }}
-                      />
-                    </FieldGroup>
-                    <FieldGroup label="Địa chỉ">
-                      <input className={FORM_CONTROL_CLASS} value={form.address} onChange={(e) => setField("address", e.target.value)} placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc" />
-                    </FieldGroup>
+                    <Autocomplete
+                      options={phuongDKKDOptions}
+                      value={form.registeredWard || null}
+                      disabled={!form.registeredProvince}
+                      onChange={(_, v) => {
+                        setField("registeredWard", v ?? "");
+                        if (wizardFieldErrors.registeredWard)
+                          setWizardFieldErrors((p) => ({
+                            ...p,
+                            registeredWard: undefined,
+                          }));
+                      }}
+                      slotProps={{
+                        popper: {
+                          modifiers: [
+                            { name: "offset", options: { offset: [0, 8] } },
+                          ],
+                        },
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Phường/Xã ĐKKD"
+                          required
+                          error={!!wizardFieldErrors.registeredWard}
+                          helperText={wizardFieldErrors.registeredWard}
+                          size="small"
+                          fullWidth
+                        />
+                      )}
+                    />
+                    <TextField
+                      label="Địa chỉ"
+                      value={form.address}
+                      onChange={(e) => setField("address", e.target.value)}
+                      size="small"
+                      fullWidth
+                    />
                   </div>
                 </div>
 
-                <div className="my-3 text-[13.5px] font-semibold text-[#374151]">Thông tin liên hệ</div>
+                <div className="my-3 text-[13.5px] font-semibold text-[#374151]">
+                  Thông tin liên hệ
+                </div>
                 <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                    <FieldGroup label="Tên viết bằng tiếng nước ngoài">
-                      <input className={FORM_CONTROL_CLASS} value={form.foreignName} onChange={(e) => setField("foreignName", e.target.value)} placeholder="VD: VNA Group" />
-                    </FieldGroup>
-                    <FieldGroup label="Email" required error={wizardFieldErrors.email}>
-                      <input
-                        type="email"
-                        className={`${FORM_CONTROL_CLASS}${wizardFieldErrors.email ? " border-danger" : ""}`}
-                        value={form.email}
-                        onChange={(e) => { setField("email", e.target.value); if (wizardFieldErrors.email) setWizardFieldErrors((p) => ({ ...p, email: undefined })); }}
-                        placeholder="vna@gmail.com"
-                      />
-                    </FieldGroup>
-                    <FieldGroup label="Số điện thoại cơ quan">
-                      <input className={FORM_CONTROL_CLASS} value={form.officePhone} onChange={(e) => setField("officePhone", e.target.value)} placeholder="VD: 0283xxxxxxx" />
-                    </FieldGroup>
+                    <TextField
+                      label="Tên viết bằng tiếng nước ngoài"
+                      value={form.foreignName}
+                      onChange={(e) => setField("foreignName", e.target.value)}
+                      size="small"
+                      fullWidth
+                    />
+                    <TextField
+                      label="Email"
+                      required
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => {
+                        setField("email", e.target.value);
+                        if (wizardFieldErrors.email)
+                          setWizardFieldErrors((p) => ({
+                            ...p,
+                            email: undefined,
+                          }));
+                      }}
+                      error={!!wizardFieldErrors.email}
+                      helperText={wizardFieldErrors.email}
+                      size="small"
+                      fullWidth
+                    />
+                    <TextField
+                      label="Số điện thoại cơ quan"
+                      value={form.officePhone}
+                      onChange={(e) => setField("officePhone", e.target.value)}
+                      size="small"
+                      fullWidth
+                    />
                   </div>
                   <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                    <FieldGroup label="Tỉnh/TP hoạt động KD">
-                      <SearchableSelect
-                        options={PROVINCES}
-                        value={form.operatingProvince}
-                        placeholder="-- Chọn tỉnh --"
-                        onChange={(v) => {
-                          setField("operatingProvince", v);
-                          setField("operatingWard", "");
-                        }}
-                      />
-                    </FieldGroup>
-                    <FieldGroup label="Phường/xã hoạt động KD">
-                      <SearchableSelect
-                        options={phuongHDOptions}
-                        value={form.operatingWard}
-                        placeholder="-- Chọn phường/xã --"
-                        disabled={!form.operatingProvince}
-                        onChange={(v) => setField("operatingWard", v)}
-                      />
-                    </FieldGroup>
+                    <Autocomplete
+                      options={PROVINCES}
+                      value={form.operatingProvince || null}
+                      onChange={(_, v) => {
+                        setField("operatingProvince", v ?? "");
+                        setField("operatingWard", "");
+                      }}
+                      slotProps={{
+                        popper: {
+                          modifiers: [
+                            { name: "offset", options: { offset: [0, 8] } },
+                          ],
+                        },
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Tỉnh/TP hoạt động KD"
+                          size="small"
+                          fullWidth
+                        />
+                      )}
+                    />
+                    <Autocomplete
+                      options={phuongHDOptions}
+                      value={form.operatingWard || null}
+                      disabled={!form.operatingProvince}
+                      onChange={(_, v) => setField("operatingWard", v ?? "")}
+                      slotProps={{
+                        popper: {
+                          modifiers: [
+                            { name: "offset", options: { offset: [0, 8] } },
+                          ],
+                        },
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Phường/xã hoạt động KD"
+                          size="small"
+                          fullWidth
+                        />
+                      )}
+                    />
                     <div />
                   </div>
                   <div className="grid grid-cols-3 gap-3.5">
-                    <FieldGroup label="Địa điểm kinh doanh">
-                      <input className={FORM_CONTROL_CLASS} value={form.operatingAddress} onChange={(e) => setField("operatingAddress", e.target.value)} />
-                    </FieldGroup>
-                    <FieldGroup label="Người đứng đầu doanh nghiệp">
-                      <input className={FORM_CONTROL_CLASS} value={form.representative} onChange={(e) => setField("representative", e.target.value)} />
-                    </FieldGroup>
-                    <FieldGroup label="SĐT liên hệ người đứng đầu">
-                      <input className={FORM_CONTROL_CLASS} value={form.representativePhone} onChange={(e) => setField("representativePhone", e.target.value)} />
-                    </FieldGroup>
+                    <TextField
+                      label="Địa điểm kinh doanh"
+                      value={form.operatingAddress}
+                      onChange={(e) =>
+                        setField("operatingAddress", e.target.value)
+                      }
+                      size="small"
+                      fullWidth
+                    />
+                    <TextField
+                      label="Người đứng đầu doanh nghiệp"
+                      value={form.representative}
+                      onChange={(e) =>
+                        setField("representative", e.target.value)
+                      }
+                      size="small"
+                      fullWidth
+                    />
+                    <TextField
+                      label="SĐT liên hệ người đứng đầu"
+                      value={form.representativePhone}
+                      onChange={(e) =>
+                        setField("representativePhone", e.target.value)
+                      }
+                      size="small"
+                      fullWidth
+                    />
                   </div>
                 </div>
 
-                <div className="my-3 text-[13.5px] font-semibold text-[#374151]">File đính kèm</div>
+                <div className="my-3 text-[13.5px] font-semibold text-[#374151]">
+                  File đính kèm
+                </div>
                 <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
                   <table className="w-full border-collapse text-[13px]">
                     <thead>
                       <tr>
-                        <th className="w-[200px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Tên file</th>
-                        <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Thông tin file</th>
-                        <th className="w-[120px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Thao tác</th>
+                        <th className="w-[200px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                          Tên file
+                        </th>
+                        <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                          Thông tin file
+                        </th>
+                        <th className="w-[120px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                          Thao tác
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {FILE_NAMES.map((name, idx) => (
-                        <tr key={name} className="border-b border-[#f3f4f6] last:border-b-0">
+                        <tr
+                          key={name}
+                          className="border-b border-[#f3f4f6] last:border-b-0"
+                        >
                           <td className="px-3 py-2 text-[#374151]">{name}</td>
                           <td className="px-3 py-2 text-[13px] text-[#374151]">
-                            {attachments[idx].displayName || <span className="text-muted">Chưa có file</span>}
+                            {attachments[idx].displayName || (
+                              <span className="text-muted">Chưa có file</span>
+                            )}
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex gap-1.5 text-muted">
@@ -913,9 +1341,20 @@ export default function EnterprisePage() {
                                 title="Xem"
                                 onClick={() => handleFileView(idx)}
                                 disabled={!attachments[idx].file}
-                                className={attachments[idx].file ? "hover:text-primary" : "cursor-not-allowed opacity-40"}
+                                className={
+                                  attachments[idx].file
+                                    ? "hover:text-primary"
+                                    : "cursor-not-allowed opacity-40"
+                                }
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
                                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                   <circle cx="12" cy="12" r="3" />
                                 </svg>
@@ -926,7 +1365,14 @@ export default function EnterprisePage() {
                                 onClick={() => fileRefs[idx]?.current?.click()}
                                 className="hover:text-primary"
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
                                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                                   <polyline points="17 8 12 3 7 8" />
                                   <line x1="12" y1="3" x2="12" y2="15" />
@@ -937,9 +1383,20 @@ export default function EnterprisePage() {
                                 title="Xóa"
                                 onClick={() => handleFileDelete(idx)}
                                 disabled={!attachments[idx].file}
-                                className={attachments[idx].file ? "hover:text-danger" : "cursor-not-allowed opacity-40"}
+                                className={
+                                  attachments[idx].file
+                                    ? "hover:text-danger"
+                                    : "cursor-not-allowed opacity-40"
+                                }
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
                                   <polyline points="3 6 5 6 21 6" />
                                   <path d="M19 6l-1 14H6L5 6" />
                                   <path d="M10 11v6M14 11v6" />
@@ -955,12 +1412,27 @@ export default function EnterprisePage() {
                 </div>
               </div>
               <div className="flex justify-end gap-2.5 border-t border-[#e5e7eb] px-7 py-4">
-                <button type="button" onClick={() => setWizardOpen(false)} className="h-[38px] rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">
+                <button
+                  type="button"
+                  onClick={() => setWizardOpen(false)}
+                  className="h-[38px] rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
+                >
                   Huỷ bỏ
                 </button>
-                <button type="button" onClick={goStep2} className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]">
+                <button
+                  type="button"
+                  onClick={goStep2}
+                  className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af]"
+                >
                   Tiếp tục
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
                     <path d="M9 18l6-6-6-6" />
                   </svg>
                 </button>
@@ -969,11 +1441,18 @@ export default function EnterprisePage() {
           ) : (
             <>
               <div className="px-7 pb-6">
-                <div className="mb-4 text-[15px] font-bold text-ink">Thông tin về hồ sơ</div>
+                <div className="mb-4 text-[15px] font-bold text-ink">
+                  Thông tin về hồ sơ
+                </div>
                 <div className="rounded-lg border border-[#e5e7eb] p-5">
                   {reviewRows.map(([label, value]) => (
-                    <div key={label} className="flex border-b border-[#f3f4f6] py-2.5 last:border-b-0">
-                      <span className="w-[280px] shrink-0 text-[13.5px] font-semibold text-[#374151]">{label}</span>
+                    <div
+                      key={label}
+                      className="flex border-b border-[#f3f4f6] py-2.5 last:border-b-0"
+                    >
+                      <span className="w-[280px] shrink-0 text-[13.5px] font-semibold text-[#374151]">
+                        {label}
+                      </span>
                       <span className="text-[13.5px] text-ink">{value}</span>
                     </div>
                   ))}
@@ -982,17 +1461,28 @@ export default function EnterprisePage() {
                   <table className="w-full border-collapse text-[13px]">
                     <thead>
                       <tr>
-                        <th className="w-[200px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Tên file</th>
-                        <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Thông tin file</th>
-                        <th className="w-20 border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Thao tác</th>
+                        <th className="w-[200px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                          Tên file
+                        </th>
+                        <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                          Thông tin file
+                        </th>
+                        <th className="w-20 border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                          Thao tác
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {FILE_NAMES.map((name, idx) => (
-                        <tr key={name} className="border-b border-[#f3f4f6] last:border-b-0">
+                        <tr
+                          key={name}
+                          className="border-b border-[#f3f4f6] last:border-b-0"
+                        >
                           <td className="px-3 py-2 text-[#374151]">{name}</td>
                           <td className="px-3 py-2 text-[13px] text-[#374151]">
-                            {attachments[idx].displayName || <span className="text-muted">Chưa có file</span>}
+                            {attachments[idx].displayName || (
+                              <span className="text-muted">Chưa có file</span>
+                            )}
                           </td>
                           <td className="px-3 py-2">
                             <button
@@ -1000,9 +1490,20 @@ export default function EnterprisePage() {
                               title="Xem"
                               onClick={() => handleFileView(idx)}
                               disabled={!attachments[idx].file}
-                              className={attachments[idx].file ? "text-muted hover:text-primary" : "cursor-not-allowed opacity-40"}
+                              className={
+                                attachments[idx].file
+                                  ? "text-muted hover:text-primary"
+                                  : "cursor-not-allowed opacity-40"
+                              }
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                 <circle cx="12" cy="12" r="3" />
                               </svg>
@@ -1015,20 +1516,34 @@ export default function EnterprisePage() {
                 </div>
               </div>
               <div className="flex justify-end gap-2.5 border-t border-[#e5e7eb] px-7 py-4">
-                <button type="button" onClick={() => setWizardStep(1)} className="h-[38px] rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]">
+                <button
+                  type="button"
+                  onClick={() => setWizardStep(1)}
+                  className="h-[38px] rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
+                >
                   Trở về
                 </button>
                 <button
                   type="button"
                   onClick={confirmWizard}
-                  disabled={isSubmitting || (wizardMode === "add" ? !canCreate : !canUpdate)}
+                  disabled={
+                    isSubmitting ||
+                    (wizardMode === "add" ? !canCreate : !canUpdate)
+                  }
                   className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting ? (
                     "Đang xử lý..."
                   ) : (
                     <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                       Xác nhận
@@ -1045,106 +1560,210 @@ export default function EnterprisePage() {
       <div
         className={`fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/50 pt-10 transition-opacity duration-200 ${viewModalOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
       >
-        <div className={`mb-10 w-[760px] max-w-[96vw] overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)] transition-transform duration-200 ${viewModalOpen ? "translate-y-0" : "translate-y-3"}`}>
+        <div
+          className={`mb-10 w-[760px] max-w-[96vw] overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)] transition-transform duration-200 ${viewModalOpen ? "translate-y-0" : "translate-y-3"}`}
+        >
           <div className="flex items-center justify-between bg-primary px-7 py-4">
-            <h3 className="text-[15px] font-semibold text-white">Thông tin doanh nghiệp</h3>
-            <button type="button" onClick={() => setViewModalOpen(false)} className="text-white/70 hover:text-white">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <h3 className="text-[15px] font-semibold text-white">
+              Thông tin doanh nghiệp
+            </h3>
+            <button
+              type="button"
+              onClick={() => setViewModalOpen(false)}
+              className="text-white/70 hover:text-white"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <path d="M18 6L6 18M6 6l12 12" />
               </svg>
             </button>
           </div>
 
           {viewLoading ? (
-            <div className="flex items-center justify-center py-16 text-[13px] text-muted">Đang tải...</div>
+            <div className="flex items-center justify-center py-16 text-[13px] text-muted">
+              Đang tải...
+            </div>
           ) : viewDetail ? (
             <div className="px-7 py-6">
               <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Tên doanh nghiệp">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.businessName} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="Mã số thuế">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.taxCode} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="Loại hình kinh doanh">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.businessType} readOnly />
-                  </FieldGroup>
+                  <TextField
+                    label="Tên doanh nghiệp"
+                    value={viewDetail.businessName}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
+                  <TextField
+                    label="Mã số thuế"
+                    value={viewDetail.taxCode}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
+                  <TextField
+                    label="Loại hình kinh doanh"
+                    value={viewDetail.businessType}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
                 </div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Ngành nghề kinh doanh, chính">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.mainIndustry} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="Ngày cấp GPKD">
-                    <DateInput disabled value={formatLicenseDate(viewDetail.licenseDate)} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="Tỉnh/Thành phố ĐKKD">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.registeredProvince ?? ""} readOnly />
-                  </FieldGroup>
+                  <TextField
+                    label="Ngành nghề kinh doanh, chính"
+                    value={viewDetail.mainIndustry}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12.5px] font-medium text-[#374151]">
+                      Ngày cấp GPKD
+                    </label>
+                    <DateInput
+                      disabled
+                      value={formatLicenseDate(viewDetail.licenseDate)}
+                      readOnly
+                    />
+                  </div>
+                  <TextField
+                    label="Tỉnh/Thành phố ĐKKD"
+                    value={viewDetail.registeredProvince ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3.5">
-                  <FieldGroup label="Phường/Xã ĐKKD">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.registeredWard} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="Địa chỉ">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.address ?? ""} readOnly />
-                  </FieldGroup>
+                  <TextField
+                    label="Phường/Xã ĐKKD"
+                    value={viewDetail.registeredWard}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
+                  <TextField
+                    label="Địa chỉ"
+                    value={viewDetail.address ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
                 </div>
               </div>
 
-              <div className="my-3 text-[13.5px] font-semibold text-[#374151]">Thông tin liên hệ</div>
+              <div className="my-3 text-[13.5px] font-semibold text-[#374151]">
+                Thông tin liên hệ
+              </div>
               <div className="rounded-lg border border-[#e5e7eb] p-5">
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Tên viết bằng tiếng nước ngoài">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.foreignName ?? ""} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="Email">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.email ?? ""} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="Số điện thoại cơ quan">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.officePhone ?? ""} readOnly />
-                  </FieldGroup>
+                  <TextField
+                    label="Tên viết bằng tiếng nước ngoài"
+                    value={viewDetail.foreignName ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
+                  <TextField
+                    label="Email"
+                    value={viewDetail.email ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
+                  <TextField
+                    label="Số điện thoại cơ quan"
+                    value={viewDetail.officePhone ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
                 </div>
                 <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Tỉnh/TP hoạt động KD">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.operatingProvince ?? ""} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="Phường/xã hoạt động KD">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.operatingWard ?? ""} readOnly />
-                  </FieldGroup>
+                  <TextField
+                    label="Tỉnh/TP hoạt động KD"
+                    value={viewDetail.operatingProvince ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
+                  <TextField
+                    label="Phường/xã hoạt động KD"
+                    value={viewDetail.operatingWard ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
                   <div />
                 </div>
                 <div className="grid grid-cols-3 gap-3.5">
-                  <FieldGroup label="Địa điểm kinh doanh">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.operatingAddress ?? ""} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="Người đứng đầu doanh nghiệp">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.representative ?? ""} readOnly />
-                  </FieldGroup>
-                  <FieldGroup label="SĐT liên hệ người đứng đầu">
-                    <input disabled className={`${FORM_CONTROL_CLASS} bg-[#f9fafb] cursor-default`} value={viewDetail.representativePhone ?? ""} readOnly />
-                  </FieldGroup>
+                  <TextField
+                    label="Địa điểm kinh doanh"
+                    value={viewDetail.operatingAddress ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
+                  <TextField
+                    label="Người đứng đầu doanh nghiệp"
+                    value={viewDetail.representative ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
+                  <TextField
+                    label="SĐT liên hệ người đứng đầu"
+                    value={viewDetail.representativePhone ?? ""}
+                    disabled
+                    size="small"
+                    fullWidth
+                  />
                 </div>
               </div>
 
-              <div className="my-3 text-[13.5px] font-semibold text-[#374151]">File đính kèm</div>
+              <div className="my-3 text-[13.5px] font-semibold text-[#374151]">
+                File đính kèm
+              </div>
               <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
                 <table className="w-full border-collapse text-[13px]">
                   <thead>
                     <tr>
-                      <th className="w-[200px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Tên file</th>
-                      <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Thông tin file</th>
-                      <th className="w-20 border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">Thao tác</th>
+                      <th className="w-[200px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                        Tên file
+                      </th>
+                      <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                        Thông tin file
+                      </th>
+                      <th className="w-20 border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
+                        Thao tác
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {VIEW_FILE_ROWS.map((name, idx) => {
-                      const url = idx === 0 ? viewDetail.licenseFile : viewDetail.otherFile;
+                      const url =
+                        idx === 0
+                          ? viewDetail.licenseFile
+                          : viewDetail.otherFile;
                       return (
-                        <tr key={name} className="border-b border-[#f3f4f6] last:border-b-0">
+                        <tr
+                          key={name}
+                          className="border-b border-[#f3f4f6] last:border-b-0"
+                        >
                           <td className="px-3 py-2 text-[#374151]">{name}</td>
                           <td className="px-3 py-2 text-[13px] text-[#374151]">
-                            {url ? filenameFromUrl(url) : <span className="text-muted">Chưa có file</span>}
+                            {url ? (
+                              filenameFromUrl(url)
+                            ) : (
+                              <span className="text-muted">Chưa có file</span>
+                            )}
                           </td>
                           <td className="px-3 py-2">
                             <button
@@ -1152,9 +1771,20 @@ export default function EnterprisePage() {
                               title="Xem"
                               onClick={() => url && window.open(url, "_blank")}
                               disabled={!url}
-                              className={url ? "text-muted hover:text-primary" : "cursor-not-allowed opacity-40"}
+                              className={
+                                url
+                                  ? "text-muted hover:text-primary"
+                                  : "cursor-not-allowed opacity-40"
+                              }
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                 <circle cx="12" cy="12" r="3" />
                               </svg>
@@ -1187,7 +1817,9 @@ export default function EnterprisePage() {
           <div className="fixed inset-0 z-[399] bg-black/50" />
           <div className="fixed left-1/2 top-1/2 z-[400] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
             <div className="rounded-t-[10px] bg-primary px-5 py-3.5">
-              <h3 className="text-center text-[15px] font-bold text-white">Thông tin tài khoản</h3>
+              <h3 className="text-center text-[15px] font-bold text-white">
+                Thông tin tài khoản
+              </h3>
             </div>
             <div className="px-5 pb-3 pt-4">
               <p className="mb-2 text-[13.5px] text-ink">
@@ -1198,7 +1830,11 @@ export default function EnterprisePage() {
               </p>
             </div>
             <div className="px-5 pb-3.5 text-right">
-              <button type="button" onClick={() => setAccountInfo(null)} className="text-[13px] text-muted hover:text-[#374151]">
+              <button
+                type="button"
+                onClick={() => setAccountInfo(null)}
+                className="text-[13px] text-muted hover:text-[#374151]"
+              >
                 Huỷ bỏ
               </button>
             </div>
@@ -1222,18 +1858,21 @@ export default function EnterprisePage() {
           </div>
           <div className="px-6 py-5">
             <p className="mb-3.5 text-[13.5px] text-[#374151]">
-              Khởi tạo mật khẩu cho tài khoản <strong>{resetTarget?.taxCode}</strong>
+              Khởi tạo mật khẩu cho tài khoản{" "}
+              <strong>{resetTarget?.taxCode}</strong>
             </p>
-            <input
+            <TextField
               type="password"
-              className={`h-[42px] w-full rounded-md border px-3.5 text-sm outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] ${resetPwdError ? "border-danger" : "border-line"}`}
               value={resetPwd}
-              onChange={(e) => { setResetPwd(e.target.value); if (resetPwdError) setResetPwdError(null); }}
-              placeholder="Nhập mật khẩu mới mong muốn"
+              onChange={(e) => {
+                setResetPwd(e.target.value);
+                if (resetPwdError) setResetPwdError(null);
+              }}
+              error={!!resetPwdError}
+              helperText={resetPwdError}
+              size="small"
+              fullWidth
             />
-            {resetPwdError && (
-              <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>{resetPwdError}</FormHelperText>
-            )}
           </div>
           <div className="flex justify-end gap-3 px-6 pb-5">
             <button
@@ -1249,7 +1888,14 @@ export default function EnterprisePage() {
               disabled={isResettingPwd}
               className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                 <polyline points="17 21 17 13 7 13 7 21" />
                 <polyline points="7 3 7 8 15 8" />
@@ -1277,7 +1923,14 @@ export default function EnterprisePage() {
               title={canDelete ? undefined : "Bạn không có quyền xóa"}
               className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
                 <path d="M10 11v6M14 11v6" />
@@ -1291,7 +1944,14 @@ export default function EnterprisePage() {
               aria-label="Bỏ chọn"
               className="flex h-10 w-10 items-center justify-center bg-white text-muted hover:bg-body hover:text-ink"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -1316,7 +1976,8 @@ export default function EnterprisePage() {
           </div>
           <div className="px-6 py-5">
             <p className="text-[13.5px] text-[#374151]">
-              Bạn có chắc muốn xóa <strong>{selectedIds.size}</strong> doanh nghiệp đã chọn? Hành động này không thể hoàn tác.
+              Bạn có chắc muốn xóa <strong>{selectedIds.size}</strong> doanh
+              nghiệp đã chọn? Hành động này không thể hoàn tác.
             </p>
           </div>
           <div className="flex justify-end gap-3 px-6 pb-5">
@@ -1338,12 +1999,28 @@ export default function EnterprisePage() {
         </div>
       </div>
 
-      <input ref={fileRef0} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => handleFileSelect(0, e)} />
-      <input ref={fileRef1} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => handleFileSelect(1, e)} />
+      <input
+        ref={fileRef0}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        className="hidden"
+        onChange={(e) => handleFileSelect(0, e)}
+      />
+      <input
+        ref={fileRef1}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        className="hidden"
+        onChange={(e) => handleFileSelect(1, e)}
+      />
 
       <LoadingOverlay open={isDeleting} message="Đang xóa..." />
 
-      <Toast message={toast?.message ?? null} variant={toast?.variant} onDone={() => setToast(null)} />
+      <Toast
+        message={toast?.message ?? null}
+        variant={toast?.variant}
+        onDone={() => setToast(null)}
+      />
     </>
   );
 }

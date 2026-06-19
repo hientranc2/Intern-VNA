@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FormHelperText } from "@mui/material";
+import { FormHelperText, TextField } from "@mui/material";
 import { EMPTY_BUSINESS_FORM, type BusinessFormData } from "../enterpriseData";
 import {
   createBusiness,
@@ -422,161 +422,146 @@ export function EnterpriseWizard({
                 : "Cập nhật doanh nghiệp"}
             </div>
             <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
-              <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                <FieldGroup
+              <div className="mb-6 grid grid-cols-3 gap-3.5">
+                <TextField
                   label="Tên doanh nghiệp"
                   required
-                  error={fieldErrors.businessName}
-                >
-                  <input
-                    className={`${FORM_CONTROL_CLASS}${fieldErrors.businessName ? " border-danger" : ""}`}
-                    value={form.businessName}
-                    onChange={(e) => {
-                      setField("businessName", e.target.value);
-                      if (fieldErrors.businessName)
-                        setFieldErrors((p) => ({
-                          ...p,
-                          businessName: undefined,
-                        }));
-                    }}
-                  />
-                </FieldGroup>
-                <FieldGroup
+                  value={form.businessName}
+                  onChange={(e) => {
+                    setField("businessName", e.target.value);
+                    if (fieldErrors.businessName)
+                      setFieldErrors((p) => ({
+                        ...p,
+                        businessName: undefined,
+                      }));
+                  }}
+                  error={!!fieldErrors.businessName}
+                  helperText={fieldErrors.businessName}
+                  size="small"
+                  fullWidth
+                />
+                <TextField
                   label="Mã số thuế"
                   required
-                  error={fieldErrors.taxCode}
-                >
-                  <input
-                    className={`${FORM_CONTROL_CLASS}${fieldErrors.taxCode ? " border-danger" : ""} disabled:cursor-not-allowed disabled:bg-body disabled:text-muted`}
-                    value={form.taxCode}
-                    disabled={mode === "edit"}
-                    maxLength={16}
-                    onChange={(e) => {
-                      const input = e.target;
-                      const caret = input.selectionStart ?? input.value.length;
-                      const digitsBeforeCaret = countDigitsBeforeCaret(
-                        input.value,
-                        caret,
+                  value={form.taxCode}
+                  disabled={mode === "edit"}
+                  onChange={(e) => {
+                    const input = e.target;
+                    const caret = input.selectionStart ?? input.value.length;
+                    const digitsBeforeCaret = countDigitsBeforeCaret(
+                      input.value,
+                      caret,
+                    );
+                    const formatted = formatTaxCodeInput(input.value);
+
+                    setField("taxCode", formatted);
+                    if (fieldErrors.taxCode)
+                      setFieldErrors((p) => ({ ...p, taxCode: undefined }));
+
+                    // Khôi phục vị trí con trỏ sau khi React render lại với giá trị đã format
+                    requestAnimationFrame(() => {
+                      const pos = caretPositionForDigitCount(
+                        formatted,
+                        digitsBeforeCaret,
                       );
-                      const formatted = formatTaxCodeInput(input.value);
-
-                      setField("taxCode", formatted);
-                      if (fieldErrors.taxCode)
-                        setFieldErrors((p) => ({ ...p, taxCode: undefined }));
-
-                      // Khôi phục vị trí con trỏ sau khi React render lại với giá trị đã format
-                      requestAnimationFrame(() => {
-                        const pos = caretPositionForDigitCount(
-                          formatted,
-                          digitsBeforeCaret,
-                        );
-                        input.setSelectionRange(pos, pos);
-                      });
-                    }}
-                    placeholder="VD: 0310000888"
-                  />
-                </FieldGroup>
-                <FieldGroup
+                      input.setSelectionRange(pos, pos);
+                    });
+                  }}
+                  error={!!fieldErrors.taxCode}
+                  helperText={fieldErrors.taxCode}
+                  placeholder="VD: 0310000888"
+                  size="small"
+                  fullWidth
+                  slotProps={{ htmlInput: { maxLength: 16 } }}
+                />
+                <SearchableSelect
                   label="Loại hình kinh doanh"
                   required
-                  error={fieldErrors.businessType}
-                >
-                  <SearchableSelect
-                    options={loaiHinhOptions}
-                    value={form.businessType}
-                    placeholder="-- Chọn loại hình --"
-                    error={!!fieldErrors.businessType}
-                    onChange={(v) => {
-                      setField("businessType", v);
-                      if (fieldErrors.businessType)
-                        setFieldErrors((p) => ({
-                          ...p,
-                          businessType: undefined,
-                        }));
-                    }}
-                  />
-                </FieldGroup>
+                  error={!!fieldErrors.businessType}
+                  helperText={fieldErrors.businessType}
+                  options={loaiHinhOptions}
+                  value={form.businessType}
+                  placeholder="-- Chọn loại hình --"
+                  onChange={(v) => {
+                    setField("businessType", v);
+                    if (fieldErrors.businessType)
+                      setFieldErrors((p) => ({
+                        ...p,
+                        businessType: undefined,
+                      }));
+                  }}
+                />
               </div>
-              <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                <FieldGroup
+              <div className="mb-6 grid grid-cols-3 gap-3.5">
+                <SearchableSelect
                   label="Ngành nghề kinh doanh, chính"
                   required
-                  error={fieldErrors.mainIndustry}
-                >
-                  <SearchableSelect
-                    options={nganhCap4Options}
-                    value={form.mainIndustry}
-                    placeholder="-- Chọn ngành nghề --"
-                    error={!!fieldErrors.mainIndustry}
-                    onChange={(v) => {
-                      setField("mainIndustry", v);
-                      if (fieldErrors.mainIndustry)
-                        setFieldErrors((p) => ({
-                          ...p,
-                          mainIndustry: undefined,
-                        }));
-                    }}
-                  />
-                </FieldGroup>
-                <FieldGroup label="Ngày cấp GPKD">
-                  <DateInput
-                    value={form.licenseDate}
-                    onChange={(v) => setField("licenseDate", v)}
-                    max={localISODate(new Date())}
-                  />
-                </FieldGroup>
-                <FieldGroup
+                  error={!!fieldErrors.mainIndustry}
+                  helperText={fieldErrors.mainIndustry}
+                  options={nganhCap4Options}
+                  value={form.mainIndustry}
+                  placeholder="-- Chọn ngành nghề --"
+                  onChange={(v) => {
+                    setField("mainIndustry", v);
+                    if (fieldErrors.mainIndustry)
+                      setFieldErrors((p) => ({
+                        ...p,
+                        mainIndustry: undefined,
+                      }));
+                  }}
+                />
+                <DateInput
+                  label="Ngày cấp GPKD"
+                  value={form.licenseDate}
+                  onChange={(v) => setField("licenseDate", v)}
+                  max={localISODate(new Date())}
+                />
+                <SearchableSelect
                   label="Tỉnh/Thành phố ĐKKD"
                   required
-                  error={fieldErrors.registeredProvince}
-                >
-                  <SearchableSelect
-                    options={PROVINCES}
-                    value={form.registeredProvince}
-                    placeholder="-- Chọn tỉnh/thành phố --"
-                    error={!!fieldErrors.registeredProvince}
-                    onChange={(v) => {
-                      setField("registeredProvince", v);
-                      setField("registeredWard", "");
-                      if (fieldErrors.registeredProvince)
-                        setFieldErrors((p) => ({
-                          ...p,
-                          registeredProvince: undefined,
-                        }));
-                    }}
-                  />
-                </FieldGroup>
+                  error={!!fieldErrors.registeredProvince}
+                  helperText={fieldErrors.registeredProvince}
+                  options={PROVINCES}
+                  value={form.registeredProvince}
+                  placeholder="-- Chọn tỉnh/thành phố --"
+                  onChange={(v) => {
+                    setField("registeredProvince", v);
+                    setField("registeredWard", "");
+                    if (fieldErrors.registeredProvince)
+                      setFieldErrors((p) => ({
+                        ...p,
+                        registeredProvince: undefined,
+                      }));
+                  }}
+                />
               </div>
-              <div className="grid grid-cols-2 gap-3.5">
-                <FieldGroup
+              <div className="mb-6 grid grid-cols-2 gap-3.5">
+                <SearchableSelect
                   label="Phường/Xã ĐKKD"
                   required
-                  error={fieldErrors.registeredWard}
-                >
-                  <SearchableSelect
-                    options={phuongDKKDOptions}
-                    value={form.registeredWard}
-                    placeholder="-- Chọn phường/xã --"
-                    disabled={!form.registeredProvince}
-                    error={!!fieldErrors.registeredWard}
-                    onChange={(v) => {
-                      setField("registeredWard", v);
-                      if (fieldErrors.registeredWard)
-                        setFieldErrors((p) => ({
-                          ...p,
-                          registeredWard: undefined,
-                        }));
-                    }}
-                  />
-                </FieldGroup>
-                <FieldGroup label="Địa chỉ">
-                  <input
-                    className={FORM_CONTROL_CLASS}
-                    value={form.address}
-                    onChange={(e) => setField("address", e.target.value)}
-                    placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc"
-                  />
-                </FieldGroup>
+                  error={!!fieldErrors.registeredWard}
+                  helperText={fieldErrors.registeredWard}
+                  options={phuongDKKDOptions}
+                  value={form.registeredWard}
+                  placeholder="-- Chọn phường/xã --"
+                  disabled={!form.registeredProvince}
+                  onChange={(v) => {
+                    setField("registeredWard", v);
+                    if (fieldErrors.registeredWard)
+                      setFieldErrors((p) => ({
+                        ...p,
+                        registeredWard: undefined,
+                      }));
+                  }}
+                />
+                <TextField
+                  label="Địa chỉ"
+                  value={form.address}
+                  onChange={(e) => setField("address", e.target.value)}
+                  placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc"
+                  size="small"
+                  fullWidth
+                />
               </div>
             </div>
 
@@ -584,104 +569,101 @@ export function EnterpriseWizard({
               Thông tin liên hệ
             </div>
             <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
-              <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                <FieldGroup label="Tên viết bằng tiếng nước ngoài">
-                  <input
-                    className={FORM_CONTROL_CLASS}
-                    value={form.foreignName}
-                    onChange={(e) => setField("foreignName", e.target.value)}
-                    placeholder="VD: VNA Group"
-                  />
-                </FieldGroup>
-                <FieldGroup label="Email" required error={fieldErrors.email}>
-                  <input
-                    type="email"
-                    className={`${FORM_CONTROL_CLASS}${fieldErrors.email ? " border-danger" : ""}`}
-                    value={form.email}
-                    onChange={(e) => {
-                      setField("email", e.target.value);
-                      if (fieldErrors.email)
-                        setFieldErrors((p) => ({ ...p, email: undefined }));
-                    }}
-                    placeholder="vna@gmail.com"
-                  />
-                </FieldGroup>
-                <FieldGroup
+              <div className="mb-6 grid grid-cols-3 gap-3.5">
+                <TextField
+                  label="Tên viết bằng tiếng nước ngoài"
+                  value={form.foreignName}
+                  onChange={(e) => setField("foreignName", e.target.value)}
+                  placeholder="VD: VNA Group"
+                  size="small"
+                  fullWidth
+                />
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => {
+                    setField("email", e.target.value);
+                    if (fieldErrors.email)
+                      setFieldErrors((p) => ({ ...p, email: undefined }));
+                  }}
+                  error={!!fieldErrors.email}
+                  helperText={fieldErrors.email}
+                  placeholder="vna@gmail.com"
+                  size="small"
+                  fullWidth
+                  required
+                />
+                <TextField
                   label="Số điện thoại cơ quan"
-                  error={fieldErrors.officePhone}
-                >
-                  <input
-                    className={`${FORM_CONTROL_CLASS}${fieldErrors.officePhone ? " border-danger" : ""}`}
-                    value={form.officePhone}
-                    onChange={(e) => {
-                      setField("officePhone", e.target.value);
-                      if (fieldErrors.officePhone)
-                        setFieldErrors((p) => ({
-                          ...p,
-                          officePhone: undefined,
-                        }));
-                    }}
-                    placeholder="VD: 0283xxxxxxx"
-                  />
-                </FieldGroup>
+                  value={form.officePhone}
+                  onChange={(e) => {
+                    setField("officePhone", e.target.value);
+                    if (fieldErrors.officePhone)
+                      setFieldErrors((p) => ({
+                        ...p,
+                        officePhone: undefined,
+                      }));
+                  }}
+                  error={!!fieldErrors.officePhone}
+                  helperText={fieldErrors.officePhone}
+                  placeholder="VD: 0283xxxxxxx"
+                  size="small"
+                  fullWidth
+                />
               </div>
-              <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                <FieldGroup label="Tỉnh/TP hoạt động KD">
-                  <SearchableSelect
-                    options={PROVINCES}
-                    value={form.operatingProvince}
-                    placeholder="-- Chọn tỉnh --"
-                    onChange={(v) => {
-                      setField("operatingProvince", v);
-                      setField("operatingWard", "");
-                    }}
-                  />
-                </FieldGroup>
-                <FieldGroup label="Phường/xã hoạt động KD">
-                  <SearchableSelect
-                    options={phuongHDOptions}
-                    value={form.operatingWard}
-                    placeholder="-- Chọn phường/xã --"
-                    disabled={!form.operatingProvince}
-                    onChange={(v) => setField("operatingWard", v)}
-                  />
-                </FieldGroup>
+              <div className="mb-6 grid grid-cols-3 gap-3.5">
+                <SearchableSelect
+                  label="Tỉnh/TP hoạt động KD"
+                  options={PROVINCES}
+                  value={form.operatingProvince}
+                  placeholder="-- Chọn tỉnh --"
+                  onChange={(v) => {
+                    setField("operatingProvince", v);
+                    setField("operatingWard", "");
+                  }}
+                />
+                <SearchableSelect
+                  label="Phường/xã hoạt động KD"
+                  options={phuongHDOptions}
+                  value={form.operatingWard}
+                  placeholder="-- Chọn phường/xã --"
+                  disabled={!form.operatingProvince}
+                  onChange={(v) => setField("operatingWard", v)}
+                />
                 <div />
               </div>
-              <div className="grid grid-cols-3 gap-3.5">
-                <FieldGroup label="Địa điểm kinh doanh">
-                  <input
-                    className={FORM_CONTROL_CLASS}
-                    value={form.operatingAddress}
-                    onChange={(e) =>
-                      setField("operatingAddress", e.target.value)
-                    }
-                  />
-                </FieldGroup>
-                <FieldGroup label="Người đứng đầu doanh nghiệp">
-                  <input
-                    className={FORM_CONTROL_CLASS}
-                    value={form.representative}
-                    onChange={(e) => setField("representative", e.target.value)}
-                  />
-                </FieldGroup>
-                <FieldGroup
+              <div className="mb-6 grid grid-cols-3 gap-3.5">
+                <TextField
+                  label="Địa điểm kinh doanh"
+                  value={form.operatingAddress}
+                  onChange={(e) => setField("operatingAddress", e.target.value)}
+                  size="small"
+                  fullWidth
+                />
+                <TextField
+                  label="Người đứng đầu doanh nghiệp"
+                  value={form.representative}
+                  onChange={(e) => setField("representative", e.target.value)}
+                  size="small"
+                  fullWidth
+                />
+                <TextField
                   label="SĐT liên hệ người đứng đầu"
-                  error={fieldErrors.representativePhone}
-                >
-                  <input
-                    className={`${FORM_CONTROL_CLASS}${fieldErrors.representativePhone ? " border-danger" : ""}`}
-                    value={form.representativePhone}
-                    onChange={(e) => {
-                      setField("representativePhone", e.target.value);
-                      if (fieldErrors.representativePhone)
-                        setFieldErrors((p) => ({
-                          ...p,
-                          representativePhone: undefined,
-                        }));
-                    }}
-                  />
-                </FieldGroup>
+                  value={form.representativePhone}
+                  onChange={(e) => {
+                    setField("representativePhone", e.target.value);
+                    if (fieldErrors.representativePhone)
+                      setFieldErrors((p) => ({
+                        ...p,
+                        representativePhone: undefined,
+                      }));
+                  }}
+                  error={!!fieldErrors.representativePhone}
+                  helperText={fieldErrors.representativePhone}
+                  size="small"
+                  fullWidth
+                />
               </div>
             </div>
 

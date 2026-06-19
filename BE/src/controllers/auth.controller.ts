@@ -103,6 +103,15 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Post('verify-change-email-otp')
+  verifyChangeEmailOtp(@Request() req, @Body() dto: { otpCode: string }) {
+    if (!dto.otpCode) {
+      throw new BadRequestException('Mã OTP không được để trống');
+    }
+    return this.authService.verifyChangeEmailOtp(req.user.userId, dto.otpCode);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Post('change-email')
   changeEmail(@Request() req, @Body() dto: ChangeEmailDto) {
     return this.authService.verifyAndChangeEmail(req.user.userId, dto);

@@ -21,7 +21,8 @@ export function validateLogin(
 }
 
 export function isValidEmail(email: string): boolean {
-  return EMAIL_REGEX.test(email);
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
 }
 
 // SĐT Việt Nam: 10–11 chữ số bắt đầu bằng 0, hoặc +84... (bỏ qua dấu cách/chấm/gạch).
