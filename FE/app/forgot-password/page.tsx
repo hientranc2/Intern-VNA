@@ -6,6 +6,7 @@ import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
+import { TextField } from "@mui/material";
 import { useCountdown } from "@/libs/shared/core/hooks/useCountdown";
 import { isValidEmail } from "@/libs/tts/auth/authValidation";
 import {
@@ -17,9 +18,7 @@ import {
 type Step = 1 | 2;
 type ToastState = { variant: "success" | "error"; message: string } | null;
 
-const FIELD_CLASS =
-  "h-10 w-full rounded-md border bg-white px-3 text-sm text-ink outline-none transition-colors";
-const FIELD_OK = "border-line focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
+
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -135,11 +134,8 @@ export default function ForgotPasswordPage() {
             </p>
 
             <div className="mb-3.5 w-full">
-              <label className="mb-1 block text-xs text-muted" htmlFor="email">
-                Email *
-              </label>
-              <input
-                id="email"
+              <TextField
+                label="Email"
                 type="email"
                 value={email}
                 onChange={(event) => {
@@ -147,11 +143,12 @@ export default function ForgotPasswordPage() {
                   if (emailError) setEmailError("");
                 }}
                 placeholder="Phanthanhtung093@gmail.com"
-                className={`${FIELD_CLASS} ${emailError ? "border-danger" : FIELD_OK}`}
+                error={!!emailError}
+                helperText={emailError}
+                size="small"
+                fullWidth
+                required
               />
-              {emailError ? (
-                <p className="mt-1 text-[11px] text-danger">{emailError}</p>
-              ) : null}
             </div>
 
             <button
@@ -181,29 +178,26 @@ export default function ForgotPasswordPage() {
             </p>
 
             <div className="mb-3.5 w-full">
-              <label className="mb-1 block text-xs text-muted" htmlFor="otp">
-                OTP *
-              </label>
-              <input
-                id="otp"
-                type="text"
-                maxLength={6}
+              <TextField
+                label="OTP"
                 value={otp}
                 onChange={(event) => {
                   setOtp(event.target.value);
                   if (otpError) setOtpError("");
                 }}
                 placeholder="Nhập mã OTP"
-                className={`${FIELD_CLASS} ${otpError ? "border-danger" : FIELD_OK}`}
+                error={!!otpError}
+                helperText={otpError}
+                size="small"
+                fullWidth
+                required
+                slotProps={{ htmlInput: { maxLength: 6 } }}
               />
-              {otpError ? (
-                <p className="mt-1 text-[11px] text-danger">{otpError}</p>
-              ) : null}
             </div>
 
             <div className="mb-3.5 w-full">
-              <label className="mb-1 block text-xs text-muted">Mật khẩu mới *</label>
               <PasswordField
+                label="Mật khẩu mới"
                 value={newPassword}
                 onChange={(v) => {
                   setNewPassword(v);
@@ -212,17 +206,14 @@ export default function ForgotPasswordPage() {
                 placeholder="Nhập mật khẩu mới"
                 autoComplete="new-password"
                 hasError={!!newPasswordError}
+                helperText={newPasswordError}
+                required
               />
-              {newPasswordError ? (
-                <p className="mt-1 text-[11px] text-danger">{newPasswordError}</p>
-              ) : null}
             </div>
 
             <div className="mb-3.5 w-full">
-              <label className="mb-1 block text-xs text-muted">
-                Nhập lại mật khẩu mới *
-              </label>
               <PasswordField
+                label="Nhập lại mật khẩu mới"
                 value={confirmPassword}
                 onChange={(v) => {
                   setConfirmPassword(v);
@@ -231,10 +222,9 @@ export default function ForgotPasswordPage() {
                 placeholder="Xác nhận mật khẩu mới"
                 autoComplete="new-password"
                 hasError={!!confirmPasswordError}
+                helperText={confirmPasswordError}
+                required
               />
-              {confirmPasswordError ? (
-                <p className="mt-1 text-[11px] text-danger">{confirmPasswordError}</p>
-              ) : null}
             </div>
 
             <div className="mb-1.5 text-center text-[15px] font-bold text-primary">

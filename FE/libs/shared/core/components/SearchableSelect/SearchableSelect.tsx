@@ -18,6 +18,7 @@ type Props = {
   compact?: boolean;
   /** Open dropdown upward instead of downward */
   dropUp?: boolean;
+  label?: string;
 };
 
 export function SearchableSelect({
@@ -31,6 +32,7 @@ export function SearchableSelect({
   error,
   fixed,
   compact,
+  label,
   dropUp,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -150,18 +152,53 @@ export function SearchableSelect({
       ref={containerRef}
       className={`relative${className ? ` ${className}` : ""}`}
     >
+      {!compact && (
+        <>
+          <fieldset
+            className={`absolute inset-0 rounded-md border pointer-events-none ${
+              open
+                ? "border-[#1976d2] border-2"
+                : error
+                  ? "border-danger"
+                  : "border-line"
+            }`}
+          >
+            {label && (
+              <legend
+                className={`ml-2 px-1 text-[0px] ${open || value ? "text-[10px]" : ""}`}
+              >
+                {label}
+              </legend>
+            )}
+          </fieldset>
+
+          {label && (
+            <label
+              className={`absolute left-3 transition-all pointer-events-none bg-white px-1 ${
+                open || value
+                  ? "-top-2 text-[11px] z-10 " +
+                    (open ? "text-[#1976d2]" : "text-muted")
+                  : "top-[9px] text-sm text-muted"
+              }`}
+            >
+              {label}
+            </label>
+          )}
+        </>
+      )}
+
       <button
         ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={toggle}
-        className={`flex w-full items-center justify-between gap-2 border border-line bg-white text-ink outline-none transition-colors focus:border-[#3b82f6] disabled:cursor-not-allowed disabled:bg-body disabled:text-muted ${
+        className={`flex w-full items-center justify-between gap-2 bg-white text-ink outline-none transition-colors disabled:cursor-not-allowed disabled:bg-body disabled:text-muted ${
           compact
-            ? "h-7 rounded-[5px] px-1.5 text-xs"
-            : "h-10 rounded-md px-3 text-sm focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+            ? "h-7 rounded-[5px] border border-line px-1.5 text-xs"
+            : "h-10 rounded-md px-3 text-sm"
         }`}
       >
-        <span className={`truncate ${value ? "text-ink" : "text-muted"}`}>
+        <span className={`truncate ${value ? "text-ink" : "text-transparent"}`}>
           {value || placeholder}
         </span>
         <svg

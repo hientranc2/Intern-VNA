@@ -33,7 +33,7 @@ import {
   SidebarOverrideContext,
   type SidebarOverride,
 } from "@/libs/tts/auth/sidebarContext";
-import { FormHelperText } from "@mui/material";
+
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 
@@ -209,10 +209,8 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
           }
         >
           <div className="mb-4">
-            <label className="mb-1.5 block text-[12.5px] text-[#374151]">
-              Mật khẩu cũ <span className="text-danger">*</span>
-            </label>
             <PasswordField
+              label="Mật khẩu cũ"
               value={oldPwd}
               onChange={(v) => {
                 setOldPwd(v);
@@ -221,18 +219,13 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
               }}
               placeholder="Mật khẩu cũ"
               hasError={!!pwdFieldErrors.oldPwd}
+              helperText={pwdFieldErrors.oldPwd}
+              required
             />
-            {pwdFieldErrors.oldPwd && (
-              <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-                {pwdFieldErrors.oldPwd}
-              </FormHelperText>
-            )}
           </div>
           <div className="mb-4">
-            <label className="mb-1.5 block text-[12.5px] text-[#374151]">
-              Mật khẩu mới <span className="text-danger">*</span>
-            </label>
             <PasswordField
+              label="Mật khẩu mới"
               value={newPwd}
               onChange={(v) => {
                 setNewPwd(v);
@@ -242,18 +235,13 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
               placeholder="Mật khẩu mới"
               autoComplete="new-password"
               hasError={!!pwdFieldErrors.newPwd}
+              helperText={pwdFieldErrors.newPwd}
+              required
             />
-            {pwdFieldErrors.newPwd && (
-              <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-                {pwdFieldErrors.newPwd}
-              </FormHelperText>
-            )}
           </div>
           <div>
-            <label className="mb-1.5 block text-[12.5px] text-[#374151]">
-              Nhập lại mật khẩu mới <span className="text-danger">*</span>
-            </label>
             <PasswordField
+              label="Nhập lại mật khẩu mới"
               value={confirmPwd}
               onChange={(v) => {
                 setConfirmPwd(v);
@@ -263,12 +251,9 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
               placeholder="Nhập lại mật khẩu mới"
               autoComplete="new-password"
               hasError={!!pwdFieldErrors.confirmPwd}
+              helperText={pwdFieldErrors.confirmPwd}
+              required
             />
-            {pwdFieldErrors.confirmPwd && (
-              <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-                {pwdFieldErrors.confirmPwd}
-              </FormHelperText>
-            )}
           </div>
         </Modal>
 

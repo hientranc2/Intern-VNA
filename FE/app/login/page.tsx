@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FormHelperText } from "@mui/material";
+import { FormHelperText, InputAdornment, IconButton } from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { GovSeal } from "@/libs/shared/core/components/GovSeal/GovSeal";
 import { AuthShell } from "@/libs/shared/core/components/AuthShell/AuthShell";
-import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
+import { TextField } from "@mui/material";
 import {
   login,
   loginBusiness,
@@ -32,6 +33,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
@@ -114,12 +116,11 @@ export default function LoginPage() {
         </div>
 
         <div className="mb-3.5 w-full">
-          <label className="mb-1 block text-xs text-muted" htmlFor="username">
-            Tên đăng nhập *
-          </label>
-          <input
+          <TextField
             id="username"
+            label="Tên đăng nhập"
             type="text"
+            autoComplete="username"
             value={username}
             onChange={(e) => {
               setUsername(e.target.value);
@@ -127,39 +128,50 @@ export default function LoginPage() {
                 setFieldErrors((p) => ({ ...p, username: undefined }));
             }}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            autoComplete="username"
-            className={`h-10 w-full rounded-md border bg-white px-3 text-sm text-ink outline-none transition-colors ${
-              fieldErrors.username
-                ? "border-danger"
-                : "border-line focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
-            }`}
+            error={!!fieldErrors.username}
+            helperText={fieldErrors.username}
+            fullWidth
+            size="small"
+            required
           />
-          {fieldErrors.username && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-              {fieldErrors.username}
-            </FormHelperText>
-          )}
         </div>
 
         <div className="mb-3.5 w-full">
-          <label className="mb-1 block text-xs text-muted" htmlFor="password">
-            Mật khẩu *
-          </label>
-          <PasswordField
+          <TextField
             id="password"
+            label="Mật khẩu"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
             value={password}
-            onChange={(v) => {
-              setPassword(v);
+            onChange={(e) => {
+              setPassword(e.target.value);
               if (fieldErrors.password)
                 setFieldErrors((p) => ({ ...p, password: undefined }));
             }}
-            hasError={!!fieldErrors.password}
+            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+            error={!!fieldErrors.password}
+            helperText={fieldErrors.password}
+            fullWidth
+            size="small"
+            required
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
-          {fieldErrors.password && (
-            <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-              {fieldErrors.password}
-            </FormHelperText>
-          )}
         </div>
 
         <div className="mb-5 flex w-full items-center justify-between">

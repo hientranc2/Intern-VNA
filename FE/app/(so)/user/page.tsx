@@ -1,8 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
-import { FormHelperText } from "@mui/material";
+import { Autocomplete, FormHelperText, MenuItem } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
@@ -11,6 +17,11 @@ import { GENDER_OPTIONS, type User } from "@/libs/tts/user/userData";
 import { type Role } from "@/libs/tts/role/roleData";
 import { getRoleList } from "@/libs/tts/role/roleApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
+import { TextField } from "@mui/material";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
 import {
   getUserList,
   createUser,
@@ -56,6 +67,7 @@ type FieldErrors = {
   password?: string;
   dob?: string;
   gender?: string;
+  roleId?: string;
 };
 
 const EMPTY_FORM: UserForm = {
@@ -251,8 +263,7 @@ export default function UserPage() {
   // Khi đang edit: target user có phải admin cùng cấp không?
   // → Nếu có + người gọi KHÔNG phải Super Admin → disable Vai trò + Email.
   const editingIsHighRole = Boolean(
-    editingId &&
-    users.find((u) => u.id === editingId && isHighRoleUser(u)),
+    editingId && users.find((u) => u.id === editingId && isHighRoleUser(u)),
   );
   const lockRoleAndEmail = editingIsHighRole && !currentIsSuperAdmin;
 
@@ -412,6 +423,8 @@ export default function UserPage() {
     }
     if (form.dob && form.dob > localISODate(new Date()))
       errors.dob = "Ngày sinh không được là ngày tương lai";
+
+    if (!form.roleId) errors.roleId = "Vui lòng chọn vai trò";
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -763,8 +776,8 @@ export default function UserPage() {
                           >
                             <td className="px-3.5 py-2.5">
                               {u.id === currentUserId ||
-                               isSuperAdminUser(u) ||
-                               (isHighRoleUser(u) && !currentIsSuperAdmin) ? (
+                              isSuperAdminUser(u) ||
+                              (isHighRoleUser(u) && !currentIsSuperAdmin) ? (
                                 <input
                                   type="checkbox"
                                   disabled
@@ -818,7 +831,8 @@ export default function UserPage() {
                                   }}
                                   disabled={
                                     !canUpdate ||
-                                    (isSuperAdminUser(u) && u.id !== currentUserId) ||
+                                    (isSuperAdminUser(u) &&
+                                      u.id !== currentUserId) ||
                                     (isHighRoleUser(u) &&
                                       !currentIsSuperAdmin &&
                                       u.id !== currentUserId)
@@ -826,7 +840,8 @@ export default function UserPage() {
                                   title={
                                     !canUpdate
                                       ? "Bạn không có quyền sửa"
-                                      : isSuperAdminUser(u) && u.id !== currentUserId
+                                      : isSuperAdminUser(u) &&
+                                          u.id !== currentUserId
                                         ? "Không thể đặt lại mật khẩu tài khoản Super Admin"
                                         : isHighRoleUser(u) &&
                                             !currentIsSuperAdmin &&
@@ -1098,198 +1113,163 @@ export default function UserPage() {
                 <div className="mb-5 text-sm font-semibold text-dark">
                   Thông tin cá nhân
                 </div>
-                <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">
-                      Tên đăng nhập<span className="text-danger">*</span>
-                    </label>
-                    <input
-                      className={`${FORM_CONTROL_CLASS}${fieldErrors.username ? " border-danger" : ""}`}
-                      value={form.username}
-                      disabled={editingId !== null}
-                      onChange={(e) => {
-                        setField("username", e.target.value);
-                        clearFieldError("username");
-                      }}
-                    />
-                    {fieldErrors.username && (
-                      <FormHelperText
-                        error
-                        sx={{ mt: 0, mx: 0, fontSize: "11px" }}
-                      >
-                        {fieldErrors.username}
-                      </FormHelperText>
-                    )}
-                  </div>
+
+                <div className="grid grid-cols-2 gap-x-5 gap-y-6">
+                  <TextField
+                    label="Tên đăng nhập"
+                    value={form.username}
+                    disabled={editingId !== null}
+                    onChange={(e) => {
+                      setField("username", e.target.value);
+                      clearFieldError("username");
+                    }}
+                    error={!!fieldErrors.username}
+                    helperText={fieldErrors.username}
+                    size="small"
+                    fullWidth
+                    required
+                  />
+
                   {editingId === null ? (
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs text-muted">
-                        Mật khẩu<span className="text-danger">*</span>
-                      </label>
-                      <PasswordField
-                        value={password}
-                        onChange={(v) => {
-                          setPassword(v);
-                          clearFieldError("password");
-                        }}
-                        placeholder="Nhập mật khẩu"
-                        autoComplete="new-password"
-                      />
-                      {fieldErrors.password && (
-                        <FormHelperText
-                          error
-                          sx={{ mt: 0, mx: 0, fontSize: "11px" }}
-                        >
-                          {fieldErrors.password}
-                        </FormHelperText>
-                      )}
-                    </div>
-                  ) : null}
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">
-                      Họ và tên<span className="text-danger">*</span>
-                    </label>
-                    <input
-                      className={`${FORM_CONTROL_CLASS}${fieldErrors.fullName ? " border-danger" : ""}`}
-                      value={form.fullName}
-                      onChange={(e) => {
-                        setField("fullName", e.target.value);
-                        clearFieldError("fullName");
-                      }}
-                    />
-                    {fieldErrors.fullName && (
-                      <FormHelperText
-                        error
-                        sx={{ mt: 0, mx: 0, fontSize: "11px" }}
-                      >
-                        {fieldErrors.fullName}
-                      </FormHelperText>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">
-                      Ngày tháng năm sinh
-                    </label>
-                    <DateInput
-                      value={form.dob}
+                    <PasswordField
+                      label="Mật khẩu"
+                      value={password}
                       onChange={(v) => {
-                        setField("dob", v);
+                        setPassword(v);
+                        clearFieldError("password");
+                      }}
+                      autoComplete="new-password"
+                      hasError={!!fieldErrors.password}
+                      helperText={fieldErrors.password}
+                      required
+                    />
+                  ) : null}
+
+                  <TextField
+                    label="Họ và tên"
+                    value={form.fullName}
+                    onChange={(e) => {
+                      setField("fullName", e.target.value);
+                      clearFieldError("fullName");
+                    }}
+                    error={!!fieldErrors.fullName}
+                    helperText={fieldErrors.fullName}
+                    size="small"
+                    fullWidth
+                    required
+                  />
+
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <DatePicker
+                      label="Ngày tháng năm sinh"
+                      value={form.dob ? dayjs(form.dob) : null}
+                      onChange={(val) => {
+                        setField("dob", val ? val.format("YYYY-MM-DD") : "");
                         clearFieldError("dob");
                       }}
-                      max={localISODate(new Date())}
-                      error={!!fieldErrors.dob}
-                    />
-                    {fieldErrors.dob && (
-                      <FormHelperText
-                        error
-                        sx={{ mt: 0, mx: 0, fontSize: "11px" }}
-                      >
-                        {fieldErrors.dob}
-                      </FormHelperText>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">
-                      Giới tính
-                      {!editingId ? (
-                        <span className="text-danger">*</span>
-                      ) : null}
-                    </label>
-                    <select
-                      className={`${SELECT_CLASS}${fieldErrors.gender ? " border-danger" : ""}`}
-                      value={form.gender}
-                      onChange={(e) => {
-                        setField("gender", e.target.value);
-                        clearFieldError("gender");
+                      maxDate={dayjs(localISODate(new Date()))}
+                      format="DD/MM/YYYY"
+                      slotProps={{
+                        textField: {
+                          size: "small",
+                          fullWidth: true,
+                          error: !!fieldErrors.dob,
+                          helperText: fieldErrors.dob,
+                        },
                       }}
-                    >
-                      <option value="">Giới tính</option>
-                      {GENDER_OPTIONS.map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                        </option>
-                      ))}
-                    </select>
-                    {fieldErrors.gender && (
-                      <FormHelperText
-                        error
-                        sx={{ mt: 0, mx: 0, fontSize: "11px" }}
-                      >
-                        {fieldErrors.gender}
-                      </FormHelperText>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">Chức danh</label>
-                    <input
-                      className={FORM_CONTROL_CLASS}
-                      placeholder="Chức danh"
-                      value={form.jobTitle}
-                      onChange={(e) => setField("jobTitle", e.target.value)}
                     />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">Vai trò</label>
-                    <select
-                      className={SELECT_CLASS}
-                      value={form.roleId}
-                      disabled={lockRoleAndEmail}
-                      onChange={(e) =>
-                        setField(
-                          "roleId",
-                          e.target.value === "" ? "" : Number(e.target.value),
-                        )
-                      }
-                    >
-                      <option value="">-- Chọn vai trò --</option>
-                      {roles.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.ten}
-                        </option>
-                      ))}
-                    </select>
-                    {lockRoleAndEmail && (
-                      <p className="mt-0.5 text-[11px] text-muted">Chỉ Super Admin mới đổi được vai trò</p>
-                    )}
-                  </div>
-                  <div className="col-span-2 flex flex-col gap-1">
-                    <label className="text-xs text-muted">
-                      Email <span className="text-danger">*</span>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="email"
-                        className={`${FORM_CONTROL_CLASS} flex-1${fieldErrors.email ? " border-danger" : ""}`}
-                        value={form.email}
-                        disabled={editingId !== null || lockRoleAndEmail}
-                        onChange={(e) => {
-                          setField("email", e.target.value);
-                          clearFieldError("email");
-                        }}
-                      />
-                      {editingId !== null && !lockRoleAndEmail ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setToast({
-                              message: "Mở luồng đổi email OTP",
-                              variant: "success",
-                            })
-                          }
-                          className="whitespace-nowrap text-[13px] font-medium text-primary hover:underline"
-                        >
-                          Thay đổi
-                        </button>
-                      ) : null}
-                    </div>
-                    {fieldErrors.email && (
-                      <FormHelperText
-                        error
-                        sx={{ mt: 0, mx: 0, fontSize: "11px" }}
+                  </LocalizationProvider>
+
+                  <TextField
+                    label={!editingId ? "Giới tính *" : "Giới tính"}
+                    select
+                    value={form.gender}
+                    onChange={(e) => {
+                      setField("gender", e.target.value);
+                      clearFieldError("gender");
+                    }}
+                    error={!!fieldErrors.gender}
+                    helperText={fieldErrors.gender}
+                    size="small"
+                    fullWidth
+                  >
+                    <MenuItem value="">Giới tính</MenuItem>
+                    {GENDER_OPTIONS.map((g) => (
+                      <MenuItem key={g} value={g}>
+                        {g}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <TextField
+                    label="Chức danh"
+                    value={form.jobTitle}
+                    onChange={(e) => setField("jobTitle", e.target.value)}
+                    size="small"
+                    fullWidth
+                  />
+
+                  <TextField
+                    label="Vai trò *"
+                    select
+                    value={form.roleId}
+                    disabled={lockRoleAndEmail}
+                    onChange={(e) => {
+                      setField(
+                        "roleId",
+                        e.target.value === "" ? "" : Number(e.target.value),
+                      );
+                      clearFieldError("roleId");
+                    }}
+                    error={!!fieldErrors.roleId}
+                    helperText={
+                      fieldErrors.roleId
+                        ? fieldErrors.roleId
+                        : lockRoleAndEmail
+                          ? "Chỉ Super Admin mới đổi được vai trò"
+                          : ""
+                    }
+                    size="small"
+                    fullWidth
+                  >
+                    <MenuItem value="">-- Chọn vai trò --</MenuItem>
+                    {roles.map((r) => (
+                      <MenuItem key={r.id} value={r.id}>
+                        {r.ten}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <div className="flex items-start gap-2">
+                    <TextField
+                      label="Email"
+                      type="email"
+                      value={form.email}
+                      disabled={editingId !== null || lockRoleAndEmail}
+                      onChange={(e) => {
+                        setField("email", e.target.value);
+                        clearFieldError("email");
+                      }}
+                      error={!!fieldErrors.email}
+                      helperText={fieldErrors.email}
+                      size="small"
+                      fullWidth
+                      required
+                    />
+                    {editingId !== null && !lockRoleAndEmail ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setToast({
+                            message: "Mở luồng đổi email OTP",
+                            variant: "success",
+                          })
+                        }
+                        className="mt-1 whitespace-nowrap text-[13px] font-medium text-primary hover:underline"
                       >
-                        {fieldErrors.email}
-                      </FormHelperText>
-                    )}
+                        Thay đổi
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1298,38 +1278,61 @@ export default function UserPage() {
                 <div className="mb-5 text-sm font-semibold text-dark">
                   Thông tin liên hệ
                 </div>
-                <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">Tỉnh thành phố</label>
-                    <SearchableSelect
-                      dropUp
-                      options={PROVINCES}
-                      value={form.province}
-                      placeholder="-- Chọn tỉnh --"
-                      onChange={(v) => {
-                        setField("province", v);
-                        setField("ward", "");
-                      }}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted">Phường / Xã</label>
-                    <SearchableSelect
-                      dropUp
-                      options={WARDS_BY_PROVINCE[form.province] ?? []}
-                      value={form.ward}
-                      placeholder="-- Chọn phường/xã --"
-                      disabled={!form.province}
-                      onChange={(v) => setField("ward", v)}
-                    />
-                  </div>
-                  <div className="col-span-2 flex flex-col gap-1">
-                    <label className="text-xs text-muted">Địa chỉ</label>
-                    <input
-                      className={FORM_CONTROL_CLASS}
-                      placeholder="Địa chỉ"
+
+                <div className="grid grid-cols-2 gap-x-5 gap-y-6">
+                  <Autocomplete
+                    options={PROVINCES}
+                    value={form.province || null}
+                    onChange={(_, v) => {
+                      setField("province", v ?? "");
+                      setField("ward", "");
+                    }}
+                    slotProps={{
+                      popper: {
+                        modifiers: [
+                          { name: "offset", options: { offset: [0, 8] } },
+                        ],
+                      },
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Tỉnh/ thành phố"
+                        size="small"
+                        fullWidth
+                      />
+                    )}
+                  />
+
+                  <Autocomplete
+                    options={WARDS_BY_PROVINCE[form.province] ?? []}
+                    value={form.ward || null}
+                    disabled={!form.province}
+                    onChange={(_, v) => setField("ward", v ?? "")}
+                    slotProps={{
+                      popper: {
+                        modifiers: [
+                          { name: "offset", options: { offset: [0, 8] } },
+                        ],
+                      },
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Phường / Xã"
+                        size="small"
+                        fullWidth
+                      />
+                    )}
+                  />
+
+                  <div className="col-span-2">
+                    <TextField
+                      label="Địa chỉ"
                       value={form.address}
                       onChange={(e) => setField("address", e.target.value)}
+                      size="small"
+                      fullWidth
                     />
                   </div>
                 </div>
@@ -1358,20 +1361,18 @@ export default function UserPage() {
               Khởi tạo mật khẩu cho tài khoản{" "}
               <strong>{resetTarget?.username}</strong>
             </p>
-            <input
-              className={`h-[42px] w-full rounded-md border px-3.5 text-sm outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] ${resetPwdError ? "border-danger" : "border-line"}`}
+
+            <PasswordField
+              label="Mật khẩu mới"
               value={resetPwd}
-              onChange={(e) => {
-                setResetPwd(e.target.value);
+              onChange={(v) => {
+                setResetPwd(v);
                 if (resetPwdError) setResetPwdError(null);
               }}
-              placeholder="Nhập mật khẩu mới mong muốn"
+              autoComplete="new-password"
+              hasError={!!resetPwdError}
+              helperText={resetPwdError ?? undefined}
             />
-            {resetPwdError && (
-              <FormHelperText error sx={{ mt: 0.5, mx: 0, fontSize: "11px" }}>
-                {resetPwdError}
-              </FormHelperText>
-            )}
           </div>
           <div className="flex justify-end gap-3 px-6 pb-5">
             <button
