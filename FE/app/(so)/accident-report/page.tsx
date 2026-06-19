@@ -33,7 +33,7 @@ const fmtRate = (n: number, d: number) =>
 export default function AccidentReportPage() {
   const [view, setView] = useState<ViewMode>("list");
   const [reports, setReports] = useState<AccidentReport[]>([]);
-  const [year, setYear] = useState("2024");
+  const [year, setYear] = useState("");
 
   useEffect(() => {
     getAccidentReportList({ page: 1, pageSize: 1000, nam: year || undefined })

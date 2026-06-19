@@ -31,11 +31,11 @@ export function Modal({
       }`}
     >
       <div
-        className={`w-[400px] overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
+        className={`w-[400px] rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
           open ? "translate-y-0" : "translate-y-3"
         }`}
       >
-        <div className="bg-primary px-5 py-4 text-center">
+        <div className="bg-primary px-5 py-4 text-center rounded-t-[10px]">
           <h3 className="text-base font-semibold tracking-wide text-white">
             {title}
           </h3>

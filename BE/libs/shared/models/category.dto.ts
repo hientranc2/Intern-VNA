@@ -74,11 +74,6 @@ export class CreateTreeNodeDto {
 
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => {
-    if (value === null || value === undefined) return undefined;
-    const trimmed = String(value).trim();
-    return trimmed === '' ? undefined : trimmed;
-  })
   cha?: string;
 }
 
@@ -88,4 +83,15 @@ export class UpdateTreeNodeDto {
   @IsNotEmpty({ message: 'Tên không được để trống' })
   @Transform(({ value }) => value?.trim())
   ten?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(4)
+  @Type(() => Number)
+  cap?: number;
+
+  @IsOptional()
+  @IsString()
+  cha?: string;
 }

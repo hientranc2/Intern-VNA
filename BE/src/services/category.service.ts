@@ -97,8 +97,56 @@ export class CategoryService {
   ): Promise<InjuryType> {
     const item = await this.injuryTypeRepo.findOne({ where: { id } });
     if (!item) throw new NotFoundException('Không tìm thấy loại chấn thương');
-    if (dto.ten !== undefined) item.ten = dto.ten;
+
+    if (dto.ten !== undefined) {
+      item.ten = dto.ten;
+    }
+
+    if (dto.cha !== undefined) {
+      const newCha = dto.cha ? dto.cha.trim() : '';
+      if (newCha === item.ma) {
+        throw new ConflictException('Mục cha không được trùng với mã hiện tại');
+      }
+
+      // Check circular reference
+      if (newCha) {
+        let currentCha = newCha;
+        while (currentCha) {
+          const parentNode = await this.injuryTypeRepo.findOne({ where: { ma: currentCha } });
+          if (!parentNode) {
+            throw new NotFoundException('Không tìm thấy loại chấn thương cha');
+          }
+          if (parentNode.ma === item.ma) {
+            throw new ConflictException('Mục cha không thể là mục con cháu của mục hiện tại');
+          }
+          currentCha = parentNode.cha;
+        }
+      }
+
+      const oldCha = item.cha;
+      if (oldCha !== newCha) {
+        item.cha = newCha;
+        const parentNode = newCha ? await this.injuryTypeRepo.findOne({ where: { ma: newCha } }) : null;
+        const newCap = parentNode ? Math.min(parentNode.cap + 1, 4) : 1;
+        const diffCap = newCap - item.cap;
+        item.cap = newCap;
+
+        if (diffCap !== 0) {
+          await this.updateInjuryTypeDescendants(item.ma, diffCap);
+        }
+      }
+    }
+
     return this.injuryTypeRepo.save(item);
+  }
+
+  private async updateInjuryTypeDescendants(parentMa: string, diffCap: number): Promise<void> {
+    const children = await this.injuryTypeRepo.find({ where: { cha: parentMa } });
+    for (const child of children) {
+      child.cap = Math.min(Math.max(child.cap + diffCap, 1), 4);
+      await this.injuryTypeRepo.save(child);
+      await this.updateInjuryTypeDescendants(child.ma, diffCap);
+    }
   }
 
   async removeInjuryType(id: number): Promise<{ message: string }> {
@@ -129,8 +177,56 @@ export class CategoryService {
   ): Promise<Occupation> {
     const item = await this.occupationRepo.findOne({ where: { id } });
     if (!item) throw new NotFoundException('Không tìm thấy nghề nghiệp');
-    if (dto.ten !== undefined) item.ten = dto.ten;
+
+    if (dto.ten !== undefined) {
+      item.ten = dto.ten;
+    }
+
+    if (dto.cha !== undefined) {
+      const newCha = dto.cha ? dto.cha.trim() : '';
+      if (newCha === item.ma) {
+        throw new ConflictException('Mục cha không được trùng với mã hiện tại');
+      }
+
+      // Check circular reference
+      if (newCha) {
+        let currentCha = newCha;
+        while (currentCha) {
+          const parentNode = await this.occupationRepo.findOne({ where: { ma: currentCha } });
+          if (!parentNode) {
+            throw new NotFoundException('Không tìm thấy nghề nghiệp cha');
+          }
+          if (parentNode.ma === item.ma) {
+            throw new ConflictException('Mục cha không thể là mục con cháu của mục hiện tại');
+          }
+          currentCha = parentNode.cha;
+        }
+      }
+
+      const oldCha = item.cha;
+      if (oldCha !== newCha) {
+        item.cha = newCha;
+        const parentNode = newCha ? await this.occupationRepo.findOne({ where: { ma: newCha } }) : null;
+        const newCap = parentNode ? Math.min(parentNode.cap + 1, 4) : 1;
+        const diffCap = newCap - item.cap;
+        item.cap = newCap;
+
+        if (diffCap !== 0) {
+          await this.updateOccupationDescendants(item.ma, diffCap);
+        }
+      }
+    }
+
     return this.occupationRepo.save(item);
+  }
+
+  private async updateOccupationDescendants(parentMa: string, diffCap: number): Promise<void> {
+    const children = await this.occupationRepo.find({ where: { cha: parentMa } });
+    for (const child of children) {
+      child.cap = Math.min(Math.max(child.cap + diffCap, 1), 4);
+      await this.occupationRepo.save(child);
+      await this.updateOccupationDescendants(child.ma, diffCap);
+    }
   }
 
   async removeOccupation(id: number): Promise<{ message: string }> {

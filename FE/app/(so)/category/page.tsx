@@ -7,10 +7,9 @@ import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckb
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
+import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 import {
   CAP_LABELS,
-  INJURY_TYPE_PARENTS,
-  OCCUPATION_PARENTS,
   type CategoryTab,
   type InjuryFactor,
   type TreeNode,
@@ -18,6 +17,7 @@ import {
 import {
   getInjuryFactorList,
   createInjuryFactor,
+  updateInjuryFactor,
   deleteInjuryFactor,
   toggleInjuryFactorActive,
   getInjuryTypeList,
@@ -161,7 +161,7 @@ export default function CategoryPage() {
     setEditId(r.id);
     setInputMa(r.ma);
     setInputTen(r.ten);
-    setInputCha(r.cha);
+    setInputCha(r.cha || "");
     setInputActive("1");
     setPanelErrors({});
     setPanelOpen(true);
@@ -178,29 +178,38 @@ export default function CategoryPage() {
     setPanelErrors({});
     const ma = inputMa.trim();
     const ten = inputTen.trim();
+    const cha = inputCha.trim();
     setSaving(true);
     try {
       if (tab === "factor") {
-        const created = await createInjuryFactor({ ma, ten, active: inputActive === "1" });
-        setFactors((prev) => [created, ...prev]);
+        if (isEdit && editId != null) {
+          const updated = await updateInjuryFactor(editId, { ten, active: inputActive === "1" });
+          setFactors((prev) => prev.map((r) => (r.id === editId ? updated : r)));
+        } else {
+          const created = await createInjuryFactor({ ma, ten, active: inputActive === "1" });
+          setFactors((prev) => [created, ...prev]);
+        }
       } else {
         const isType = tab === "injuryType";
-        const list = isType ? injuryTypes : occupations;
-        const setter = isType ? setInjuryTypes : setOccupations;
         if (isEdit && editId != null) {
-          const updated = isType
-            ? await updateInjuryType(editId, { ten })
-            : await updateOccupation(editId, { ten });
-          setter((prev) => prev.map((r) => (r.id === editId ? updated : r)));
+          await (isType
+            ? updateInjuryType(editId, { ten, cha: cha || "" })
+            : updateOccupation(editId, { ten, cha: cha || "" }));
         } else {
-          const cha = inputCha.trim();
+          const list = isType ? injuryTypes : occupations;
           const parent = cha ? list.find((n) => n.ma === cha) : undefined;
           const cap = parent ? Math.min(parent.cap + 1, 4) : 1;
-          const payload = { ma, ten, cap, cha: cha || undefined };
-          const created = isType
-            ? await createInjuryType(payload)
-            : await createOccupation(payload);
-          setter((prev) => [created, ...prev]);
+          const payload = { ma, ten, cap, cha: cha || "" };
+          await (isType ? createInjuryType(payload) : createOccupation(payload));
+        }
+
+        // Refetch tree list from database to ensure correct level and hierarchical order
+        if (isType) {
+          const freshData = await getInjuryTypeList();
+          setInjuryTypes(freshData);
+        } else {
+          const freshData = await getOccupationList();
+          setOccupations(freshData);
         }
       }
       setPanelOpen(false);
@@ -221,10 +230,12 @@ export default function CategoryPage() {
         setFactors(remove);
       } else if (tab === "injuryType") {
         await Promise.all(ids.map((id) => deleteInjuryType(id)));
-        setInjuryTypes(remove);
+        const freshData = await getInjuryTypeList();
+        setInjuryTypes(freshData);
       } else {
         await Promise.all(ids.map((id) => deleteOccupation(id)));
-        setOccupations(remove);
+        const freshData = await getOccupationList();
+        setOccupations(freshData);
       }
       setSelectedIds(new Set());
       setDeleteConfirmOpen(false);
@@ -235,7 +246,40 @@ export default function CategoryPage() {
     }
   };
 
-  const parentOptions = tab === "injuryType" ? INJURY_TYPE_PARENTS : OCCUPATION_PARENTS;
+  const parentOptions = useMemo(() => {
+    const list = tab === "injuryType" ? injuryTypes : occupations;
+    if (!list) return [];
+    const editNode = isEdit ? list.find((n) => n.id === editId) : null;
+    const editMa = editNode?.ma;
+    const descendantMas = new Set<string>();
+    if (editMa) {
+      const getDescendants = (parentMa: string) => {
+        list.forEach((n) => {
+          if (n.cha === parentMa) {
+            descendantMas.add(n.ma);
+            getDescendants(n.ma);
+          }
+        });
+      };
+      getDescendants(editMa);
+    }
+    return list
+      .filter((node) => node.cap < 4 && (!isEdit || (node.id !== editId && !descendantMas.has(node.ma))))
+      .map((node) => ({
+        value: node.ma,
+        label: `${node.ma} - ${node.ten.replace(/^[–—\-\s]+/, "")}`,
+      }));
+  }, [tab, injuryTypes, occupations, isEdit, editId]);
+
+  const parentStringOptions = useMemo(() => {
+    return parentOptions.map((o) => o.label);
+  }, [parentOptions]);
+
+  const selectedParentLabel = useMemo(() => {
+    if (!inputCha) return "";
+    const match = parentOptions.find((o) => o.value === inputCha);
+    return match ? match.label : "";
+  }, [inputCha, parentOptions]);
 
   return (
     <>
@@ -729,26 +773,24 @@ export default function CategoryPage() {
           </div>
         ) : (
           <div className="mb-4">
-            <TextField
+            <SearchableSelect
               label={
                 tab === "injuryType"
                   ? "Tên loại chấn thương cha"
                   : "Nhóm ngành cha"
               }
-              select
-              value={inputCha}
-              onChange={(e) => setInputCha(e.target.value)}
-              size="small"
-              fullWidth
+              options={parentStringOptions}
+              value={selectedParentLabel}
+              onChange={(val) => {
+                if (!val) {
+                  setInputCha("");
+                } else {
+                  const ma = val.split(" - ")[0];
+                  setInputCha(ma);
+                }
+              }}
               required={tab === "injuryType"}
-            >
-              <MenuItem value="">-- Không có (Cấp 1) --</MenuItem>
-              {parentOptions.map((o) => (
-                <MenuItem key={o.value} value={o.value}>
-                  {o.label}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
           </div>
         )}
       </Modal>
