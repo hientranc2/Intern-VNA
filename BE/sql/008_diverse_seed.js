@@ -185,23 +185,58 @@ async function seedAccidentReports(c, businesses, cfgByYear) {
       const cfg = cfgByYear[y];
       if (!cfg) continue;
       const status = STATUSES_TNLD[seed % STATUSES_TNLD.length];
+      
       const soVu = ri(seed * 1.7, 5);
-      const rows = JSON.stringify({
-        '1': [2 + ri(seed, 8), ri(seed + 1, 3), ri(seed + 2, 2), 10 + ri(seed, 20), 0, 5, 0, 5, 0, 10, 0],
-        '101': [1 + ri(seed + 3, 4), ri(seed + 4, 2), 0, 5, 0, 3, 0, 2, 0, 6, 0],
-      });
+      const soVuCoNguoiChet = soVu > 0 ? ri(seed * 2.1, soVu) : 0;
+      const soNguoiBiNan = soVu > 0 ? soVu + ri(seed, 3) : 0;
+      const soLDNu = soNguoiBiNan > 0 ? ri(seed + 5, soNguoiBiNan) : 0;
+      const soNguoiBiChet = soVuCoNguoiChet > 0 ? ri(seed * 3.3, soVuCoNguoiChet) : 0;
+      const soNgayNghi = soVu * 10;
+      const tongSoTien = soVu > 0 ? 1000000 * (1 + ri(seed, 20)) : 0;
+
+      const chiPhiYTe = Math.floor(tongSoTien / 3);
+      const chiPhiTraLuong = Math.floor(tongSoTien / 3);
+      const boiThuongTroCap = tongSoTien - chiPhiYTe - chiPhiTraLuong;
+      const thiethaiTaiSan = soVu > 0 ? 1000000 * ri(seed, 5) : 0;
+
+      const vals = [
+        soVu,
+        soVuCoNguoiChet,
+        0,
+        soNguoiBiNan,
+        soLDNu,
+        soNguoiBiChet,
+        soNguoiBiNan - soNguoiBiChet,
+        soNgayNghi,
+        tongSoTien,
+        chiPhiYTe,
+        chiPhiTraLuong,
+        boiThuongTroCap,
+        thiethaiTaiSan
+      ];
+
+      const phanLoaiRows = {};
+      for (let m = 1; m <= 24; m++) {
+        phanLoaiRows[String(m)] = Array(13).fill(0);
+      }
+      phanLoaiRows['2'] = vals;
+      phanLoaiRows['16'] = vals;
+      phanLoaiRows['24'] = vals;
+
+      const phanLoaiJson = JSON.stringify(phanLoaiRows);
+
       await c.query(
         `INSERT INTO accident_reports
            (enterprise_id, config_id, ten, mst, ky, status, rows, chi_tiet_rows, phan_loai_rows,
             province, ward, loai_hinh, so_lao_dong, so_ld_co_bao_hiem, so_vu, so_vu_co_nguoi_chet,
             so_nguoi_bi_nan, so_ld_nu, so_nguoi_bi_chet, so_ngay_nghi, tong_so_tien, submitted_at)
-         VALUES ($1,$2,$3,$4,'Cả năm',$5,$6::jsonb,'[]'::jsonb,'{}'::jsonb,$7,$8,$9,
-            $10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+         VALUES ($1,$2,$3,$4,'Cả năm',$5,$6::jsonb,'[]'::jsonb,$7::jsonb,$8,$9,$10,
+            $11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
         [
-          b.id, cfg, b.name, b.tax, status, rows, b.province, b.ward, b.type,
-          50 + ri(seed, 200), 40 + ri(seed + 1, 150), soVu, ri(seed * 2.1, 1),
-          soVu + ri(seed, 3), ri(seed + 5, 60), ri(seed * 3.3, 1), soVu * 10,
-          (1000000 * (1 + ri(seed, 20))), status === 'Đang báo cáo' ? null : new Date(`${y}-07-15`),
+          b.id, cfg, b.name, b.tax, status, phanLoaiJson, phanLoaiJson, b.province, b.ward, b.type,
+          50 + ri(seed, 200), 40 + ri(seed + 1, 150), soVu, soVuCoNguoiChet,
+          soNguoiBiNan, soLDNu, soNguoiBiChet, soNgayNghi,
+          tongSoTien, status === 'Đang báo cáo' ? null : new Date(`${y}-07-15`),
         ],
       );
       n++; seed++;
@@ -230,8 +265,10 @@ async function seedAtvsldReports(c, businesses) {
       if (bi % 4 === yi) continue; // mỗi DN vắng 1 năm → tập DN mỗi năm khác nhau
       for (const ky of ['6 tháng', 'Cả năm']) {
         const status = STATUSES_ATVSLD[seed % STATUSES_ATVSLD.length];
-        const batDau = ky === '6 tháng' ? `01/07/${y}` : `15/12/${y}`;
-        const ketThuc = ky === '6 tháng' ? `05/07/${y}` : `10/01/${y + 1}`;
+        const batDau = ky === '6 tháng' ? `15/06/${y}` : `15/12/${y}`;
+        const ketThuc = status === 'Hoàn thành'
+          ? (ky === '6 tháng' ? `05/07/${y}` : `10/01/${y + 1}`)
+          : '';
         const nop = (status === 'Chờ báo cáo' || status === 'Nhập liệu')
           ? ''
           : (ky === '6 tháng' ? `02/07/${y}` : `28/12/${y}`);

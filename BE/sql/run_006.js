@@ -37,9 +37,9 @@ require('dotenv').config();
       mayTongSo: '4', qtTongMau: '60', qtKhongDat: '20', thoiDiemDanhGia: '04/2022',
     });
     const rows = [
-      ['Cả năm', 2022, '15/12/2022', '10/01/2023', '', '', 'Nhập liệu', null],
-      ['6 tháng', 2022, '01/07/2022', '05/07/2022', '02/07/2022', '02/07/2022', 'Chờ tiếp nhận', null],
-      ['Cả năm', 2021, '15/12/2021', '10/01/2022', '28/12/2021', '28/12/2021', 'Từ chối', 'Kiểm tra lại dữ liệu'],
+      ['Cả năm', 2022, '15/12/2022', '', '', '', 'Nhập liệu', null],
+      ['6 tháng', 2022, '01/07/2022', '', '02/07/2022', '02/07/2022', 'Chờ tiếp nhận', null],
+      ['Cả năm', 2021, '15/12/2021', '', '28/12/2021', '28/12/2021', 'Từ chối', 'Kiểm tra lại dữ liệu'],
     ];
     for (const [ky, nam, batDau, ketThuc, nop, capNhat, status, lyDo] of rows) {
       await c.query(

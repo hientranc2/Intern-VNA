@@ -111,9 +111,9 @@ async function seedSampleAtvsldReports(c, businessId) {
     mayTongSo: '4', qtTongMau: '60', qtKhongDat: '20', thoiDiemDanhGia: '04/2022',
   });
   const rows = [
-    ['Cả năm', 2022, '15/12/2022', '10/01/2023', '', '', 'Nhập liệu', null],
-    ['6 tháng', 2022, '01/07/2022', '05/07/2022', '02/07/2022', '02/07/2022', 'Chờ tiếp nhận', null],
-    ['Cả năm', 2021, '15/12/2021', '10/01/2022', '28/12/2021', '28/12/2021', 'Từ chối', 'Kiểm tra lại dữ liệu'],
+    ['Cả năm', 2022, '15/12/2022', '', '', '', 'Nhập liệu', null],
+    ['6 tháng', 2022, '01/07/2022', '', '02/07/2022', '02/07/2022', 'Chờ tiếp nhận', null],
+    ['Cả năm', 2021, '15/12/2021', '', '28/12/2021', '28/12/2021', 'Từ chối', 'Kiểm tra lại dữ liệu'],
   ];
   for (const [ky, nam, batDau, ketThuc, nop, capNhat, status, lyDo] of rows) {
     await c.query(
@@ -142,19 +142,27 @@ async function seedSampleReports(c, businessId) {
   if (cfg.rowCount === 0) return;
   const configId = cfg.rows[0].id;
   const ky = cfg.rows[0].ky;
-  const rows = JSON.stringify({ '1': [2, 1, 1, 10, 0, 5, 0, 5, 0, 10, 0], '101': [2, 1, 1, 10, 0, 5, 0, 5, 0, 10, 0] });
+  const vals = [2, 1, 1, 10, 5, 5, 5, 20, 6000000, 2000000, 2000000, 2000000, 20000000];
+  const phanLoaiRows = {};
+  for (let m = 1; m <= 24; m++) {
+    phanLoaiRows[String(m)] = Array(13).fill(0);
+  }
+  phanLoaiRows['2'] = vals;
+  phanLoaiRows['16'] = vals;
+  phanLoaiRows['24'] = vals;
+  const phanLoaiJson = JSON.stringify(phanLoaiRows);
 
   await c.query(
     `INSERT INTO accident_reports
-       (enterprise_id, config_id, ten, mst, ky, status, rows, chi_tiet_rows,
+       (enterprise_id, config_id, ten, mst, ky, status, rows, chi_tiet_rows, phan_loai_rows,
         province, ward, loai_hinh, so_lao_dong, so_ld_co_bao_hiem, so_vu,
         so_vu_co_nguoi_chet, so_vu_co_2_nguoi_bi_nan, so_nguoi_bi_nan, so_ld_nu,
         so_nguoi_bi_chet, so_nguoi_bi_thuong_nang, so_ngay_nghi, tong_so_tien,
         chi_phi_y_te, chi_phi_tra_luong, boi_thuong_tro_cap, thiet_hai_tai_san, submitted_at)
-     VALUES ($1,$2,$3,$4,$5,'Đã nộp',$6::jsonb,'[]'::jsonb,
+     VALUES ($1,$2,$3,$4,$5,'Đã nộp',$6::jsonb,'[]'::jsonb,$7::jsonb,
         'Thành phố Hồ Chí Minh','Phường Bình Thọ','Công ty trách nhiệm hữu hạn',
         50,45,2,1,1,10,5,5,5,20,6000000,2000000,2000000,2000000,20000000, now())`,
-    [businessId, configId, 'CÔNG TY TNHH DEMO VNA', '0300000001', ky, rows],
+    [businessId, configId, 'CÔNG TY TNHH DEMO VNA', '0300000001', ky, phanLoaiJson, phanLoaiJson],
   );
   console.log('✓ thêm 1 accident_report mẫu (trạng thái Đã nộp)');
 }

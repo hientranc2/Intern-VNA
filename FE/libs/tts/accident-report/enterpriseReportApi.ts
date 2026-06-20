@@ -16,15 +16,35 @@ export type DnReportRecord = {
 
 export type AccidentDetailRow = {
   id: number;
-  hoTen: string;
-  ngaySinh: string;
-  gioiTinh: string;
-  ngheNghiep: string;
-  loaiHopDong: string;
-  mucDo: string;
-  ngayXayRa: string;
-  diaDiem: string;
-  yeuTo: string;
+  hoTen?: string;
+  ngaySinh?: string;
+  gioiTinh?: string;
+  ngheNghiep?: string;
+  loaiHopDong?: string;
+  mucDo?: string;
+  ngayXayRa?: string;
+  diaDiem?: string;
+  yeuTo?: string;
+
+  // New fields
+  nguyenNhan?: string;
+  soVu?: string;
+  soVuCoNguoiChet?: string;
+  soVuCo2NguoiBiNan?: string;
+  soNguoiBiNan?: string;
+  soLDNu?: string;
+  soNguoiBiChet?: string;
+  soNguoiBiThuongNang?: string;
+  nanKhongQL?: string;
+  nuKhongQL?: string;
+  chetKhongQL?: string;
+  thuongKhongQL?: string;
+  chiPhiYTe?: string;
+  chiPhiLuong?: string;
+  chiPhiBTTC?: string;
+  tongSoTien?: string;
+  soNgayNghi?: string;
+  thiethaiTaiSan?: string;
 };
 
 // 13 số liệu tổng hợp phần I (khớp cột phần II của biểu mẫu Sở).

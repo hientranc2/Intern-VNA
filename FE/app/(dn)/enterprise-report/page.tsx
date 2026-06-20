@@ -17,10 +17,14 @@ import type { ReportConfig } from "@/libs/tts/report-config/reportConfigData";
 import {
   TONGHOP_II_GROUPS,
   PHAN_LOAI_COLS,
+  DETAIL_REPORT_ROWS,
+  EMPTY_VALS,
 } from "@/libs/tts/accident-report/accidentReportData";
+import { getBusinessId } from "@/libs/tts/auth/authApi";
+import { getBusinessById, type BusinessDetail } from "@/libs/tts/enterprise/enterpriseApi";
 
 type PageView = "list" | "form";
-type FormSection = "ttct" | "tnld" | "phanloai" | "tongquan";
+type FormSection = "ttct" | "tnld" | "tnld_tc" | "phanloai" | "tongquan";
 type SubTab = "tongSo" | "chiTiet";
 
 type ReportRecord = {
@@ -54,27 +58,44 @@ const formatTime = (dStr?: string | null): string => {
 
 type AccidentDetail = {
   id: number;
-  hoTen: string;
-  ngaySinh: string;
-  gioiTinh: string;
+  hoTen?: string;
+  ngaySinh?: string;
+  gioiTinh?: string;
   ngheNghiep: string;
-  loaiHopDong: string;
-  mucDo: string;
-  ngayXayRa: string;
-  diaDiem: string;
+  loaiHopDong?: string;
+  mucDo?: string;
+  ngayXayRa?: string;
+  diaDiem?: string;
   yeuTo: string;
+
+  // New fields
+  nguyenNhan: string;
+  soVu: string;
+  soVuCoNguoiChet: string;
+  soVuCo2NguoiBiNan: string;
+  soNguoiBiNan: string;
+  soLDNu: string;
+  soNguoiBiChet: string;
+  soNguoiBiThuongNang: string;
+  nanKhongQL: string;
+  nuKhongQL: string;
+  chetKhongQL: string;
+  thuongKhongQL: string;
+  chiPhiYTe: string;
+  chiPhiLuong: string;
+  chiPhiBTTC: string;
+  tongSoTien: string;
+  soNgayNghi: string;
+  thiethaiTaiSan: string;
 };
 
 const SECTION_OPTIONS: { value: FormSection; label: string }[] = [
   { value: "ttct", label: "Thông tin doanh nghiệp" },
+  { value: "tnld", label: "1. Tai nạn lao động" },
   {
-    value: "tnld",
+    value: "tnld_tc",
     label:
       "2. Tai nạn lao động được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ",
-  },
-  {
-    value: "phanloai",
-    label: "3. Phân loại TNLĐ (theo ngành nghề / nguyên nhân / yếu tố)",
   },
   { value: "tongquan", label: "Xem tổng quan báo cáo tai nạn lao động" },
 ];
@@ -92,8 +113,87 @@ const emptyPhanLoai = (): Record<string, string[]> =>
 const parseNum = (s: string): number =>
   Number(String(s).replace(/[^\d]/g, "")) || 0;
 
+const formatNumberString = (val: string): string => {
+  const clean = val.replace(/[^\d]/g, "");
+  if (!clean) return "";
+  return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const normalizeDetail = (d: any): AccidentDetail => {
+  return {
+    id: d.id,
+    hoTen: d.hoTen || "",
+    ngaySinh: d.ngaySinh || "",
+    gioiTinh: d.gioiTinh || "Nam",
+    ngheNghiep: d.ngheNghiep || "Công nhân",
+    loaiHopDong: d.loaiHopDong || "Hợp đồng xác định thời hạn",
+    mucDo: d.mucDo || "Thương nhẹ",
+    ngayXayRa: d.ngayXayRa || "",
+    diaDiem: d.diaDiem || "",
+    
+    nguyenNhan: d.nguyenNhan || "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
+    yeuTo: d.yeuTo || "Thiết bị nâng",
+    soVu: String(d.soVu !== undefined ? d.soVu : "1"),
+    soVuCoNguoiChet: String(d.soVuCoNguoiChet !== undefined ? d.soVuCoNguoiChet : (d.mucDo === "Chết" ? "1" : "0")),
+    soVuCo2NguoiBiNan: String(d.soVuCo2NguoiBiNan !== undefined ? d.soVuCo2NguoiBiNan : "0"),
+    soNguoiBiNan: String(d.soNguoiBiNan !== undefined ? d.soNguoiBiNan : "1"),
+    soLDNu: String(d.soLDNu !== undefined ? d.soLDNu : (d.gioiTinh === "Nữ" ? "1" : "0")),
+    soNguoiBiChet: String(d.soNguoiBiChet !== undefined ? d.soNguoiBiChet : (d.mucDo === "Chết" ? "1" : "0")),
+    soNguoiBiThuongNang: String(d.soNguoiBiThuongNang !== undefined ? d.soNguoiBiThuongNang : (d.mucDo === "Thương nặng" ? "1" : "0")),
+    nanKhongQL: String(d.nanKhongQL !== undefined ? d.nanKhongQL : "0"),
+    nuKhongQL: String(d.nuKhongQL !== undefined ? d.nuKhongQL : "0"),
+    chetKhongQL: String(d.chetKhongQL !== undefined ? d.chetKhongQL : "0"),
+    thuongKhongQL: String(d.thuongKhongQL !== undefined ? d.thuongKhongQL : "0"),
+    chiPhiYTe: String(d.chiPhiYTe !== undefined ? d.chiPhiYTe : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    chiPhiLuong: String(d.chiPhiLuong !== undefined ? d.chiPhiLuong : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    chiPhiBTTC: String(d.chiPhiBTTC !== undefined ? d.chiPhiBTTC : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    tongSoTien: String(d.tongSoTien !== undefined ? d.tongSoTien : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    soNgayNghi: String(d.soNgayNghi !== undefined ? d.soNgayNghi : "0"),
+    thiethaiTaiSan: String(d.thiethaiTaiSan !== undefined ? d.thiethaiTaiSan : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+  };
+};
+
+const InputField = ({
+  label,
+  value,
+  onChange,
+  disabled = false,
+  required = false,
+  suffix = ""
+}: {
+  label: string;
+  value: string;
+  onChange?: (v: string) => void;
+  disabled?: boolean;
+  required?: boolean;
+  suffix?: string;
+}) => {
+  return (
+    <div className="relative flex flex-col mt-2">
+      <label className="absolute -top-2 left-2 bg-white px-1 text-[11px] text-[#6b7280] z-10">
+        {label} {required && <span className="text-danger">*</span>}
+      </label>
+      <div className="relative flex items-center w-full">
+        <input
+          type={suffix ? "text" : "number"}
+          min={suffix ? undefined : 0}
+          className={`${FC} w-full h-[40px] pt-1 pr-16`}
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          disabled={disabled}
+        />
+        {suffix && (
+          <span className="absolute right-3 text-xs text-[#9ca3af] pointer-events-none">
+            {suffix}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const FC =
-  "h-[38px] rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
+  "h-[38px] rounded-md border border-line bg-white px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
 const SC = `${FC} w-full cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 const SELECT_TOP_CLASS = `${FC} min-w-[280px] cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
@@ -106,12 +206,30 @@ const EMPTY_DETAIL: Omit<AccidentDetail, "id"> = {
   hoTen: "",
   ngaySinh: "",
   gioiTinh: "Nam",
-  ngheNghiep: "",
+  ngheNghiep: "Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương",
   loaiHopDong: "Hợp đồng xác định thời hạn",
   mucDo: "Thương nhẹ",
   ngayXayRa: "",
   diaDiem: "",
-  yeuTo: "",
+  yeuTo: "Thiết bị nâng",
+  nguyenNhan: "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
+  soVu: "1",
+  soVuCoNguoiChet: "0",
+  soVuCo2NguoiBiNan: "0",
+  soNguoiBiNan: "0",
+  soLDNu: "0",
+  soNguoiBiChet: "0",
+  soNguoiBiThuongNang: "0",
+  nanKhongQL: "0",
+  nuKhongQL: "0",
+  chetKhongQL: "0",
+  thuongKhongQL: "0",
+  chiPhiYTe: "0",
+  chiPhiLuong: "0",
+  chiPhiBTTC: "0",
+  tongSoTien: "0",
+  soNgayNghi: "0",
+  thiethaiTaiSan: "0",
 };
 
 export default function EnterpriseReportPage() {
@@ -127,6 +245,9 @@ export default function EnterpriseReportPage() {
   const [createYear, setCreateYear] = useState("");
   const [createKy, setCreateKy] = useState("6 tháng");
   const [creating, setCreating] = useState(false);
+
+  const [businessDetail, setBusinessDetail] = useState<BusinessDetail | null>(null);
+  const [activeReport, setActiveReport] = useState<ReportRecord | null>(null);
 
   const matchedConfig = useMemo(() => {
     return availableConfigs.find(
@@ -184,6 +305,13 @@ export default function EnterpriseReportPage() {
     getDnReportList()
       .then(setReports)
       .catch(() => {});
+
+    const bizId = getBusinessId();
+    if (bizId) {
+      getBusinessById(bizId)
+        .then(setBusinessDetail)
+        .catch(() => {});
+    }
   }, []);
 
   // Thông tin công ty
@@ -191,24 +319,24 @@ export default function EnterpriseReportPage() {
   const [totalNu, setTotalNu] = useState("5");
   const [tongLuong, setTongLuong] = useState("10.2");
 
-  // Tổng số vụ
+  // Tổng số vụ (Section 1)
   const [tongVu, setTongVu] = useState("1");
   const [vuChet, setVuChet] = useState("1");
   const [vuNhieu, setVuNhieu] = useState("0");
 
-  // Số nạn nhân
+  // Số nạn nhân (Section 1)
   const [tongNan, setTongNan] = useState("10");
   const [tongNanNu, setTongNanNu] = useState("5");
   const [tongChetNN, setTongChetNN] = useState("5");
   const [tongThuongNang, setTongThuongNang] = useState("10");
 
-  // Không thuộc quyền quản lý
+  // Không thuộc quyền quản lý (Section 1)
   const [nanKhongQL, setNanKhongQL] = useState("0");
   const [nuKhongQL, setNuKhongQL] = useState("0");
   const [chetKhongQL, setChetKhongQL] = useState("0");
   const [thuongKhongQL, setThuongKhongQL] = useState("0");
 
-  // Thiệt hại
+  // Thiệt hại (Section 1)
   const [chiPhiYTe, setChiPhiYTe] = useState("10.000.000");
   const [chiPhiLuong, setChiPhiLuong] = useState("10.000.000");
   const [chiPhiBTTC, setChiPhiBTTC] = useState("10.000.000");
@@ -216,36 +344,355 @@ export default function EnterpriseReportPage() {
   const [soNgayNghi, setSoNgayNghi] = useState("20");
   const [thiHaiTaiSan, setThiHaiTaiSan] = useState("10.000.000");
 
+  // --- Section 2: Tai nạn được hưởng trợ cấp ... ---
+  // Tổng số vụ (Section 2)
+  const [tcTongVu, setTcTongVu] = useState("0");
+  const [tcVuChet, setTcVuChet] = useState("0");
+  const [tcVuNhieu, setTcVuNhieu] = useState("0");
+
+  // Số nạn nhân (Section 2)
+  const [tcTongNan, setTcTongNan] = useState("0");
+  const [tcTongNanNu, setTcTongNanNu] = useState("0");
+  const [tcTongChetNN, setTcTongChetNN] = useState("0");
+  const [tcTongThuongNang, setTcTongThuongNang] = useState("0");
+
+  // Không thuộc quyền quản lý (Section 2)
+  const [tcNanKhongQL, setTcNanKhongQL] = useState("0");
+  const [tcNuKhongQL, setTcNuKhongQL] = useState("0");
+  const [tcChetKhongQL, setTcChetKhongQL] = useState("0");
+  const [tcThuongKhongQL, setTcThuongKhongQL] = useState("0");
+
+  // Thiệt hại (Section 2)
+  const [tcChiPhiYTe, setTcChiPhiYTe] = useState("0");
+  const [tcChiPhiLuong, setTcChiPhiLuong] = useState("0");
+  const [tcChiPhiBTTC, setTcChiPhiBTTC] = useState("0");
+  const [tcTongChiPhi, setTcTongChiPhi] = useState("0");
+  const [tcSoNgayNghi, setTcSoNgayNghi] = useState("0");
+  const [tcThiHaiTaiSan, setTcThiHaiTaiSan] = useState("0");
+
   // Chi tiết từng vụ
   const [accidentDetails, setAccidentDetails] = useState<AccidentDetail[]>([]);
+  const [savedOverviewRows, setSavedOverviewRows] = useState<Record<string, number[]>>({});
 
   // Báo cáo đang chỉnh + lưới phân loại phần II + cờ đang lưu
   const [editingId, setEditingId] = useState<number | null>(null);
   const [phanLoai, setPhanLoai] =
     useState<Record<string, string[]>>(emptyPhanLoai);
   const [saving, setSaving] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Record<number, boolean>>({});
+  const [isReadOnly, setIsReadOnly] = useState(false);
   const originalReportRef = useRef<{
     tongHop: any;
     phanLoai: any;
+    tongHopRows: any;
+    chiTietRows: any;
   } | null>(null);
 
-  const setPhanLoaiCell = (ma: string, col: number, val: string) =>
-    setPhanLoai((prev) => ({
-      ...prev,
-      [ma]: prev[ma].map((c, i) => (i === col ? val : c)),
-    }));
+  const mapCauseToCode = (cause: string): string => {
+    if (!cause) return "16";
+    if (cause.includes("Không có thiết bị an toàn")) return "9";
+    if (cause.includes("Không có phương tiện bảo vệ")) return "10";
+    if (cause.includes("Tổ chức lao động")) return "11";
+    if (cause.includes("Chưa huấn luyện")) return "12";
+    if (cause.includes("Không có quy trình")) return "13";
+    if (cause.includes("Quy phạm nội quy")) return "13";
+    if (cause.includes("Điều kiện làm việc")) return "14";
+    if (cause.includes("Không sử dụng phương tiện")) return "15";
+    return "16";
+  };
 
-  const openReport = (r: ReportRecord) => {
+  const mapYeuToToCode = (yeuTo: string): string => {
+    if (yeuTo === "Ngã") return "17";
+    if (yeuTo === "Vật rơi, vật văng bắn") return "18";
+    if (yeuTo === "Máy, thiết bị") return "19";
+    if (yeuTo === "Phương tiện vận tải") return "20";
+    if (yeuTo === "Điện giật") return "21";
+    if (yeuTo === "Chất độc hại") return "22";
+    if (yeuTo === "Bỏng") return "23";
+    return "24";
+  };
+
+  const checkDetailsChanged = (): boolean => {
+    const orig = originalReportRef.current?.chiTietRows || [];
+    if (accidentDetails.length !== orig.length) return true;
+    for (let i = 0; i < accidentDetails.length; i++) {
+      const curr = accidentDetails[i];
+      const prev = orig[i];
+      if (!prev) return true;
+      if (
+        curr.nguyenNhan !== prev.nguyenNhan ||
+        curr.yeuTo !== prev.yeuTo ||
+        curr.ngheNghiep !== prev.ngheNghiep ||
+        curr.soVu !== prev.soVu ||
+        curr.soVuCoNguoiChet !== prev.soVuCoNguoiChet ||
+        curr.soVuCo2NguoiBiNan !== prev.soVuCo2NguoiBiNan ||
+        curr.soNguoiBiNan !== prev.soNguoiBiNan ||
+        curr.soLDNu !== prev.soLDNu ||
+        curr.soNguoiBiChet !== prev.soNguoiBiChet ||
+        curr.soNguoiBiThuongNang !== prev.soNguoiBiThuongNang ||
+        curr.nanKhongQL !== prev.nanKhongQL ||
+        curr.nuKhongQL !== prev.nuKhongQL ||
+        curr.chetKhongQL !== prev.chetKhongQL ||
+        curr.thuongKhongQL !== prev.thuongKhongQL ||
+        curr.chiPhiYTe !== prev.chiPhiYTe ||
+        curr.chiPhiLuong !== prev.chiPhiLuong ||
+        curr.chiPhiBTTC !== prev.chiPhiBTTC ||
+        curr.tongSoTien !== prev.tongSoTien ||
+        curr.soNgayNghi !== prev.soNgayNghi ||
+        curr.thiethaiTaiSan !== prev.thiethaiTaiSan
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    if (!checkDetailsChanged()) return;
+
+    if (accidentDetails.length === 0) {
+      setTongVu("0");
+      setVuChet("0");
+      setVuNhieu("0");
+      setTongNan("0");
+      setTongNanNu("0");
+      setTongChetNN("0");
+      setTongThuongNang("0");
+      setNanKhongQL("0");
+      setNuKhongQL("0");
+      setChetKhongQL("0");
+      setThuongKhongQL("0");
+      setChiPhiYTe("0");
+      setChiPhiLuong("0");
+      setChiPhiBTTC("0");
+      setTongChiPhi("0");
+      setSoNgayNghi("0");
+      setThiHaiTaiSan("0");
+
+      setPhanLoai((prev) => {
+        const next = { ...prev };
+        for (const ma of PHAN_LOAI_MAS) {
+          next[ma] = Array(13).fill("0");
+        }
+        return next;
+      });
+      return;
+    }
+
+    let totalV = 0;
+    let vChetCount = 0;
+    let vNhieuCount = 0;
+    let totalN = 0;
+    let totalN_Nu = 0;
+    let totalChet = 0;
+    let totalThuong = 0;
+    let totalNanKQL = 0;
+    let totalNuKQL = 0;
+    let totalChetKQL = 0;
+    let totalThuongKQL = 0;
+    let totalYTe = 0;
+    let totalLuong = 0;
+    let totalBTTC = 0;
+    let totalTongTien = 0;
+    let totalNgayNghi = 0;
+    let totalThiHaiTS = 0;
+
+    accidentDetails.forEach((d) => {
+      totalV += parseNum(d.soVu);
+      vChetCount += parseNum(d.soVuCoNguoiChet);
+      vNhieuCount += parseNum(d.soVuCo2NguoiBiNan);
+      totalN += parseNum(d.soNguoiBiNan);
+      totalN_Nu += parseNum(d.soLDNu);
+      totalChet += parseNum(d.soNguoiBiChet);
+      totalThuong += parseNum(d.soNguoiBiThuongNang);
+      totalNanKQL += parseNum(d.nanKhongQL);
+      totalNuKQL += parseNum(d.nuKhongQL);
+      totalChetKQL += parseNum(d.chetKhongQL);
+      totalThuongKQL += parseNum(d.thuongKhongQL);
+      totalYTe += parseNum(d.chiPhiYTe);
+      totalLuong += parseNum(d.chiPhiLuong);
+      totalBTTC += parseNum(d.chiPhiBTTC);
+      totalTongTien += parseNum(d.tongSoTien);
+      totalNgayNghi += parseNum(d.soNgayNghi);
+      totalThiHaiTS += parseNum(d.thiethaiTaiSan);
+    });
+
+    const formatCost = (num: number): string => {
+      return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    };
+
+    setTongVu(String(totalV));
+    setVuChet(String(vChetCount));
+    setVuNhieu(String(vNhieuCount));
+    setTongNan(String(totalN));
+    setTongNanNu(String(totalN_Nu));
+    setTongChetNN(String(totalChet));
+    setTongThuongNang(String(totalThuong));
+    setNanKhongQL(String(totalNanKQL));
+    setNuKhongQL(String(totalNuKQL));
+    setChetKhongQL(String(totalChetKQL));
+    setThuongKhongQL(String(totalThuongKQL));
+    setChiPhiYTe(formatCost(totalYTe));
+    setChiPhiLuong(formatCost(totalLuong));
+    setChiPhiBTTC(formatCost(totalBTTC));
+    setTongChiPhi(formatCost(totalTongTien));
+    setSoNgayNghi(String(totalNgayNghi));
+    setThiHaiTaiSan(formatCost(totalThiHaiTS));
+
+    setPhanLoai((prev) => {
+      const next = { ...prev };
+      for (const ma of PHAN_LOAI_MAS) {
+        next[ma] = Array(13).fill("0");
+      }
+
+      accidentDetails.forEach((d) => {
+        const sectorCode = getDefaultSector();
+        const causeCode = mapCauseToCode(d.nguyenNhan);
+        const factorCode = mapYeuToToCode(d.yeuTo);
+
+        const addValues = (code: string) => {
+          if (!next[code]) {
+            next[code] = Array(13).fill("0");
+          }
+          next[code] = next[code].map((c, i) => {
+            const current = parseNum(c);
+            let added = 0;
+            if (i === 0) added = parseNum(d.soVu);
+            else if (i === 1) added = parseNum(d.soVuCoNguoiChet);
+            else if (i === 2) added = parseNum(d.soVuCo2NguoiBiNan);
+            else if (i === 3) added = parseNum(d.soNguoiBiNan);
+            else if (i === 4) added = parseNum(d.soLDNu);
+            else if (i === 5) added = parseNum(d.soNguoiBiChet);
+            else if (i === 6) added = parseNum(d.soNguoiBiThuongNang);
+            else if (i === 7) added = parseNum(d.soNgayNghi);
+            else if (i === 8) added = parseNum(d.tongSoTien);
+            else if (i === 9) added = parseNum(d.chiPhiYTe);
+            else if (i === 10) added = parseNum(d.chiPhiLuong);
+            else if (i === 11) added = parseNum(d.chiPhiBTTC);
+            else if (i === 12) added = parseNum(d.thiethaiTaiSan);
+            return String(current + added);
+          });
+        };
+
+        addValues(sectorCode);
+        addValues(causeCode);
+        addValues(factorCode);
+      });
+
+      return next;
+    });
+  }, [accidentDetails, businessDetail]);
+
+  const getDefaultSector = (): string => {
+    const ind = (businessDetail?.mainIndustry || "").toLowerCase();
+    if (ind.includes("khai khoáng") || ind.includes("khai thác")) return "1";
+    if (ind.includes("chế biến") || ind.includes("chế tạo") || ind.includes("sản xuất") || ind.includes("cơ khí")) return "2";
+    if (ind.includes("điện") || ind.includes("khí đốt")) return "3";
+    if (ind.includes("cung cấp nước") || ind.includes("thoát nước") || ind.includes("xử lý chất thải")) return "4";
+    if (ind.includes("xây dựng")) return "5";
+    if (ind.includes("vận tải") || ind.includes("kho bãi") || ind.includes("logistics")) return "6";
+    if (ind.includes("nông nghiệp") || ind.includes("lâm nghiệp") || ind.includes("thủy sản")) return "7";
+    return "8"; // Ngành khác
+  };
+
+  const setPhanLoaiCell = (ma: string, col: number, val: string) => {
+    setPhanLoai((prev) => {
+      const next = {
+        ...prev,
+        [ma]: prev[ma].map((c, i) => (i === col ? val : c)),
+      };
+
+      const maNum = Number(ma);
+      let sum = 0;
+
+      if (maNum >= 1 && maNum <= 8) {
+        for (let m = 1; m <= 8; m++) sum += parseNum(next[String(m)]?.[col] ?? "0");
+        const cause = "16";
+        let sum2 = 0;
+        for (let m = 9; m <= 16; m++) if (String(m) !== cause) sum2 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[cause] = next[cause].map((c, i) => (i === col ? String(Math.max(0, sum - sum2)) : c));
+        const factor = "24";
+        let sum3 = 0;
+        for (let m = 17; m <= 24; m++) if (String(m) !== factor) sum3 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[factor] = next[factor].map((c, i) => (i === col ? String(Math.max(0, sum - sum3)) : c));
+      } else if (maNum >= 9 && maNum <= 16) {
+        for (let m = 9; m <= 16; m++) sum += parseNum(next[String(m)]?.[col] ?? "0");
+        const sec = getDefaultSector();
+        let sum1 = 0;
+        for (let m = 1; m <= 8; m++) if (String(m) !== sec) sum1 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[sec] = next[sec].map((c, i) => (i === col ? String(Math.max(0, sum - sum1)) : c));
+        const factor = "24";
+        let sum3 = 0;
+        for (let m = 17; m <= 24; m++) if (String(m) !== factor) sum3 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[factor] = next[factor].map((c, i) => (i === col ? String(Math.max(0, sum - sum3)) : c));
+      } else if (maNum >= 17 && maNum <= 24) {
+        for (let m = 17; m <= 24; m++) sum += parseNum(next[String(m)]?.[col] ?? "0");
+        const sec = getDefaultSector();
+        let sum1 = 0;
+        for (let m = 1; m <= 8; m++) if (String(m) !== sec) sum1 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[sec] = next[sec].map((c, i) => (i === col ? String(Math.max(0, sum - sum1)) : c));
+        const cause = "16";
+        let sum2 = 0;
+        for (let m = 9; m <= 16; m++) if (String(m) !== cause) sum2 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[cause] = next[cause].map((c, i) => (i === col ? String(Math.max(0, sum - sum2)) : c));
+      }
+
+      const sumStr = String(sum);
+      if (col === 0) setTongVu(sumStr);
+      else if (col === 1) setVuChet(sumStr);
+      else if (col === 2) setVuNhieu(sumStr);
+      else if (col === 3) setTongNan(sumStr);
+      else if (col === 4) setTongNanNu(sumStr);
+      else if (col === 5) setTongChetNN(sumStr);
+      else if (col === 6) setTongThuongNang(sumStr);
+      else if (col === 7) setSoNgayNghi(sumStr);
+      else if (col === 8) setTongChiPhi(sumStr);
+      else if (col === 9) setChiPhiYTe(sumStr);
+      else if (col === 10) setChiPhiLuong(sumStr);
+      else if (col === 11) setChiPhiBTTC(sumStr);
+      else if (col === 12) setThiHaiTaiSan(sumStr);
+
+      return next;
+    });
+  };
+
+  const updateFieldAndPhanLoai = (setter: (v: string) => void, col: number, val: string) => {
+    setter(val);
+    const num = parseNum(val);
+    setPhanLoai((prev) => {
+      const next = { ...prev };
+      const sec = getDefaultSector();
+      let sum1 = 0;
+      for (let m = 1; m <= 8; m++) if (String(m) !== sec) sum1 += parseNum(prev[String(m)]?.[col] ?? "0");
+      next[sec] = (next[sec] || Array(13).fill("0")).map((c, i) => (i === col ? String(Math.max(0, num - sum1)) : c));
+      const cause = "16";
+      let sum2 = 0;
+      for (let m = 9; m <= 16; m++) if (String(m) !== cause) sum2 += parseNum(prev[String(m)]?.[col] ?? "0");
+      next[cause] = (next[cause] || Array(13).fill("0")).map((c, i) => (i === col ? String(Math.max(0, num - sum2)) : c));
+      const factor = "24";
+      let sum3 = 0;
+      for (let m = 17; m <= 24; m++) if (String(m) !== factor) sum3 += parseNum(prev[String(m)]?.[col] ?? "0");
+      next[factor] = (next[factor] || Array(13).fill("0")).map((c, i) => (i === col ? String(Math.max(0, num - sum3)) : c));
+      return next;
+    });
+  };
+
+  const openReport = (r: ReportRecord, readOnly: boolean = false) => {
+    setIsReadOnly(readOnly);
     setEditingId(r.id);
-    setSection("ttct");
+    setActiveReport(r);
+    setSection(readOnly ? "tongquan" : "ttct");
     setSubTab("tongSo");
     setView("form");
     getDnReportById(r.id)
       .then((res) => {
         const t = res.form.tongHop;
+        const normalizedChiTiet = (res.form.chiTietRows || []).map(normalizeDetail);
         originalReportRef.current = {
           tongHop: t,
           phanLoai: res.form.phanLoaiRows || {},
+          tongHopRows: res.form.tongSoRows || {},
+          chiTietRows: normalizedChiTiet,
         };
         setTotalLao(String(t.soLaoDong));
         setTongVu(String(t.soVu));
@@ -256,11 +703,56 @@ export default function EnterpriseReportPage() {
         setTongChetNN(String(t.soNguoiBiChet));
         setTongThuongNang(String(t.soNguoiBiThuongNang));
         setSoNgayNghi(String(t.soNgayNghi));
-        setChiPhiYTe(String(t.chiPhiYTe));
-        setChiPhiLuong(String(t.chiPhiTraLuong));
-        setChiPhiBTTC(String(t.boiThuongTroCap));
-        setTongChiPhi(String(t.tongSoTien));
-        setThiHaiTaiSan(String(t.thiethaiTaiSan));
+        setChiPhiYTe(String(t.chiPhiYTe).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+        setChiPhiLuong(String(t.chiPhiTraLuong).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+        setChiPhiBTTC(String(t.boiThuongTroCap).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+        setTongChiPhi(String(t.tongSoTien).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+        setThiHaiTaiSan(String(t.thiethaiTaiSan).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+        
+        setAccidentDetails(normalizedChiTiet);
+        setSavedOverviewRows(res.form.tongSoRows || {});
+
+        const tcVals = res.form.tongSoRows?.["10"];
+        if (Array.isArray(tcVals)) {
+          setTcTongVu(String(tcVals[0] ?? 0));
+          setTcVuChet(String(tcVals[1] ?? 0));
+          setTcVuNhieu(String(tcVals[2] ?? 0));
+          setTcTongNan(String(tcVals[3] ?? 0));
+          setTcNanKhongQL(String(tcVals[4] ?? 0));
+          setTcTongNanNu(String(tcVals[5] ?? 0));
+          setTcNuKhongQL(String(tcVals[6] ?? 0));
+          setTcTongChetNN(String(tcVals[7] ?? 0));
+          setTcChetKhongQL(String(tcVals[8] ?? 0));
+          setTcTongThuongNang(String(tcVals[9] ?? 0));
+          setTcThuongKhongQL(String(tcVals[10] ?? 0));
+          
+          setTcSoNgayNghi(String(tcVals[11] ?? 0));
+          setTcTongChiPhi(String(tcVals[12] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+          setTcChiPhiYTe(String(tcVals[13] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+          setTcChiPhiLuong(String(tcVals[14] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+          setTcChiPhiBTTC(String(tcVals[15] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+          setTcThiHaiTaiSan(String(tcVals[16] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+        } else {
+          setTcTongVu("0");
+          setTcVuChet("0");
+          setTcVuNhieu("0");
+          setTcTongNan("0");
+          setTcNanKhongQL("0");
+          setTcTongNanNu("0");
+          setTcNuKhongQL("0");
+          setTcTongChetNN("0");
+          setTcChetKhongQL("0");
+          setTcTongThuongNang("0");
+          setTcThuongKhongQL("0");
+          
+          setTcSoNgayNghi("0");
+          setTcTongChiPhi("0");
+          setTcChiPhiYTe("0");
+          setTcChiPhiLuong("0");
+          setTcChiPhiBTTC("0");
+          setTcThiHaiTaiSan("0");
+        }
+
         const next = emptyPhanLoai();
         for (const ma of PHAN_LOAI_MAS) {
           const arr = res.form.phanLoaiRows?.[ma];
@@ -351,6 +843,269 @@ export default function EnterpriseReportPage() {
     return true;
   };
 
+  const buildTongSoRows = (): Record<string, number[]> => {
+    const result: Record<string, number[]> = { ...savedOverviewRows };
+
+    result["1"] = [
+      parseNum(tongVu),
+      parseNum(vuChet),
+      parseNum(vuNhieu),
+      parseNum(tongNan),
+      parseNum(nanKhongQL),
+      parseNum(tongNanNu),
+      parseNum(nuKhongQL),
+      parseNum(tongChetNN),
+      parseNum(chetKhongQL),
+      parseNum(tongThuongNang),
+      parseNum(thuongKhongQL)
+    ];
+
+    result["10"] = [
+      parseNum(tcTongVu),
+      parseNum(tcVuChet),
+      parseNum(tcVuNhieu),
+      parseNum(tcTongNan),
+      parseNum(tcNanKhongQL),
+      parseNum(tcTongNanNu),
+      parseNum(tcNuKhongQL),
+      parseNum(tcTongChetNN),
+      parseNum(tcChetKhongQL),
+      parseNum(tcTongThuongNang),
+      parseNum(tcThuongKhongQL),
+      parseNum(tcSoNgayNghi),
+      parseNum(tcTongChiPhi),
+      parseNum(tcChiPhiYTe),
+      parseNum(tcChiPhiLuong),
+      parseNum(tcChiPhiBTTC),
+      parseNum(tcThiHaiTaiSan)
+    ];
+
+    const getCauseRow = (key: string): number[] => {
+      const rowVal = phanLoai[key] || Array(13).fill("0");
+      let nanKQL = 0;
+      let nuKQL = 0;
+      let chetKQL = 0;
+      let thuongKQL = 0;
+
+      if (accidentDetails.length > 0) {
+        const filtered = accidentDetails.filter(d => mapCauseToCode(d.nguyenNhan) === key);
+        nanKQL = filtered.reduce((sum, d) => sum + parseNum(d.nanKhongQL), 0);
+        nuKQL = filtered.reduce((sum, d) => sum + parseNum(d.nuKhongQL), 0);
+        chetKQL = filtered.reduce((sum, d) => sum + parseNum(d.chetKhongQL), 0);
+        thuongKQL = filtered.reduce((sum, d) => sum + parseNum(d.thuongKhongQL), 0);
+      }
+      
+      return [
+        parseNum(rowVal[0]),
+        parseNum(rowVal[1]),
+        parseNum(rowVal[2]),
+        parseNum(rowVal[3]),
+        nanKQL,
+        parseNum(rowVal[4]),
+        nuKQL,
+        parseNum(rowVal[5]),
+        chetKQL,
+        parseNum(rowVal[6]),
+        thuongKQL
+      ];
+    };
+    
+    result["1"] = getCauseRow("9");
+    result["2"] = getCauseRow("10");
+    result["3"] = getCauseRow("11");
+    result["4"] = getCauseRow("12");
+    result["5"] = getCauseRow("13");
+    result["6"] = getCauseRow("14");
+    result["7"] = getCauseRow("13");
+    result["8"] = getCauseRow("15");
+    result["9"] = getCauseRow("16");
+
+    const getVictimRow = (filterFn: (d: AccidentDetail) => boolean): number[] => {
+      const filtered = accidentDetails.filter(filterFn);
+      if (filtered.length === 0) return Array(11).fill(0);
+      
+      const countVu = filtered.reduce((sum, d) => sum + parseNum(d.soVu), 0);
+      const countVuChet = filtered.reduce((sum, d) => sum + parseNum(d.soVuCoNguoiChet), 0);
+      const countVuNhieu = filtered.reduce((sum, d) => sum + parseNum(d.soVuCo2NguoiBiNan), 0);
+      const countNan = filtered.reduce((sum, d) => sum + parseNum(d.soNguoiBiNan), 0);
+      const countNanKhongQL = filtered.reduce((sum, d) => sum + parseNum(d.nanKhongQL), 0);
+      const countNu = filtered.reduce((sum, d) => sum + parseNum(d.soLDNu), 0);
+      const countNuKhongQL = filtered.reduce((sum, d) => sum + parseNum(d.nuKhongQL), 0);
+      const countChet = filtered.reduce((sum, d) => sum + parseNum(d.soNguoiBiChet), 0);
+      const countChetKhongQL = filtered.reduce((sum, d) => sum + parseNum(d.chetKhongQL), 0);
+      const countThuongNang = filtered.reduce((sum, d) => sum + parseNum(d.soNguoiBiThuongNang), 0);
+      const countThuongKhongQL = filtered.reduce((sum, d) => sum + parseNum(d.thuongKhongQL), 0);
+      
+      return [
+        countVu,
+        countVuChet,
+        countVuNhieu,
+        countNan,
+        countNanKhongQL,
+        countNu,
+        countNuKhongQL,
+        countChet,
+        countChetKhongQL,
+        countThuongNang,
+        countThuongKhongQL
+      ];
+    };
+
+    if (accidentDetails.length > 0) {
+      result["101"] = getVictimRow((d) => d.yeuTo === "Thiết bị nâng");
+      result["102"] = getVictimRow((d) => d.ngheNghiep.toLowerCase().includes("lãnh đạo"));
+      result["103"] = getVictimRow((d) => d.ngheNghiep.toLowerCase().includes("công nhân"));
+    }
+
+    return result;
+  };
+
+  const overviewRows = useMemo(() => {
+    return DETAIL_REPORT_ROWS.map((row) => {
+      if (row.kind !== "normal" && row.kind !== "section") {
+        return row;
+      }
+      
+      let vals = Array(11).fill(0);
+      
+      if (row.label === "1. Tai nạn lao động") {
+        vals = [
+          parseNum(tongVu),
+          parseNum(vuChet),
+          parseNum(vuNhieu),
+          parseNum(tongNan),
+          parseNum(nanKhongQL),
+          parseNum(tongNanNu),
+          parseNum(nuKhongQL),
+          parseNum(tongChetNN),
+          parseNum(chetKhongQL),
+          parseNum(tongThuongNang),
+          parseNum(thuongKhongQL)
+        ];
+      } else if (row.label === "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ") {
+        vals = [
+          parseNum(tcTongVu),
+          parseNum(tcVuChet),
+          parseNum(tcVuNhieu),
+          parseNum(tcTongNan),
+          parseNum(tcNanKhongQL),
+          parseNum(tcTongNanNu),
+          parseNum(tcNuKhongQL),
+          parseNum(tcTongChetNN),
+          parseNum(tcChetKhongQL),
+          parseNum(tcTongThuongNang),
+          parseNum(tcThuongKhongQL)
+        ];
+      } else if (row.label === "Tổng số (3=1+2)") {
+        vals = [
+          parseNum(tongVu) + parseNum(tcTongVu),
+          parseNum(vuChet) + parseNum(tcVuChet),
+          parseNum(vuNhieu) + parseNum(tcVuNhieu),
+          parseNum(tongNan) + parseNum(tcTongNan),
+          parseNum(nanKhongQL) + parseNum(tcNanKhongQL),
+          parseNum(tongNanNu) + parseNum(tcTongNanNu),
+          parseNum(nuKhongQL) + parseNum(tcNuKhongQL),
+          parseNum(tongChetNN) + parseNum(tcTongChetNN),
+          parseNum(chetKhongQL) + parseNum(tcChetKhongQL),
+          parseNum(tongThuongNang) + parseNum(tcTongThuongNang),
+          parseNum(thuongKhongQL) + parseNum(tcThuongKhongQL)
+        ];
+      } else if (row.kind === "normal" && row.ma) {
+        const ma = row.ma;
+        if (ma === "10") {
+          vals = [
+            parseNum(tcTongVu),
+            parseNum(tcVuChet),
+            parseNum(tcVuNhieu),
+            parseNum(tcTongNan),
+            parseNum(tcNanKhongQL),
+            parseNum(tcTongNanNu),
+            parseNum(tcNuKhongQL),
+            parseNum(tcTongChetNN),
+            parseNum(tcChetKhongQL),
+            parseNum(tcTongThuongNang),
+            parseNum(tcThuongKhongQL)
+          ];
+        } else if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(ma)) {
+          const gridKeyMap: Record<string, string> = {
+            "1": "9",
+            "2": "10",
+            "3": "11",
+            "4": "12",
+            "5": "13",
+            "6": "14",
+            "7": "13",
+            "8": "15",
+            "9": "16"
+          };
+          const gridKey = gridKeyMap[ma];
+          const rowVal = phanLoai[gridKey] || Array(13).fill("0");
+          vals = [
+            parseNum(rowVal[0]),
+            parseNum(rowVal[1]),
+            parseNum(rowVal[2]),
+            parseNum(rowVal[3]),
+            0,
+            parseNum(rowVal[4]),
+            0,
+            parseNum(rowVal[5]),
+            0,
+            parseNum(rowVal[6]),
+            0
+          ];
+        } else if (ma === "101") {
+          if (accidentDetails.length > 0) {
+            const filtered = accidentDetails.filter(d => d.yeuTo === "Thiết bị nâng");
+            const countVu = new Set(filtered.map(d => d.id)).size;
+            const countChet = filtered.filter(d => d.mucDo === "Chết").length;
+            const countVuChet = countChet > 0 ? 1 : 0;
+            const countVuNhieu = countVu >= 2 ? 1 : 0;
+            const countNan = filtered.length;
+            const countNu = filtered.filter(d => d.gioiTinh === "Nữ").length;
+            const countThuongNang = filtered.filter(d => d.mucDo === "Thương nặng").length;
+            vals = [countVu, countVuChet, countVuNhieu, countNan, 0, countNu, 0, countChet, 0, countThuongNang, 0];
+          } else {
+            vals = savedOverviewRows["101"] || Array(11).fill(0);
+          }
+        } else if (ma === "102") {
+          if (accidentDetails.length > 0) {
+            const filtered = accidentDetails.filter(d => d.ngheNghiep.toLowerCase().includes("lãnh đạo"));
+            const countVu = new Set(filtered.map(d => d.id)).size;
+            const countChet = filtered.filter(d => d.mucDo === "Chết").length;
+            const countVuChet = countChet > 0 ? 1 : 0;
+            const countVuNhieu = countVu >= 2 ? 1 : 0;
+            const countNan = filtered.length;
+            const countNu = filtered.filter(d => d.gioiTinh === "Nữ").length;
+            const countThuongNang = filtered.filter(d => d.mucDo === "Thương nặng").length;
+            vals = [countVu, countVuChet, countVuNhieu, countNan, 0, countNu, 0, countChet, 0, countThuongNang, 0];
+          } else {
+            vals = savedOverviewRows["102"] || Array(11).fill(0);
+          }
+        } else if (ma === "103") {
+          if (accidentDetails.length > 0) {
+            const filtered = accidentDetails.filter(d => d.ngheNghiep.toLowerCase().includes("công nhân"));
+            const countVu = new Set(filtered.map(d => d.id)).size;
+            const countChet = filtered.filter(d => d.mucDo === "Chết").length;
+            const countVuChet = countChet > 0 ? 1 : 0;
+            const countVuNhieu = countVu >= 2 ? 1 : 0;
+            const countNan = filtered.length;
+            const countNu = filtered.filter(d => d.gioiTinh === "Nữ").length;
+            const countThuongNang = filtered.filter(d => d.mucDo === "Thương nặng").length;
+            vals = [countVu, countVuChet, countVuNhieu, countNan, 0, countNu, 0, countChet, 0, countThuongNang, 0];
+          } else {
+            vals = savedOverviewRows["103"] || Array(11).fill(0);
+          }
+        }
+      }
+      
+      return { ...row, vals };
+    });
+  }, [
+    tongVu, vuChet, vuNhieu, tongNan, nanKhongQL, tongNanNu, nuKhongQL, tongChetNN, chetKhongQL, tongThuongNang, thuongKhongQL,
+    tcTongVu, tcVuChet, tcVuNhieu, tcTongNan, tcNanKhongQL, tcTongNanNu, tcNuKhongQL, tcTongChetNN, tcChetKhongQL, tcTongThuongNang, tcThuongKhongQL,
+    phanLoai, accidentDetails, savedOverviewRows
+  ]);
+
   const submit = async (status: string, successMsg: string) => {
     if (!validateReport()) return;
     if (editingId == null) {
@@ -386,6 +1141,52 @@ export default function EnterpriseReportPage() {
         }
       }
 
+      const currentTS = buildTongSoRows();
+      const origTS = originalReportRef.current.tongHopRows || {};
+      const allTSKeys = new Set([...Object.keys(currentTS), ...Object.keys(origTS)]);
+      for (const key of allTSKeys) {
+        const origArr = origTS[key] || [];
+        const currArr = currentTS[key] || [];
+        const maxLen = Math.max(origArr.length, currArr.length);
+        for (let i = 0; i < maxLen; i++) {
+          if (Number(origArr[i] || 0) !== Number(currArr[i] || 0)) {
+            return true;
+          }
+        }
+      }
+
+      const origChiTiet = originalReportRef.current.chiTietRows || [];
+      if (accidentDetails.length !== origChiTiet.length) return true;
+      for (let i = 0; i < accidentDetails.length; i++) {
+        const curr = accidentDetails[i];
+        const prev = origChiTiet[i];
+        if (!prev) return true;
+        if (
+          curr.nguyenNhan !== prev.nguyenNhan ||
+          curr.yeuTo !== prev.yeuTo ||
+          curr.ngheNghiep !== prev.ngheNghiep ||
+          curr.soVu !== prev.soVu ||
+          curr.soVuCoNguoiChet !== prev.soVuCoNguoiChet ||
+          curr.soVuCo2NguoiBiNan !== prev.soVuCo2NguoiBiNan ||
+          curr.soNguoiBiNan !== prev.soNguoiBiNan ||
+          curr.soLDNu !== prev.soLDNu ||
+          curr.soNguoiBiChet !== prev.soNguoiBiChet ||
+          curr.soNguoiBiThuongNang !== prev.soNguoiBiThuongNang ||
+          curr.nanKhongQL !== prev.nanKhongQL ||
+          curr.nuKhongQL !== prev.nuKhongQL ||
+          curr.chetKhongQL !== prev.chetKhongQL ||
+          curr.thuongKhongQL !== prev.thuongKhongQL ||
+          curr.chiPhiYTe !== prev.chiPhiYTe ||
+          curr.chiPhiLuong !== prev.chiPhiLuong ||
+          curr.chiPhiBTTC !== prev.chiPhiBTTC ||
+          curr.tongSoTien !== prev.tongSoTien ||
+          curr.soNgayNghi !== prev.soNgayNghi ||
+          curr.thiethaiTaiSan !== prev.thiethaiTaiSan
+        ) {
+          return true;
+        }
+      }
+
       return false;
     };
 
@@ -405,10 +1206,13 @@ export default function EnterpriseReportPage() {
         status,
         ...buildTongHop(),
         phanLoaiRows: buildPhanLoai(),
+        tongSoRows: buildTongSoRows(),
+        chiTietRows: accidentDetails,
       });
       const list = await getDnReportList();
       setReports(list);
       setView("list");
+      setActiveReport(null);
       setToast(successMsg);
     } catch (e) {
       setToast(e instanceof Error ? e.message : "Lưu báo cáo thất bại");
@@ -538,7 +1342,7 @@ export default function EnterpriseReportPage() {
                         <div className="flex gap-1">
                           <button
                             type="button"
-                            onClick={() => openReport(r)}
+                            onClick={() => openReport(r, true)}
                             title="Xem / Nộp"
                             className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                           >
@@ -556,7 +1360,7 @@ export default function EnterpriseReportPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => openReport(r)}
+                            onClick={() => openReport(r, false)}
                             title="Nhập báo cáo"
                             className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                           >
@@ -608,92 +1412,114 @@ export default function EnterpriseReportPage() {
             </h1>
             <div className="flex items-center gap-2">
               <span className="mr-2 flex h-[34px] items-center rounded-md border border-[#e5e7eb] bg-[#f9fafb] px-3.5 text-[13.5px] text-[#374151]">
-                2022
+                {activeReport?.nam || "–"}
               </span>
-              <button
-                type="button"
-                onClick={() => setView("list")}
-                className="mr-1 text-[13px] font-medium text-[#374151] hover:text-ink"
-              >
-                Huỷ bỏ
-              </button>
-              {section !== "tongquan" ? (
+              {!isReadOnly && (
                 <button
                   type="button"
-                  onClick={nextSection}
-                  className="flex h-9 items-center gap-1.5 rounded-md border border-primary px-4 text-[13px] font-semibold text-primary hover:bg-[#eff6ff]"
+                  onClick={() => {
+                    setView("list");
+                    setActiveReport(null);
+                  }}
+                  className="mr-1 text-[13px] font-medium text-[#374151] hover:text-ink"
                 >
-                  Tiếp tục{" "}
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
+                  Huỷ bỏ
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={saveReport}
-                disabled={saving}
-                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
-                Lưu
-              </button>
-              {section === "tongquan" ? (
+              )}
+              {isReadOnly ? (
                 <button
                   type="button"
-                  onClick={sendReport}
-                  disabled={saving}
-                  className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => {
+                    setView("list");
+                    setActiveReport(null);
+                  }}
+                  className="flex h-9 items-center justify-center rounded-md bg-[#3b82f6] px-4 text-[13px] font-semibold text-white hover:bg-[#2563eb]"
                 >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                  Gửi báo cáo
+                  Quay lại danh sách
                 </button>
-              ) : null}
+              ) : (
+                <>
+                  {section !== "tongquan" ? (
+                    <button
+                      type="button"
+                      onClick={nextSection}
+                      className="flex h-9 items-center gap-1.5 rounded-md border border-primary px-4 text-[13px] font-semibold text-primary hover:bg-[#eff6ff]"
+                    >
+                      Tiếp tục{" "}
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={saveReport}
+                    disabled={saving}
+                    className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                      <polyline points="17 21 17 13 7 13 7 21" />
+                      <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                    Lưu
+                  </button>
+                  {section === "tongquan" ? (
+                    <button
+                      type="button"
+                      onClick={sendReport}
+                      disabled={saving}
+                      className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <line x1="22" y1="2" x2="11" y2="13" />
+                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                      </svg>
+                      Gửi báo cáo
+                    </button>
+                  ) : null}
+                </>
+              )}
             </div>
           </div>
 
           <div className="px-6 py-5">
-            <div className="mb-4">
-              <select
-                className={SELECT_TOP_CLASS}
-                value={section}
-                onChange={(e) => setSection(e.target.value as FormSection)}
-              >
-                {SECTION_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isReadOnly && (
+              <div className="mb-4">
+                <select
+                  className={SELECT_TOP_CLASS}
+                  value={section}
+                  onChange={(e) => setSection(e.target.value as FormSection)}
+                >
+                  {SECTION_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {section === "ttct" ? (
               <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
@@ -711,7 +1537,7 @@ export default function EnterpriseReportPage() {
                     </label>
                     <input
                       className={FC}
-                      defaultValue="Công ty TNHH ABC"
+                      value={businessDetail?.businessName || ""}
                       disabled
                     />
                   </div>
@@ -721,7 +1547,7 @@ export default function EnterpriseReportPage() {
                     </label>
                     <input
                       className={FC}
-                      defaultValue="Công ty trách nhiệm hữu hạn tư nhân"
+                      value={businessDetail?.businessType || ""}
                       disabled
                     />
                   </div>
@@ -731,7 +1557,7 @@ export default function EnterpriseReportPage() {
                     </label>
                     <input
                       className={FC}
-                      defaultValue="Sản xuất cơ khí hàng tiêu dùng"
+                      value={businessDetail?.mainIndustry || ""}
                       disabled
                     />
                   </div>
@@ -818,16 +1644,17 @@ export default function EnterpriseReportPage() {
                     <div className="mb-3 grid grid-cols-4 gap-3">
                       {(
                         [
-                          ["Tổng số vụ *", tongVu, setTongVu],
-                          ["Số vụ có người chết *", vuChet, setVuChet],
-                          ["Số vụ ≥ 2 người bị nạn *", vuNhieu, setVuNhieu],
-                          [null, null, null],
+                          ["Tổng số vụ *", tongVu, setTongVu, 0],
+                          ["Số vụ có người chết *", vuChet, setVuChet, 1],
+                          ["Số vụ ≥ 2 người bị nạn *", vuNhieu, setVuNhieu, 2],
+                          [null, null, null, null],
                         ] as [
                           string | null,
                           string | null,
                           ((v: string) => void) | null,
+                          number | null,
                         ][]
-                      ).map(([label, val, setter], i) =>
+                      ).map(([label, val, setter, col], i) =>
                         label ? (
                           <div key={i} className="flex flex-col gap-1.5">
                             <label className="text-[12.5px] font-medium text-[#374151]">
@@ -838,7 +1665,11 @@ export default function EnterpriseReportPage() {
                               min={0}
                               className={FC}
                               value={val ?? ""}
-                              onChange={(e) => setter?.(e.target.value)}
+                              onChange={(e) => {
+                                if (setter && col !== null) {
+                                  updateFieldAndPhanLoai(setter, col, e.target.value);
+                                }
+                              }}
                             />
                           </div>
                         ) : (
@@ -850,24 +1681,27 @@ export default function EnterpriseReportPage() {
                     <div className="mb-3 grid grid-cols-4 gap-3">
                       {(
                         [
-                          ["Tổng số người bị nạn *", tongNan, setTongNan],
+                          ["Tổng số người bị nạn *", tongNan, setTongNan, 3],
                           [
                             "Tổng số lao động nữ bị nạn *",
                             tongNanNu,
                             setTongNanNu,
+                            4,
                           ],
                           [
                             "Tổng số người bị chết *",
                             tongChetNN,
                             setTongChetNN,
+                            5,
                           ],
                           [
                             "Tổng số người bị thương nặng *",
                             tongThuongNang,
                             setTongThuongNang,
+                            6,
                           ],
-                        ] as [string, string, (v: string) => void][]
-                      ).map(([label, val, setter]) => (
+                        ] as [string, string, (v: string) => void, number][]
+                      ).map(([label, val, setter, col]) => (
                         <div key={label} className="flex flex-col gap-1.5">
                           <label className="text-[12.5px] font-medium text-[#374151]">
                             {label}
@@ -877,7 +1711,7 @@ export default function EnterpriseReportPage() {
                             min={0}
                             className={FC}
                             value={val}
-                            onChange={(e) => setter(e.target.value)}
+                            onChange={(e) => updateFieldAndPhanLoai(setter, col, e.target.value)}
                           />
                         </div>
                       ))}
@@ -930,20 +1764,22 @@ export default function EnterpriseReportPage() {
                     <div className="mb-3 grid grid-cols-4 gap-3">
                       {(
                         [
-                          ["Chi phí y tế *", chiPhiYTe, setChiPhiYTe],
+                          ["Chi phí y tế *", chiPhiYTe, setChiPhiYTe, 9],
                           [
                             "Chi phí trả lương trong thời gian điều trị *",
                             chiPhiLuong,
                             setChiPhiLuong,
+                            10,
                           ],
                           [
                             "Chi phí bồi thường trợ cấp *",
                             chiPhiBTTC,
                             setChiPhiBTTC,
+                            11,
                           ],
-                          ["Tổng số tiền chi phí *", tongChiPhi, setTongChiPhi],
-                        ] as [string, string, (v: string) => void][]
-                      ).map(([label, val, setter]) => (
+                          ["Tổng số tiền chi phí *", tongChiPhi, setTongChiPhi, 8],
+                        ] as [string, string, (v: string) => void, number][]
+                      ).map(([label, val, setter, col]) => (
                         <div key={label} className="flex flex-col gap-1.5">
                           <label className="text-[12.5px] font-medium text-[#374151]">
                             {label}
@@ -951,7 +1787,7 @@ export default function EnterpriseReportPage() {
                           <input
                             className={FC}
                             value={val}
-                            onChange={(e) => setter(e.target.value)}
+                            onChange={(e) => updateFieldAndPhanLoai(setter, col, e.target.value)}
                           />
                           <span className="text-xs text-muted">(1.000đ)</span>
                         </div>
@@ -968,7 +1804,7 @@ export default function EnterpriseReportPage() {
                           min={0}
                           className={FC}
                           value={soNgayNghi}
-                          onChange={(e) => setSoNgayNghi(e.target.value)}
+                          onChange={(e) => updateFieldAndPhanLoai(setSoNgayNghi, 7, e.target.value)}
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -978,7 +1814,7 @@ export default function EnterpriseReportPage() {
                         <input
                           className={FC}
                           value={thiHaiTaiSan}
-                          onChange={(e) => setThiHaiTaiSan(e.target.value)}
+                          onChange={(e) => updateFieldAndPhanLoai(setThiHaiTaiSan, 12, e.target.value)}
                         />
                         <span className="text-xs text-muted">(1.000đ)</span>
                       </div>
@@ -986,195 +1822,294 @@ export default function EnterpriseReportPage() {
                   </>
                 ) : (
                   <>
-                    <p className="mb-4 text-[12.5px] font-medium text-danger">
-                      Chi tiết từng vụ tai nạn lao động
-                    </p>
-                    {accidentDetails.length === 0 ? (
-                      <div className="mb-4 rounded-md border border-dashed border-[#d1d5db] bg-[#f9fafb] py-8 text-center text-[13.5px] text-muted">
-                        Chưa có vụ tai nạn nào. Nhấn &quot;Thêm vụ&quot; để bắt
-                        đầu nhập.
+                    <div className="rounded-lg border-2 border-[#2563eb] p-6 bg-white shadow-sm">
+                      <div className="mb-4 text-[13px] font-bold text-[#2563eb] uppercase tracking-wide">
+                        **** Doanh nghiệp xảy ra tai nạn lao động vui lòng nhập theo từng bước
                       </div>
-                    ) : (
-                      accidentDetails.map((d, idx) => (
-                        <div
-                          key={d.id}
-                          className="mb-4 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] p-5"
-                        >
-                          <div className="mb-3 flex items-center justify-between">
-                            <span className="text-[13.5px] font-semibold text-ink">
-                              Vụ {idx + 1}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => removeDetail(d.id)}
-                              className="rounded p-1 text-muted hover:bg-[#fee2e2] hover:text-danger"
-                              title="Xoá vụ này"
-                            >
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                              >
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                                <path d="M10 11v6M14 11v6" />
-                                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-                              </svg>
-                            </button>
-                          </div>
-                          <div className="mb-3 grid grid-cols-3 gap-3">
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[12.5px] font-medium text-[#374151]">
-                                Họ và tên nạn nhân{" "}
-                                <span className="text-danger">*</span>
-                              </label>
-                              <input
-                                className={FC}
-                                value={d.hoTen}
-                                onChange={(e) =>
-                                  updateDetail(d.id, "hoTen", e.target.value)
-                                }
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[12.5px] font-medium text-[#374151]">
-                                Ngày sinh
-                              </label>
-                              <DateInput
-                                value={d.ngaySinh}
-                                onChange={(v) =>
-                                  updateDetail(d.id, "ngaySinh", v)
-                                }
-                                max={localISODate(new Date())}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[12.5px] font-medium text-[#374151]">
-                                Giới tính
-                              </label>
-                              <select
-                                className={SC}
-                                value={d.gioiTinh}
-                                onChange={(e) =>
-                                  updateDetail(d.id, "gioiTinh", e.target.value)
-                                }
-                              >
-                                <option>Nam</option>
-                                <option>Nữ</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="mb-3 grid grid-cols-3 gap-3">
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[12.5px] font-medium text-[#374151]">
-                                Nghề nghiệp
-                              </label>
-                              <input
-                                className={FC}
-                                value={d.ngheNghiep}
-                                onChange={(e) =>
-                                  updateDetail(
-                                    d.id,
-                                    "ngheNghiep",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[12.5px] font-medium text-[#374151]">
-                                Loại hợp đồng lao động
-                              </label>
-                              <select
-                                className={SC}
-                                value={d.loaiHopDong}
-                                onChange={(e) =>
-                                  updateDetail(
-                                    d.id,
-                                    "loaiHopDong",
-                                    e.target.value,
-                                  )
-                                }
-                              >
-                                <option>Hợp đồng xác định thời hạn</option>
-                                <option>
-                                  Hợp đồng không xác định thời hạn
-                                </option>
-                              </select>
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[12.5px] font-medium text-[#374151]">
-                                Mức độ thương tật
-                              </label>
-                              <select
-                                className={SC}
-                                value={d.mucDo}
-                                onChange={(e) =>
-                                  updateDetail(d.id, "mucDo", e.target.value)
-                                }
-                              >
-                                <option>Chết</option>
-                                <option>Thương nặng</option>
-                                <option>Thương nhẹ</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[12.5px] font-medium text-[#374151]">
-                                Ngày xảy ra tai nạn
-                              </label>
-                              <DateInput
-                                value={d.ngayXayRa}
-                                onChange={(v) =>
-                                  updateDetail(d.id, "ngayXayRa", v)
-                                }
-                                max={localISODate(new Date())}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[12.5px] font-medium text-[#374151]">
-                                Địa điểm xảy ra tai nạn
-                              </label>
-                              <input
-                                className={FC}
-                                value={d.diaDiem}
-                                onChange={(e) =>
-                                  updateDetail(d.id, "diaDiem", e.target.value)
-                                }
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[12.5px] font-medium text-[#374151]">
-                                Yếu tố gây chấn thương
-                              </label>
-                              <select
-                                className={SC}
-                                value={d.yeuTo}
-                                onChange={(e) =>
-                                  updateDetail(d.id, "yeuTo", e.target.value)
-                                }
-                              >
-                                <option value="">-- Chọn yếu tố --</option>
-                                <option>Điện</option>
-                                <option>Vật rơi, đổ, sập</option>
-                                <option>Thiết bị nâng</option>
-                                <option>Máy, thiết bị</option>
-                                <option>Phương tiện vận tải</option>
-                                <option>Khác</option>
-                              </select>
-                            </div>
-                          </div>
+                      
+                      {accidentDetails.length === 0 ? (
+                        <div className="mb-4 rounded-md border border-dashed border-[#d1d5db] bg-[#f9fafb] py-8 text-center text-[13.5px] text-muted">
+                          Chưa có vụ tai nạn nào. Nhấn &quot;Thêm vụ&quot; để bắt đầu nhập.
                         </div>
-                      ))
-                    )}
+                      ) : (
+                        accidentDetails.map((d, idx) => {
+                          const isExpanded = expandedIds[d.id] !== false;
+                          const toggleExpand = () => {
+                            setExpandedIds((prev) => ({
+                              ...prev,
+                              [d.id]: !isExpanded,
+                            }));
+                          };
+
+                          const CAUSE_OPTIONS = [
+                            "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
+                            "Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt",
+                            "Tổ chức lao động không hợp lý",
+                            "Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ",
+                            "Không có quy trình an toàn hoặc biện pháp làm việc an toàn",
+                            "Điều kiện làm việc không tốt",
+                            "Quy phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn",
+                            "Không sử dụng phương tiện bảo vệ cá nhân",
+                            "Khách quan khó tránh/ Nguyên nhân chưa kể đến"
+                          ];
+
+                          const FACTOR_OPTIONS = [
+                            "Ngã",
+                            "Vật rơi, vật văng bắn",
+                            "Máy, thiết bị",
+                            "Phương tiện vận tải",
+                            "Điện giật",
+                            "Chất độc hại",
+                            "Bỏng",
+                            "Thiết bị nâng",
+                            "Khác"
+                          ];
+
+                          const OCCUPATION_OPTIONS = [
+                            "Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương",
+                            "Công nhân"
+                          ];
+
+                          return (
+                            <div
+                              key={d.id}
+                              className="mb-4 rounded-lg border border-dotted border-[#3b82f6] p-5 bg-white"
+                            >
+                              <div
+                                className="flex items-center justify-between border-b border-dashed border-[#e5e7eb] pb-3 mb-4 cursor-pointer"
+                                onClick={toggleExpand}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <svg
+                                    className={`w-4 h-4 text-ink transition-transform ${isExpanded ? "" : "-rotate-90"}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                                    />
+                                  </svg>
+                                  <span className="text-[14px] font-semibold text-ink">
+                                    Chi tiết vụ tai nạn số {idx + 1}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeDetail(d.id);
+                                  }}
+                                  className="text-muted hover:text-danger text-xs font-medium"
+                                >
+                                  Xoá vụ
+                                </button>
+                              </div>
+
+                              {isExpanded && (
+                                <div className="mt-3">
+                                  <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="flex flex-col gap-1.5">
+                                      <label className="text-[13px] font-medium text-ink">
+                                        1. Phân theo nguyên nhân xảy ra TNLĐ
+                                      </label>
+                                      <select
+                                        className={SC}
+                                        value={d.nguyenNhan}
+                                        onChange={(e) =>
+                                          updateDetail(d.id, "nguyenNhan", e.target.value)
+                                        }
+                                      >
+                                        {CAUSE_OPTIONS.map((opt) => (
+                                          <option key={opt} value={opt}>
+                                            {opt}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div className="flex flex-col gap-1.5">
+                                      <label className="text-[13px] font-medium text-ink">
+                                        2. Phân theo yếu tố gây chấn thương
+                                      </label>
+                                      <select
+                                        className={SC}
+                                        value={d.yeuTo}
+                                        onChange={(e) =>
+                                          updateDetail(d.id, "yeuTo", e.target.value)
+                                        }
+                                      >
+                                        {FACTOR_OPTIONS.map((opt) => (
+                                          <option key={opt} value={opt}>
+                                            {opt}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-4 mb-5">
+                                    <div className="flex flex-col gap-1.5">
+                                      <label className="text-[13px] font-medium text-ink">
+                                        3. Phân theo nghề nghiệp
+                                      </label>
+                                      <select
+                                        className={SC}
+                                        value={d.ngheNghiep}
+                                        onChange={(e) =>
+                                          updateDetail(d.id, "ngheNghiep", e.target.value)
+                                        }
+                                      >
+                                        {OCCUPATION_OPTIONS.map((opt) => (
+                                          <option key={opt} value={opt}>
+                                            {opt}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div />
+                                  </div>
+
+                                  <div className="mb-5 border-t border-dashed border-line pt-4">
+                                    <div className="text-[13px] font-semibold text-ink mb-3">
+                                      4. Chi tiết vụ tai nạn số {idx + 1}
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+                                      <InputField
+                                        label="Tổng số vụ"
+                                        value={d.soVu}
+                                        onChange={(v) => updateDetail(d.id, "soVu", v)}
+                                      />
+                                      <InputField
+                                        label="Tổng số vụ có người chết"
+                                        value={d.soVuCoNguoiChet}
+                                        onChange={(v) => updateDetail(d.id, "soVuCoNguoiChet", v)}
+                                        required
+                                      />
+                                      <InputField
+                                        label="Tổng số vụ có 2 người bị nạn trở lên"
+                                        value={d.soVuCo2NguoiBiNan}
+                                        onChange={(v) => updateDetail(d.id, "soVuCo2NguoiBiNan", v)}
+                                        required
+                                      />
+                                      <div />
+
+                                      <InputField
+                                        label="Tổng số người bị nạn"
+                                        value={d.soNguoiBiNan}
+                                        onChange={(v) => updateDetail(d.id, "soNguoiBiNan", v)}
+                                        required
+                                      />
+                                      <InputField
+                                        label="Tổng số lao động nữ bị nạn"
+                                        value={d.soLDNu}
+                                        onChange={(v) => updateDetail(d.id, "soLDNu", v)}
+                                        required
+                                      />
+                                      <InputField
+                                        label="Tổng số người chết"
+                                        value={d.soNguoiBiChet}
+                                        onChange={(v) => updateDetail(d.id, "soNguoiBiChet", v)}
+                                        required
+                                      />
+                                      <InputField
+                                        label="Tổng số người bị thương nặng"
+                                        value={d.soNguoiBiThuongNang}
+                                        onChange={(v) => updateDetail(d.id, "soNguoiBiThuongNang", v)}
+                                        required
+                                      />
+
+                                      <InputField
+                                        label="Số người bị nạn không QL"
+                                        value={d.nanKhongQL}
+                                        onChange={(v) => updateDetail(d.id, "nanKhongQL", v)}
+                                        required
+                                      />
+                                      <InputField
+                                        label="Lao động nữ bị nạn không QL"
+                                        value={d.nuKhongQL}
+                                        onChange={(v) => updateDetail(d.id, "nuKhongQL", v)}
+                                        required
+                                      />
+                                      <InputField
+                                        label="Số người chết không QL"
+                                        value={d.chetKhongQL}
+                                        onChange={(v) => updateDetail(d.id, "chetKhongQL", v)}
+                                        required
+                                      />
+                                      <InputField
+                                        label="Người bị thương nặng không QL"
+                                        value={d.thuongKhongQL}
+                                        onChange={(v) => updateDetail(d.id, "thuongKhongQL", v)}
+                                        required
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="border-t border-dashed border-line pt-4">
+                                    <div className="text-[13px] font-semibold text-ink mb-3">
+                                      5. Thiệt hại do tai nạn lao động số {idx + 1}
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+                                      <InputField
+                                        label="Chi phí y tế"
+                                        value={d.chiPhiYTe}
+                                        onChange={(v) => updateDetail(d.id, "chiPhiYTe", formatNumberString(v))}
+                                        required
+                                        suffix="(1.000đ)"
+                                      />
+                                      <InputField
+                                        label="Chi phí trả lương trong thời gian điều trị"
+                                        value={d.chiPhiLuong}
+                                        onChange={(v) => updateDetail(d.id, "chiPhiLuong", formatNumberString(v))}
+                                        required
+                                        suffix="(1.000đ)"
+                                      />
+                                      <InputField
+                                        label="Chi phí bồi thường trợ cấp"
+                                        value={d.chiPhiBTTC}
+                                        onChange={(v) => updateDetail(d.id, "chiPhiBTTC", formatNumberString(v))}
+                                        required
+                                        suffix="(1.000đ)"
+                                      />
+                                      <InputField
+                                        label="Tổng số tiền chi phí"
+                                        value={d.tongSoTien}
+                                        onChange={(v) => updateDetail(d.id, "tongSoTien", formatNumberString(v))}
+                                        required
+                                        suffix="(1.000đ)"
+                                      />
+
+                                      <InputField
+                                        label="Tổng số ngày nghỉ vì TNLĐ"
+                                        value={d.soNgayNghi}
+                                        onChange={(v) => updateDetail(d.id, "soNgayNghi", v)}
+                                        required
+                                      />
+                                      <InputField
+                                        label="Thiệt hại tài sản"
+                                        value={d.thiethaiTaiSan}
+                                        onChange={(v) => updateDetail(d.id, "thiethaiTaiSan", formatNumberString(v))}
+                                        required
+                                        suffix="(1.000đ)"
+                                      />
+                                      <div />
+                                      <div />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={addDetail}
-                      className="flex h-9 items-center gap-1.5 rounded-md border border-dashed border-primary px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
+                      className="mt-4 flex h-9 items-center gap-1.5 rounded-md border border-dashed border-primary px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
                     >
                       <svg
                         width="14"
@@ -1191,6 +2126,172 @@ export default function EnterpriseReportPage() {
                     </button>
                   </>
                 )}
+              </div>
+            ) : section === "tnld_tc" ? (
+              <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+                <div className="mb-2 text-[14px] font-semibold text-ink">
+                  1. Tổng số vụ tai nạn lao động & số nạn nhân tai nạn lao động
+                </div>
+                <div className="mb-3 grid grid-cols-4 gap-3">
+                  {(
+                    [
+                      ["Tổng số vụ *", tcTongVu, setTcTongVu],
+                      ["Số vụ có người chết *", tcVuChet, setTcVuChet],
+                      ["Số vụ ≥ 2 người bị nạn *", tcVuNhieu, setTcVuNhieu],
+                      [null, null, null],
+                    ] as [
+                      string | null,
+                      string | null,
+                      ((v: string) => void) | null,
+                    ][]
+                  ).map(([label, val, setter], i) =>
+                    label && setter ? (
+                      <div key={i} className="flex flex-col gap-1.5">
+                        <label className="text-[12.5px] font-medium text-[#374151]">
+                          {label}
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          className={FC}
+                          value={val ?? ""}
+                          onChange={(e) => setter(e.target.value)}
+                        />
+                      </div>
+                    ) : (
+                      <div key={i} />
+                    ),
+                  )}
+                </div>
+
+                <div className="mb-3 grid grid-cols-4 gap-3">
+                  {(
+                    [
+                      ["Tổng số người bị nạn *", tcTongNan, setTcTongNan],
+                      ["Tổng số lao động nữ bị nạn *", tcTongNanNu, setTcTongNanNu],
+                      ["Tổng số người bị chết *", tcTongChetNN, setTcTongChetNN],
+                      [
+                        "Tổng số người bị thương nặng *",
+                        tcTongThuongNang,
+                        setTcTongThuongNang,
+                      ],
+                    ] as [string, string, (v: string) => void][]
+                  ).map(([label, val, setter]) => (
+                    <div key={label} className="flex flex-col gap-1.5">
+                      <label className="text-[12.5px] font-medium text-[#374151]">
+                        {label}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        className={FC}
+                        value={val}
+                        onChange={(e) => setter(e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mb-5 grid grid-cols-4 gap-3">
+                  {(
+                    [
+                      [
+                        "Số người bị nạn không QL *",
+                        tcNanKhongQL,
+                        setTcNanKhongQL,
+                      ],
+                      [
+                        "Lao động nữ bị nạn không QL *",
+                        tcNuKhongQL,
+                        setTcNuKhongQL,
+                      ],
+                      [
+                        "Số người chết không QL *",
+                        tcChetKhongQL,
+                        setTcChetKhongQL,
+                      ],
+                      [
+                        "Người bị thương nặng không QL *",
+                        tcThuongKhongQL,
+                        setTcThuongKhongQL,
+                      ],
+                    ] as [string, string, (v: string) => void][]
+                  ).map(([label, val, setter]) => (
+                    <div key={label} className="flex flex-col gap-1.5">
+                      <label className="text-[12.5px] font-medium text-[#374151]">
+                        {label}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        className={FC}
+                        value={val}
+                        onChange={(e) => setter(e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mb-2 text-[14px] font-semibold text-ink">
+                  2. Thiệt hại do tai nạn lao động
+                </div>
+
+                <div className="mb-3 grid grid-cols-4 gap-3">
+                  {(
+                    [
+                      ["Chi phí y tế *", tcChiPhiYTe, setTcChiPhiYTe],
+                      [
+                        "Chi phí trả lương trong thời gian điều trị *",
+                        tcChiPhiLuong,
+                        setTcChiPhiLuong,
+                      ],
+                      [
+                        "Chi phí bồi thường trợ cấp *",
+                        tcChiPhiBTTC,
+                        setTcChiPhiBTTC,
+                      ],
+                      ["Tổng số tiền chi phí *", tcTongChiPhi, setTcTongChiPhi],
+                    ] as [string, string, (v: string) => void][]
+                  ).map(([label, val, setter]) => (
+                    <div key={label} className="flex flex-col gap-1.5">
+                      <label className="text-[12.5px] font-medium text-[#374151]">
+                        {label}
+                      </label>
+                      <input
+                        className={FC}
+                        value={val}
+                        onChange={(e) => setter(e.target.value)}
+                      />
+                      <span className="text-xs text-muted">(1.000đ)</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12.5px] font-medium text-[#374151]">
+                      Tổng số ngày nghỉ vì TNLĐ *
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      className={FC}
+                      value={tcSoNgayNghi}
+                      onChange={(e) => setTcSoNgayNghi(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12.5px] font-medium text-[#374151]">
+                      Thiệt hại tài sản
+                    </label>
+                    <input
+                      className={FC}
+                      value={tcThiHaiTaiSan}
+                      onChange={(e) => setTcThiHaiTaiSan(e.target.value)}
+                    />
+                    <span className="text-xs text-muted">(1.000đ)</span>
+                  </div>
+                </div>
               </div>
             ) : section === "phanloai" ? (
               <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
@@ -1265,48 +2366,182 @@ export default function EnterpriseReportPage() {
               </div>
             ) : (
               <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-                <div className="mb-4 text-[14px] font-bold text-ink">
-                  Tổng quan báo cáo tai nạn lao động
+                <div className="mb-1.5 text-[15px] font-bold text-ink">
+                  Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo:{" "}
+                  {activeReport?.ky || "6 tháng"} năm {activeReport?.nam || "2023"}
                 </div>
+                <p className="mb-4 text-[13px] text-muted">
+                  **Vui lòng đính kèm báo cáo TNLĐ có dấu mộc công ty:{" "}
+                  <a href="#" className="text-primary font-medium">
+                    baocaoTNLD.pdf
+                  </a>
+                </p>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-xs">
+                  <table className="w-full border-collapse text-[11.5px] text-[#374151]">
                     <thead>
                       <tr>
                         <th
-                          className={`${CT_TH} min-w-[200px] text-left`}
-                          rowSpan={2}
+                          className={`${CT_TH} min-w-[220px] text-left`}
+                          rowSpan={4}
                         >
-                          Chỉ tiêu
+                          Tên chỉ tiêu thống kê
                         </th>
+                        <th className={`${CT_TH} w-[60px]`} rowSpan={4}>
+                          Mã số
+                        </th>
+                        <th className={CT_TH} colSpan={11}>
+                          Phân loại TNLĐ theo mức độ thương tật
+                        </th>
+                      </tr>
+                      <tr>
                         <th className={CT_TH} colSpan={3}>
-                          Số vụ TNLĐ
+                          Số vụ (Vụ)
                         </th>
-                        <th className={CT_TH} colSpan={4}>
-                          Số người bị nạn
+                        <th className={CT_TH} colSpan={8}>
+                          Số người bị nạn (Người)
+                        </th>
+                      </tr>
+                      <tr>
+                        <th className={CT_TH} rowSpan={2}>
+                          Tổng số
+                        </th>
+                        <th className={CT_TH} rowSpan={2}>
+                          Số vụ có người chết
+                        </th>
+                        <th className={CT_TH} rowSpan={2}>
+                          Số vụ có từ 2 người bị nạn trở lên
+                        </th>
+                        <th className={CT_TH} colSpan={2}>
+                          Tổng số
+                        </th>
+                        <th className={CT_TH} colSpan={2}>
+                          Số LĐ nữ
+                        </th>
+                        <th className={CT_TH} colSpan={2}>
+                          Số người bị chết
+                        </th>
+                        <th className={CT_TH} colSpan={2}>
+                          Số người bị thương nặng
                         </th>
                       </tr>
                       <tr>
                         <th className={CT_TH}>Tổng số</th>
-                        <th className={CT_TH}>Có người chết</th>
-                        <th className={CT_TH}>Từ 2 người trở lên</th>
+                        <th className={CT_TH}>NN không thuộc quyền quản lý</th>
                         <th className={CT_TH}>Tổng số</th>
-                        <th className={CT_TH}>Lao động nữ</th>
-                        <th className={CT_TH}>Số người chết</th>
-                        <th className={CT_TH}>Thương nặng</th>
+                        <th className={CT_TH}>NN không thuộc quyền quản lý</th>
+                        <th className={CT_TH}>Tổng số</th>
+                        <th className={CT_TH}>NN không thuộc quyền quản lý</th>
+                        <th className={CT_TH}>Tổng số</th>
+                        <th className={CT_TH}>NN không thuộc quyền quản lý</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="bg-[#f9fafb]">
-                        <td className={`${CT_TD} text-left font-bold`}>
-                          Tổng số TNLĐ
+                      {overviewRows.map((row, idx) => {
+                        if (row.kind === "sub") {
+                          return (
+                            <tr key={idx}>
+                              <td
+                                className={`${CT_TD} text-left ${row.bold ? "font-semibold" : "italic"}`}
+                                colSpan={13}
+                                style={{ paddingLeft: row.bold ? 20 : 32 }}
+                              >
+                                {row.label}
+                              </td>
+                            </tr>
+                          );
+                        }
+                        const vals =
+                          row.vals && row.vals.length
+                            ? row.vals
+                            : EMPTY_VALS.map(() => 0);
+                        if (row.kind === "section") {
+                          return (
+                            <tr key={idx} className="bg-[#f9fafb]">
+                              <td className={`${CT_TD} text-left font-bold`}>
+                                {row.label}
+                              </td>
+                              <td className={CT_TD} />
+                              {vals.map((v, i) => (
+                                <td key={i} className={`${CT_TD} font-bold`}>
+                                  {v}
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        }
+                        return (
+                          <tr key={idx}>
+                            <td className={`${CT_TD} text-left`}>{row.label}</td>
+                            <td className={CT_TD}>{row.ma || ""}</td>
+                            {vals.map((v, i) => (
+                              <td key={i} className={CT_TD}>
+                                {v}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mb-3 mt-5 text-[15px] font-bold text-ink">
+                  II. Thiệt hại do tai nạn lao động
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-xs text-[#374151]">
+                    <thead>
+                      <tr>
+                        <th
+                          className={`${CT_TH} min-w-[300px] text-left`}
+                          rowSpan={3}
+                        >
+                          Tổng số ngày nghỉ vì tai nạn lao động (kể cả ngày nghỉ
+                          chế độ)
+                        </th>
+                        <th className={CT_TH} colSpan={4}>
+                          Tổng số chi phí vì TNLĐ (1.000đ)
+                        </th>
+                        <th className={CT_TH} rowSpan={3}>
+                          Thiệt hại tài sản (1.000đ)
+                        </th>
+                      </tr>
+                      <tr>
+                        <th className={CT_TH} rowSpan={2}>
+                          Tổng số
+                        </th>
+                        <th className={CT_TH} colSpan={3}>
+                          Khoảng chi cụ thể của cơ sở
+                        </th>
+                      </tr>
+                      <tr>
+                        <th className={CT_TH}>Y tế</th>
+                        <th className={CT_TH}>
+                          Trả lương trong thời gian điều trị
+                        </th>
+                        <th className={CT_TH}>Bồi thường trợ cấp</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className={CT_TD}>
+                          {(parseNum(soNgayNghi) + parseNum(tcSoNgayNghi)).toLocaleString("vi-VN")}
                         </td>
-                        <td className={CT_TD}>{tongVu}</td>
-                        <td className={CT_TD}>{vuChet}</td>
-                        <td className={CT_TD}>{vuNhieu}</td>
-                        <td className={CT_TD}>{tongNan}</td>
-                        <td className={CT_TD}>{tongNanNu}</td>
-                        <td className={CT_TD}>{tongChetNN}</td>
-                        <td className={CT_TD}>{tongThuongNang}</td>
+                        <td className={CT_TD}>
+                          {(parseNum(tongChiPhi) + parseNum(tcTongChiPhi)).toLocaleString("vi-VN")}
+                        </td>
+                        <td className={CT_TD}>
+                          {(parseNum(chiPhiYTe) + parseNum(tcChiPhiYTe)).toLocaleString("vi-VN")}
+                        </td>
+                        <td className={CT_TD}>
+                          {(parseNum(chiPhiLuong) + parseNum(tcChiPhiLuong)).toLocaleString("vi-VN")}
+                        </td>
+                        <td className={CT_TD}>
+                          {(parseNum(chiPhiBTTC) + parseNum(tcChiPhiBTTC)).toLocaleString("vi-VN")}
+                        </td>
+                        <td className={CT_TD}>
+                          {(parseNum(thiHaiTaiSan) + parseNum(tcThiHaiTaiSan)).toLocaleString("vi-VN")}
+                        </td>
                       </tr>
                     </tbody>
                   </table>

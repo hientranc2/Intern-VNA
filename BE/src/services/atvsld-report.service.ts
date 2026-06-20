@@ -75,6 +75,7 @@ export class AtvsldReportService {
     report.status = STATUS_DONE;
     report.lyDoTuChoi = null;
     report.ngayKetThuc = this.formatDate(new Date());
+    report.updatedAt = new Date();
 
     const history = report.history || [];
     history.push({
@@ -98,6 +99,7 @@ export class AtvsldReportService {
     report.status = STATUS_REJECTED;
     report.lyDoTuChoi = lyDoTuChoi;
     report.ngayKetThuc = '';
+    report.updatedAt = new Date();
 
     const history = report.history || [];
     history.push({
@@ -122,6 +124,7 @@ export class AtvsldReportService {
       report.status = STATUS_DONE;
       report.lyDoTuChoi = null;
       report.ngayKetThuc = this.formatDate(new Date());
+      report.updatedAt = new Date();
       const history = report.history || [];
       history.push({
         timestamp: new Date().toISOString(),
@@ -148,6 +151,7 @@ export class AtvsldReportService {
       report.status = STATUS_REJECTED;
       report.lyDoTuChoi = lyDoTuChoi;
       report.ngayKetThuc = '';
+      report.updatedAt = new Date();
       const history = report.history || [];
       history.push({
         timestamp: new Date().toISOString(),
@@ -227,6 +231,7 @@ export class AtvsldReportService {
     report.status = STATUS_DRAFT;
     report.lyDoTuChoi = null;
     report.nguoiChinhSua = business.representative ?? business.businessName;
+    report.updatedAt = new Date();
 
     const saved = await this.repo.save(report);
     return this.toRecord(saved);
@@ -244,6 +249,7 @@ export class AtvsldReportService {
     report.lyDoTuChoi = null;
     report.ngayNop = this.formatDate(new Date());
     report.submittedAt = new Date();
+    report.updatedAt = new Date();
 
     const history = report.history || [];
     history.push({

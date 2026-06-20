@@ -288,28 +288,62 @@ async function seedAccidentReports(c) {
     const status = statuses[i % statuses.length];
     const soVu = 1 + (i % 5);
     const soNan = soVu + (i % 3);
-    const rows = JSON.stringify({
-      '1': [soVu, i % 2, 1, 10, 0, 5, 0, 5, 0, 10, 0],
-      '101': [soVu, i % 2, 1, 10, 0, 5, 0, 5, 0, 10, 0],
-    });
+    const soLDNu = 10 + i;
+    const soVuCoNguoiChet = i % 2;
+    const soVuCo2NguoiBiNan = i % 2;
+    const soNguoiBiChet = i % 2;
+    const soNguoiBiThuongNang = soNan - (i % 2);
+    const soNgayNghi = 20 + i * 5;
+    const tongSoTien = 6000000 + i * 1000000;
+    const chiPhiYTe = 2000000 + i * 500000;
+    const chiPhiTraLuong = 2000000;
+    const boiThuongTroCap = 2000000 + i * 300000;
+    const thiethaiTaiSan = 20000000 + i * 2000000;
+
+    const vals = [
+      soVu,
+      soVuCoNguoiChet,
+      soVuCo2NguoiBiNan,
+      soNan,
+      soLDNu,
+      soNguoiBiChet,
+      soNguoiBiThuongNang,
+      soNgayNghi,
+      tongSoTien,
+      chiPhiYTe,
+      chiPhiTraLuong,
+      boiThuongTroCap,
+      thiethaiTaiSan
+    ];
+
+    const phanLoaiRows = {};
+    for (let m = 1; m <= 24; m++) {
+      phanLoaiRows[String(m)] = Array(13).fill(0);
+    }
+    phanLoaiRows['2'] = vals;
+    phanLoaiRows['16'] = vals;
+    phanLoaiRows['24'] = vals;
+    const phanLoaiJson = JSON.stringify(phanLoaiRows);
+
     await c.query(
       `INSERT INTO accident_reports
-         (enterprise_id, config_id, ten, mst, ky, status, rows, chi_tiet_rows,
+         (enterprise_id, config_id, ten, mst, ky, status, rows, chi_tiet_rows, phan_loai_rows,
           province, ward, loai_hinh, so_lao_dong, so_ld_co_bao_hiem, so_vu,
           so_vu_co_nguoi_chet, so_vu_co_2_nguoi_bi_nan, so_nguoi_bi_nan, so_ld_nu,
           so_nguoi_bi_chet, so_nguoi_bi_thuong_nang, so_ngay_nghi, tong_so_tien,
           chi_phi_y_te, chi_phi_tra_luong, boi_thuong_tro_cap, thiet_hai_tai_san,
           submitted_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'[]'::jsonb,
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'[]'::jsonb,$26::jsonb,
           $8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,
           CASE WHEN $6::varchar = 'Đang báo cáo' THEN NULL ELSE now() END)`,
       [
-        b.id, cfg.id, b.business_name, b.tax_code, cfg.ky, status, rows,
+        b.id, cfg.id, b.business_name, b.tax_code, cfg.ky, status, phanLoaiJson,
         b.registered_province, b.registered_ward, b.business_type,
         50 + i * 10, 45 + i * 8, soVu,
-        i % 2, i % 2, soNan, 10 + i,
-        i % 2, soNan - (i % 2), 20 + i * 5,
-        6000000 + i * 1000000, 2000000 + i * 500000, 2000000, 2000000 + i * 300000, 20000000 + i * 2000000,
+        soVuCoNguoiChet, soVuCo2NguoiBiNan, soNan, soLDNu,
+        soNguoiBiChet, soNguoiBiThuongNang, soNgayNghi, tongSoTien,
+        chiPhiYTe, chiPhiTraLuong, boiThuongTroCap, thiethaiTaiSan,
+        phanLoaiJson
       ],
     );
     added++;
