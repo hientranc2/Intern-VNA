@@ -414,7 +414,6 @@ export default function EnterpriseRegisterPage() {
                     }}
                     error={!!wizardFieldErrors.ten}
                     helperText={wizardFieldErrors.ten}
-                    placeholder="VD: Công ty cổ phần ABC"
                     required
                   />
                   <OutlinedTextField
@@ -427,14 +426,12 @@ export default function EnterpriseRegisterPage() {
                     }}
                     error={!!wizardFieldErrors.mst}
                     helperText={wizardFieldErrors.mst}
-                    placeholder="VD: 0310000888"
                     required
                   />
                   <SearchableSelect
                     label="Loại hình kinh doanh"
                     options={loaiHinhOptions}
                     value={form.loai}
-                    placeholder="-- Chọn loại hình --"
                     error={!!wizardFieldErrors.loai}
                     helperText={wizardFieldErrors.loai}
                     required
@@ -449,7 +446,6 @@ export default function EnterpriseRegisterPage() {
                     label="Ngành nghề kinh doanh chính"
                     options={nganhCap4Options}
                     value={form.nganh}
-                    placeholder="-- Chọn ngành nghề --"
                     error={!!wizardFieldErrors.nganh}
                     helperText={wizardFieldErrors.nganh}
                     required
@@ -468,7 +464,6 @@ export default function EnterpriseRegisterPage() {
                     label="Tỉnh/Thành phố ĐKKD"
                     options={PROVINCES}
                     value={form.tinh}
-                    placeholder="-- Chọn tỉnh/thành phố --"
                     error={!!wizardFieldErrors.tinh}
                     helperText={wizardFieldErrors.tinh}
                     required
@@ -484,7 +479,6 @@ export default function EnterpriseRegisterPage() {
                     label="Phường/Xã ĐKKD"
                     options={phuongDKKDOptions}
                     value={form.phuong}
-                    placeholder="-- Chọn phường/xã --"
                     disabled={!form.tinh}
                     error={!!wizardFieldErrors.phuong}
                     helperText={wizardFieldErrors.phuong}
@@ -498,7 +492,6 @@ export default function EnterpriseRegisterPage() {
                     label="Địa chỉ"
                     value={form.diaChi}
                     onChange={(val) => setField("diaChi", val)}
-                    placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc"
                   />
                 </div>
               </div>
@@ -511,7 +504,6 @@ export default function EnterpriseRegisterPage() {
                     label="Tên viết bằng tiếng nước ngoài"
                     value={form.tenNN}
                     onChange={(val) => setField("tenNN", val)}
-                    placeholder="VD: VNA Group"
                   />
                   <OutlinedTextField
                     label="Email"
@@ -523,7 +515,6 @@ export default function EnterpriseRegisterPage() {
                     }}
                     error={!!wizardFieldErrors.email}
                     helperText={wizardFieldErrors.email}
-                    placeholder="vna@gmail.com"
                     required
                   />
                   <OutlinedTextField
@@ -535,7 +526,6 @@ export default function EnterpriseRegisterPage() {
                     }}
                     error={!!wizardFieldErrors.sdt}
                     helperText={wizardFieldErrors.sdt}
-                    placeholder="VD: 0283xxxxxxx"
                   />
                 </div>
                 <div className="mb-6 grid grid-cols-3 gap-3.5">
@@ -558,7 +548,6 @@ export default function EnterpriseRegisterPage() {
                     label="Tỉnh/TP hoạt động KD"
                     options={PROVINCES}
                     value={form.tinhHD}
-                    placeholder="-- Chọn tỉnh --"
                     onChange={(v) => {
                       setField("tinhHD", v);
                       setField("phuongHD", "");
@@ -570,7 +559,6 @@ export default function EnterpriseRegisterPage() {
                     label="Phường/xã hoạt động KD"
                     options={phuongHDOptions}
                     value={form.phuongHD}
-                    placeholder="-- Chọn phường/xã --"
                     disabled={!form.tinhHD}
                     onChange={(v) => setField("phuongHD", v)}
                   />
@@ -766,7 +754,6 @@ export default function EnterpriseRegisterPage() {
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && confirmOtp()}
-            placeholder="Nhập mã OTP"
           />
           <div className="mb-1 text-center text-sm font-bold text-primary">{countdown.formatted}</div>
           <div className="mb-4 text-[12.5px] text-muted">

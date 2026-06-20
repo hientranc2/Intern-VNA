@@ -11,8 +11,12 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { importFileOptions } from '../config/import-upload.config';
 import { CategoryService } from '../services/category.service';
 import {
   CreateInjuryFactorDto,
@@ -64,6 +68,14 @@ export class CategoryController {
     return this.service.removeInjuryFactor(id);
   }
 
+  @Post('injury-factors/import')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file', importFileOptions))
+  importInjuryFactors(@UploadedFile() file: Express.Multer.File) {
+    return this.service.importInjuryFactors(file);
+  }
+
   // --- Loại chấn thương ---
 
   @Get('injury-types')
@@ -93,6 +105,14 @@ export class CategoryController {
     return this.service.removeInjuryType(id);
   }
 
+  @Post('injury-types/import')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file', importFileOptions))
+  importInjuryTypes(@UploadedFile() file: Express.Multer.File) {
+    return this.service.importInjuryTypes(file);
+  }
+
   // --- Nghề nghiệp ---
 
   @Get('occupations')
@@ -120,5 +140,13 @@ export class CategoryController {
   @UseGuards(AuthGuard('jwt'))
   removeOccupation(@Param('id', ParseIntPipe) id: number) {
     return this.service.removeOccupation(id);
+  }
+
+  @Post('occupations/import')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file', importFileOptions))
+  importOccupations(@UploadedFile() file: Express.Multer.File) {
+    return this.service.importOccupations(file);
   }
 }

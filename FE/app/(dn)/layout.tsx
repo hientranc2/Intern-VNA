@@ -129,17 +129,17 @@ export default function DnLayout({ children }: { children: React.ReactNode }) {
           <div className="space-y-3.5 px-5 py-5">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium text-[#374151]">Mật khẩu cũ <span className="text-danger">*</span></label>
-              <PasswordField value={oldPwd} onChange={(v) => { setOldPwd(v); setPwdErrors((p) => ({ ...p, old: undefined })); }} placeholder="Nhập mật khẩu cũ" hasError={!!pwdErrors.old} />
+              <PasswordField value={oldPwd} onChange={(v) => { setOldPwd(v); setPwdErrors((p) => ({ ...p, old: undefined })); }} hasError={!!pwdErrors.old} />
               {pwdErrors.old ? <p className="text-[11px] text-danger">{pwdErrors.old}</p> : null}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium text-[#374151]">Mật khẩu mới <span className="text-danger">*</span></label>
-              <PasswordField value={newPwd} onChange={(v) => { setNewPwd(v); setPwdErrors((p) => ({ ...p, new: undefined })); }} placeholder="Nhập mật khẩu mới" hasError={!!pwdErrors.new} />
+              <PasswordField value={newPwd} onChange={(v) => { setNewPwd(v); setPwdErrors((p) => ({ ...p, new: undefined })); }} hasError={!!pwdErrors.new} />
               {pwdErrors.new ? <p className="text-[11px] text-danger">{pwdErrors.new}</p> : null}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium text-[#374151]">Nhập lại mật khẩu mới <span className="text-danger">*</span></label>
-              <PasswordField value={confirmPwd} onChange={(v) => { setConfirmPwd(v); setPwdErrors((p) => ({ ...p, confirm: undefined })); }} placeholder="Nhập lại mật khẩu mới" hasError={!!pwdErrors.confirm} />
+              <PasswordField value={confirmPwd} onChange={(v) => { setConfirmPwd(v); setPwdErrors((p) => ({ ...p, confirm: undefined })); }} hasError={!!pwdErrors.confirm} />
               {pwdErrors.confirm ? <p className="text-[11px] text-danger">{pwdErrors.confirm}</p> : null}
             </div>
           </div>

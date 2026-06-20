@@ -142,7 +142,6 @@ export default function ForgotPasswordPage() {
                   setEmail(event.target.value);
                   if (emailError) setEmailError("");
                 }}
-                placeholder="Phanthanhtung093@gmail.com"
                 error={!!emailError}
                 helperText={emailError}
                 size="small"
@@ -185,7 +184,6 @@ export default function ForgotPasswordPage() {
                   setOtp(event.target.value);
                   if (otpError) setOtpError("");
                 }}
-                placeholder="Nhập mã OTP"
                 error={!!otpError}
                 helperText={otpError}
                 size="small"
@@ -203,7 +201,6 @@ export default function ForgotPasswordPage() {
                   setNewPassword(v);
                   if (newPasswordError) setNewPasswordError("");
                 }}
-                placeholder="Nhập mật khẩu mới"
                 autoComplete="new-password"
                 hasError={!!newPasswordError}
                 helperText={newPasswordError}
@@ -219,7 +216,6 @@ export default function ForgotPasswordPage() {
                   setConfirmPassword(v);
                   if (confirmPasswordError) setConfirmPasswordError("");
                 }}
-                placeholder="Xác nhận mật khẩu mới"
                 autoComplete="new-password"
                 hasError={!!confirmPasswordError}
                 helperText={confirmPasswordError}

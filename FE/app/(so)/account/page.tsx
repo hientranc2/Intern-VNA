@@ -651,7 +651,6 @@ export default function AccountPage() {
               if (pwdFieldErrors.oldPwd)
                 setPwdFieldErrors((p) => ({ ...p, oldPwd: undefined }));
             }}
-            placeholder="Mật khẩu cũ"
             hasError={!!pwdFieldErrors.oldPwd}
           />
           {pwdFieldErrors.oldPwd && (
@@ -671,7 +670,6 @@ export default function AccountPage() {
               if (pwdFieldErrors.newPwd)
                 setPwdFieldErrors((p) => ({ ...p, newPwd: undefined }));
             }}
-            placeholder="Mật khẩu mới"
             autoComplete="new-password"
             hasError={!!pwdFieldErrors.newPwd}
           />
@@ -692,7 +690,6 @@ export default function AccountPage() {
               if (pwdFieldErrors.confirmPwd)
                 setPwdFieldErrors((p) => ({ ...p, confirmPwd: undefined }));
             }}
-            placeholder="Nhập lại mật khẩu mới"
             autoComplete="new-password"
             hasError={!!pwdFieldErrors.confirmPwd}
           />
@@ -752,7 +749,6 @@ export default function AccountPage() {
             }}
             error={!!otpError}
             helperText={otpError}
-            placeholder="Nhập mã OTP"
             size="small"
             fullWidth
             required
@@ -813,7 +809,6 @@ export default function AccountPage() {
             }}
             error={!!newEmailError}
             helperText={newEmailError}
-            placeholder="Nhập email mới"
             size="small"
             fullWidth
             required

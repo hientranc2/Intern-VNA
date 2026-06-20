@@ -187,9 +187,7 @@ export default function EnterprisePage() {
     password: string;
   } | null>(null);
 
-  const [viewDetail, setViewDetail] = useState<BusinessDetail | null>(null);
-  const [viewLoading, setViewLoading] = useState(false);
-  const [viewModalOpen, setViewModalOpen] = useState(false);
+
 
   const [resetTarget, setResetTarget] = useState<Business | null>(null);
   const [resetPwd, setResetPwd] = useState("");
@@ -303,24 +301,6 @@ export default function EnterprisePage() {
     }
   };
 
-  const openViewModal = async (b: Business) => {
-    setViewLoading(true);
-    setViewDetail(null);
-    setViewModalOpen(true);
-    try {
-      const detail = await getBusinessById(b.id);
-      setViewDetail(detail);
-    } catch (err) {
-      setToast({
-        message:
-          err instanceof ApiError ? err.message : "Không thể tải thông tin",
-        variant: "error",
-      });
-      setViewModalOpen(false);
-    } finally {
-      setViewLoading(false);
-    }
-  };
 
   const normalizeBusinessRows = (rawRows: any[]) => {
     return rawRows.map((row) => {
@@ -932,7 +912,6 @@ export default function EnterprisePage() {
                           setFBusinessType(v);
                           setCurrentPage(1);
                         }}
-                        placeholder="Tất cả"
                       />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
@@ -945,7 +924,6 @@ export default function EnterprisePage() {
                           setFMainIndustry(v);
                           setCurrentPage(1);
                         }}
-                        placeholder="Tất cả"
                       />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
@@ -958,7 +936,6 @@ export default function EnterprisePage() {
                           setFWard(v);
                           setCurrentPage(1);
                         }}
-                        placeholder="Tất cả"
                       />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
@@ -1014,7 +991,9 @@ export default function EnterprisePage() {
                             <div className="flex gap-0.5">
                               <button
                                 type="button"
-                                onClick={() => openViewModal(b)}
+                                onClick={() =>
+                                  router.push(`/enterprise/view/${b.id}`)
+                                }
                                 title="Xem"
                                 className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                               >
@@ -1841,260 +1820,6 @@ export default function EnterprisePage() {
         </div>
       </div>
 
-      {/* View enterprise modal */}
-      <div
-        className={`fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/50 pt-10 transition-opacity duration-200 ${viewModalOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
-      >
-        <div
-          className={`mb-10 w-[760px] max-w-[96vw] overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)] transition-transform duration-200 ${viewModalOpen ? "translate-y-0" : "translate-y-3"}`}
-        >
-          <div className="flex items-center justify-between bg-primary px-7 py-4">
-            <h3 className="text-[15px] font-semibold text-white">
-              Thông tin doanh nghiệp
-            </h3>
-            <button
-              type="button"
-              onClick={() => setViewModalOpen(false)}
-              className="text-white/70 hover:text-white"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {viewLoading ? (
-            <div className="flex items-center justify-center py-16 text-[13px] text-muted">
-              Đang tải...
-            </div>
-          ) : viewDetail ? (
-            <div className="px-7 py-6">
-              <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
-                <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <TextField
-                    label="Tên doanh nghiệp"
-                    value={viewDetail.businessName}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Mã số thuế"
-                    value={viewDetail.taxCode}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Loại hình kinh doanh"
-                    value={viewDetail.businessType}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                </div>
-                <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <TextField
-                    label="Ngành nghề kinh doanh, chính"
-                    value={viewDetail.mainIndustry}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">
-                      Ngày cấp GPKD
-                    </label>
-                    <DateInput
-                      disabled
-                      value={formatLicenseDate(viewDetail.licenseDate)}
-                      readOnly
-                    />
-                  </div>
-                  <TextField
-                    label="Tỉnh/Thành phố ĐKKD"
-                    value={viewDetail.registeredProvince ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3.5">
-                  <TextField
-                    label="Phường/Xã ĐKKD"
-                    value={viewDetail.registeredWard}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Địa chỉ"
-                    value={viewDetail.address ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                </div>
-              </div>
-
-              <div className="my-3 text-[13.5px] font-semibold text-[#374151]">
-                Thông tin liên hệ
-              </div>
-              <div className="rounded-lg border border-[#e5e7eb] p-5">
-                <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <TextField
-                    label="Tên viết bằng tiếng nước ngoài"
-                    value={viewDetail.foreignName ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Email"
-                    value={viewDetail.email ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Số điện thoại cơ quan"
-                    value={viewDetail.officePhone ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                </div>
-                <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-                  <TextField
-                    label="Tỉnh/TP hoạt động KD"
-                    value={viewDetail.operatingProvince ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Phường/xã hoạt động KD"
-                    value={viewDetail.operatingWard ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <div />
-                </div>
-                <div className="grid grid-cols-3 gap-3.5">
-                  <TextField
-                    label="Địa điểm kinh doanh"
-                    value={viewDetail.operatingAddress ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Người đứng đầu doanh nghiệp"
-                    value={viewDetail.representative ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="SĐT liên hệ người đứng đầu"
-                    value={viewDetail.representativePhone ?? ""}
-                    disabled
-                    size="small"
-                    fullWidth
-                  />
-                </div>
-              </div>
-
-              <div className="my-3 text-[13.5px] font-semibold text-[#374151]">
-                File đính kèm
-              </div>
-              <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
-                <table className="w-full border-collapse text-[13px]">
-                  <thead>
-                    <tr>
-                      <th className="w-[200px] border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
-                        Tên file
-                      </th>
-                      <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
-                        Thông tin file
-                      </th>
-                      <th className="w-20 border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-left text-[12.5px] text-[#374151]">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {VIEW_FILE_ROWS.map((name, idx) => {
-                      const url =
-                        idx === 0
-                          ? viewDetail.licenseFile
-                          : viewDetail.otherFile;
-                      return (
-                        <tr
-                          key={name}
-                          className="border-b border-[#f3f4f6] last:border-b-0"
-                        >
-                          <td className="px-3 py-2 text-[#374151]">{name}</td>
-                          <td className="px-3 py-2 text-[13px] text-[#374151]">
-                            {url ? (
-                              filenameFromUrl(url)
-                            ) : (
-                              <span className="text-muted">Chưa có file</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2">
-                            <button
-                              type="button"
-                              title="Xem"
-                              onClick={() => url && window.open(url, "_blank")}
-                              disabled={!url}
-                              className={
-                                url
-                                  ? "text-muted hover:text-primary"
-                                  : "cursor-not-allowed opacity-40"
-                              }
-                            >
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                              >
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                              </svg>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="flex justify-end border-t border-[#e5e7eb] px-7 py-4">
-            <button
-              type="button"
-              onClick={() => setViewModalOpen(false)}
-              className="h-[38px] rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Account popup */}
       {accountInfo ? (

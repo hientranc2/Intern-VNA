@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -14,6 +15,11 @@ import {
   CreateTreeNodeDto,
   UpdateTreeNodeDto,
 } from '../../libs/shared/models/category.dto';
+import {
+  parseExcelToRows,
+  pickCell,
+  excelRowNumber,
+} from '../utils/excel-import.util';
 
 @Injectable()
 export class CategoryService {
@@ -234,5 +240,314 @@ export class CategoryService {
     if (!item) throw new NotFoundException('Không tìm thấy nghề nghiệp');
     await this.occupationRepo.remove(item);
     return { message: 'Xóa thành công' };
+  }
+
+  async importInjuryFactors(file?: Express.Multer.File) {
+    if (!file?.buffer) {
+      throw new BadRequestException('Vui lòng chọn file để import');
+    }
+
+    const rows = parseExcelToRows(file.buffer);
+
+    const FACTOR_HEADER_MAP = {
+      ma: ['Mã yếu tố', 'Mã'],
+      ten: ['Tên yếu tố gây chấn thương', 'Tên yếu tố chấn thương', 'Tên yếu tố', 'Tên'],
+      active: ['Trạng thái', 'Kích hoạt', 'Active'],
+    } as const;
+
+    const records: Partial<InjuryFactor>[] = [];
+    const seenMas = new Set<string>();
+    const seenTens = new Set<string>();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = excelRowNumber(i);
+
+      const ma = pickCell(row, [...FACTOR_HEADER_MAP.ma]);
+      const ten = pickCell(row, [...FACTOR_HEADER_MAP.ten]);
+      const activeStr = pickCell(row, [...FACTOR_HEADER_MAP.active]);
+
+      if (!ma) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Mã yếu tố"`);
+      }
+      if (!ten) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Tên yếu tố gây chấn thương"`);
+      }
+      if (seenMas.has(ma)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Mã yếu tố" "${ma}" bị trùng trong file`,
+        );
+      }
+      seenMas.add(ma);
+
+      const normTen = ten.toLowerCase().trim();
+      if (seenTens.has(normTen)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Tên yếu tố gây chấn thương" "${ten}" bị trùng trong file`,
+        );
+      }
+      seenTens.add(normTen);
+
+      let active = true;
+      if (activeStr) {
+        const normActive = activeStr.toLowerCase();
+        if (
+          normActive === '0' ||
+          normActive === 'false' ||
+          normActive === 'ngừng' ||
+          normActive === 'ngừng hoạt động' ||
+          normActive === 'ngừng sử dụng'
+        ) {
+          active = false;
+        }
+      }
+
+      records.push({ ma, ten, active });
+    }
+
+    const existing = await this.injuryFactorRepo.find({
+      where: records.map((r) => ({ ma: r.ma })),
+      select: { ma: true },
+    });
+    const errors: string[] = [];
+
+    if (existing.length > 0) {
+      const takenMas = new Set(existing.map((e) => e.ma));
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        if (r.ma && takenMas.has(r.ma)) {
+          errors.push(`Dòng ${i + 1}: "Mã yếu tố" "${r.ma}" đã tồn tại trong hệ thống`);
+        }
+      }
+    }
+
+    const existingNames = await this.injuryFactorRepo.find({
+      where: records.map((r) => ({ ten: r.ten })),
+      select: { ten: true },
+    });
+    if (existingNames.length > 0) {
+      const takenTens = new Set(existingNames.map((e) => e.ten.toLowerCase().trim()));
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        if (r.ten && takenTens.has(r.ten.toLowerCase().trim())) {
+          errors.push(`Dòng ${i + 1}: "Tên yếu tố gây chấn thương" "${r.ten}" đã tồn tại trong hệ thống`);
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new ConflictException(errors.join('\n'));
+    }
+
+    const queryRunner = this.injuryFactorRepo.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const toInsert = this.injuryFactorRepo.create(records);
+      await queryRunner.manager.insert(InjuryFactor, toInsert);
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(
+        `Lỗi khi ghi dữ liệu: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      message: `Đã import thành công ${records.length} yếu tố gây chấn thương`,
+      imported: records.length,
+    };
+  }
+
+  async importInjuryTypes(file?: Express.Multer.File) {
+    if (!file?.buffer) {
+      throw new BadRequestException('Vui lòng chọn file để import');
+    }
+
+    const rows = parseExcelToRows(file.buffer);
+
+    const TYPE_HEADER_MAP = {
+      ma: ['Mã số', 'Mã'],
+      ten: ['Tên loại chấn thương', 'Tên loại chấn thương gây chấn thương', 'Tên loại', 'Tên'],
+      cap: ['Cấp', 'Cấp độ'],
+      cha: ['Mã cha', 'Cha'],
+    } as const;
+
+    const records: Partial<InjuryType>[] = [];
+    const seenMas = new Set<string>();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = excelRowNumber(i);
+
+      const ma = pickCell(row, [...TYPE_HEADER_MAP.ma]);
+      const ten = pickCell(row, [...TYPE_HEADER_MAP.ten]);
+      const capStr = pickCell(row, [...TYPE_HEADER_MAP.cap]);
+      const cha = pickCell(row, [...TYPE_HEADER_MAP.cha]);
+
+      if (!ma) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Mã số"`);
+      }
+      if (!ten) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Tên loại chấn thương"`);
+      }
+      if (!capStr) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Cấp"`);
+      }
+
+      const cap = parseInt(capStr, 10);
+      if (isNaN(cap) || cap < 1 || cap > 4) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Cấp" phải là số từ 1 đến 4`,
+        );
+      }
+
+      if (seenMas.has(ma)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Mã số" "${ma}" bị trùng trong file`,
+        );
+      }
+      seenMas.add(ma);
+
+      records.push({ ma, ten, cap, cha: cha ?? '' });
+    }
+
+    const existing = await this.injuryTypeRepo.find({
+      where: records.map((r) => ({ ma: r.ma })),
+      select: { ma: true },
+    });
+    const errors: string[] = [];
+
+    if (existing.length > 0) {
+      const takenMas = new Set(existing.map((e) => e.ma));
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        if (r.ma && takenMas.has(r.ma)) {
+          errors.push(`Dòng ${i + 1}: "Mã số" "${r.ma}" đã tồn tại trong hệ thống`);
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new ConflictException(errors.join('\n'));
+    }
+
+    const queryRunner = this.injuryTypeRepo.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const toInsert = this.injuryTypeRepo.create(records);
+      await queryRunner.manager.insert(InjuryType, toInsert);
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(
+        `Lỗi khi ghi dữ liệu: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      message: `Đã import thành công ${records.length} loại chấn thương`,
+      imported: records.length,
+    };
+  }
+
+  async importOccupations(file?: Express.Multer.File) {
+    if (!file?.buffer) {
+      throw new BadRequestException('Vui lòng chọn file để import');
+    }
+
+    const rows = parseExcelToRows(file.buffer);
+
+    const OCCUPATION_HEADER_MAP = {
+      ma: ['Mã nghề', 'Mã số', 'Mã'],
+      ten: ['Tên nghề nghiệp', 'Tên', 'Tên ngành nghề'],
+      cap: ['Cấp', 'Cấp độ'],
+      cha: ['Mã cha', 'Cha'],
+    } as const;
+
+    const records: Partial<Occupation>[] = [];
+    const seenMas = new Set<string>();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = excelRowNumber(i);
+
+      const ma = pickCell(row, [...OCCUPATION_HEADER_MAP.ma]);
+      const ten = pickCell(row, [...OCCUPATION_HEADER_MAP.ten]);
+      const capStr = pickCell(row, [...OCCUPATION_HEADER_MAP.cap]);
+      const cha = pickCell(row, [...OCCUPATION_HEADER_MAP.cha]);
+
+      if (!ma) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Mã nghề"`);
+      }
+      if (!ten) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Tên nghề nghiệp"`);
+      }
+      if (!capStr) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Cấp"`);
+      }
+
+      const cap = parseInt(capStr, 10);
+      if (isNaN(cap) || cap < 1 || cap > 4) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Cấp" phải là số từ 1 đến 4`,
+        );
+      }
+
+      if (seenMas.has(ma)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Mã nghề" "${ma}" bị trùng trong file`,
+        );
+      }
+      seenMas.add(ma);
+
+      records.push({ ma, ten, cap, cha: cha ?? '' });
+    }
+
+    const existing = await this.occupationRepo.find({
+      where: records.map((r) => ({ ma: r.ma })),
+      select: { ma: true },
+    });
+    const errors: string[] = [];
+
+    if (existing.length > 0) {
+      const takenMas = new Set(existing.map((e) => e.ma));
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        if (r.ma && takenMas.has(r.ma)) {
+          errors.push(`Dòng ${i + 1}: "Mã nghề" "${r.ma}" đã tồn tại trong hệ thống`);
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new ConflictException(errors.join('\n'));
+    }
+
+    const queryRunner = this.occupationRepo.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const toInsert = this.occupationRepo.create(records);
+      await queryRunner.manager.insert(Occupation, toInsert);
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(
+        `Lỗi khi ghi dữ liệu: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      message: `Đã import thành công ${records.length} nghề nghiệp`,
+      imported: records.length,
+    };
   }
 }

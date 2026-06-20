@@ -634,7 +634,6 @@ export default function EnterpriseTypePage() {
             }}
             error={!!panelErrors.ma}
             helperText={panelErrors.ma}
-            placeholder="VD: 120"
             size="small"
             fullWidth
             required
@@ -651,7 +650,6 @@ export default function EnterpriseTypePage() {
             }}
             error={!!panelErrors.ten}
             helperText={panelErrors.ten}
-            placeholder="VD: Doanh nghiệp nhà nước"
             size="small"
             fullWidth
             required

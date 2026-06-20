@@ -271,7 +271,6 @@ export default function EnterpriseSignReportPage() {
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <input
                           className={FILTER_INPUT}
-                          placeholder="dd/MM/yyyy"
                           value={fNgayBatDau}
                           onChange={(e) => setFNgayBatDau(e.target.value)}
                         />
@@ -279,7 +278,6 @@ export default function EnterpriseSignReportPage() {
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <input
                           className={FILTER_INPUT}
-                          placeholder="dd/MM/yyyy"
                           value={fNgayKetThuc}
                           onChange={(e) => setFNgayKetThuc(e.target.value)}
                         />

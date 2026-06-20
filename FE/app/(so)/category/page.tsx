@@ -1,5 +1,6 @@
 "use client";
 
+import * as XLSX from "xlsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MenuItem, TextField } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
@@ -28,8 +29,13 @@ import {
   createOccupation,
   updateOccupation,
   deleteOccupation,
+  importInjuryFactors,
+  importInjuryTypes,
+  importOccupations,
 } from "@/libs/tts/category/categoryApi";
 import { useCan } from "@/libs/tts/auth/abilityContext";
+import { ApiError } from "@/libs/tts/auth/apiClient";
+import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
 
 const TAB_META: Record<CategoryTab, { label: string; option: string }> = {
   factor: { label: "Yếu tố gây chấn thương", option: "Yếu tố chấn thương" },
@@ -57,6 +63,15 @@ export default function CategoryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
+  // Import preview states
+  const [importFileName, setImportFileName] = useState("");
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importErrors, setImportErrors] = useState<
+    Record<number, Record<string, string>>
+  >({});
+  const [isImportSubmitting, setIsImportSubmitting] = useState(false);
+
   useEffect(() => {
     getInjuryFactorList().then(setFactors).catch(() => {});
     getInjuryTypeList().then(setInjuryTypes).catch(() => {});
@@ -72,7 +87,10 @@ export default function CategoryPage() {
     });
   };
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    variant: "success" | "error";
+  } | null>(null);
 
   const [fMa, setFMa] = useState("");
   const [fTen, setFTen] = useState("");
@@ -138,10 +156,10 @@ export default function CategoryPage() {
   const toggleFactor = (id: number, active: boolean) => {
     setFactors((prev) => prev.map((r) => (r.id === id ? { ...r, active } : r)));
     toggleInjuryFactorActive(id, active)
-      .then(() => setToast("Cập nhật trạng thái thành công"))
+      .then(() => setToast({ message: "Cập nhật trạng thái thành công", variant: "success" }))
       .catch(() => {
         setFactors((prev) => prev.map((r) => (r.id === id ? { ...r, active: !active } : r)));
-        setToast("Cập nhật thất bại");
+        setToast({ message: "Cập nhật thất bại", variant: "error" });
       });
   };
 
@@ -213,9 +231,9 @@ export default function CategoryPage() {
         }
       }
       setPanelOpen(false);
-      setToast(isEdit ? "Cập nhật thành công" : "Thêm mới thành công");
+      setToast({ message: isEdit ? "Cập nhật thành công" : "Thêm mới thành công", variant: "success" });
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "Lưu thất bại. Vui lòng thử lại.");
+      setToast({ message: e instanceof Error ? e.message : "Lưu thất bại. Vui lòng thử lại.", variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -239,10 +257,279 @@ export default function CategoryPage() {
       }
       setSelectedIds(new Set());
       setDeleteConfirmOpen(false);
-      setToast(`Đã xóa ${ids.length} mục`);
+      setToast({ message: `Đã xóa ${ids.length} mục`, variant: "success" });
     } catch {
       setDeleteConfirmOpen(false);
-      setToast("Xóa thất bại. Vui lòng thử lại.");
+      setToast({ message: "Xóa thất bại. Vui lòng thử lại.", variant: "error" });
+    }
+  };
+
+  // --- Export Excel ---
+  const handleExport = () => {
+    if (tab === "factor") {
+      const headers = ["Mã yếu tố", "Tên yếu tố gây chấn thương", "Trạng thái"];
+      const rows = filteredFactors.map((r) => [r.ma, r.ten, r.active ? "Sử dụng" : "Ngừng"]);
+      exportToExcel("danh_sach_yeu_to_chan_thuong.xlsx", headers, rows);
+    } else if (tab === "injuryType") {
+      const headers = ["Mã số", "Tên loại chấn thương", "Cấp", "Mã cha"];
+      const rows = filteredTree.map((r) => [r.ma, r.ten, r.cap, r.cha || ""]);
+      exportToExcel("danh_sach_loai_chan_thuong.xlsx", headers, rows);
+    } else {
+      const headers = ["Mã nghề", "Tên nghề nghiệp", "Cấp", "Mã cha"];
+      const rows = filteredTree.map((r) => [r.ma, r.ten, r.cap, r.cha || ""]);
+      exportToExcel("danh_sach_nghe_nghiep.xlsx", headers, rows);
+    }
+  };
+
+  // --- Import Flow ---
+  const normalizeFactorRows = (rawRows: any[]) => {
+    return rawRows.map((row) => {
+      const pick = (candidates: string[]) => {
+        for (const k of Object.keys(row)) {
+          if (candidates.map((c) => c.toLowerCase().trim()).includes(k.toLowerCase().trim())) {
+            return String(row[k] ?? "").trim();
+          }
+        }
+        return "";
+      };
+      return {
+        "Mã yếu tố": pick(["Mã yếu tố", "Mã"]),
+        "Tên yếu tố gây chấn thương": pick(["Tên yếu tố gây chấn thương", "Tên yếu tố chấn thương", "Tên yếu tố", "Tên"]),
+        "Trạng thái": pick(["Trạng thái", "Kích hoạt", "Active"]),
+      };
+    });
+  };
+
+  const validateFactorImport = (rows: any[]) => {
+    const errs: Record<number, Record<string, string>> = {};
+    const seenMas = new Set<string>();
+    const seenTens = new Set<string>();
+
+    rows.forEach((row, idx) => {
+      const rowErrs: Record<string, string> = {};
+      const ma = row["Mã yếu tố"];
+      const ten = row["Tên yếu tố gây chấn thương"];
+
+      if (!ma) {
+        rowErrs["Mã yếu tố"] = "Mã không được để trống";
+      } else if (seenMas.has(ma)) {
+        rowErrs["Mã yếu tố"] = "Mã bị trùng trong file";
+      } else {
+        seenMas.add(ma);
+      }
+
+      if (!ten) {
+        rowErrs["Tên yếu tố gây chấn thương"] = "Tên không được để trống";
+      } else {
+        const normTen = ten.toLowerCase().trim();
+        if (seenTens.has(normTen)) {
+          rowErrs["Tên yếu tố gây chấn thương"] = "Tên bị trùng trong file";
+        } else {
+          seenTens.add(normTen);
+        }
+      }
+
+      if (Object.keys(rowErrs).length > 0) {
+        errs[idx] = rowErrs;
+      }
+    });
+
+    return errs;
+  };
+
+  const normalizeTreeRows = (rawRows: any[]) => {
+    return rawRows.map((row) => {
+      const pick = (candidates: string[]) => {
+        for (const k of Object.keys(row)) {
+          if (candidates.map((c) => c.toLowerCase().trim()).includes(k.toLowerCase().trim())) {
+            return String(row[k] ?? "").trim();
+          }
+        }
+        return "";
+      };
+      const isType = tab === "injuryType";
+      return {
+        [isType ? "Mã số" : "Mã nghề"]: pick([
+          "Mã số",
+          "Mã nghề",
+          "Mã",
+        ]),
+        [isType ? "Tên loại chấn thương" : "Tên nghề nghiệp"]: pick([
+          "Tên loại chấn thương",
+          "Tên nghề nghiệp",
+          "Tên",
+        ]),
+        "Cấp": pick(["Cấp", "Cấp độ"]),
+        "Mã cha": pick(["Mã cha", "Cha"]),
+      };
+    });
+  };
+
+  const validateTreeImport = (rows: any[]) => {
+    const errs: Record<number, Record<string, string>> = {};
+    const seenMas = new Set<string>();
+    const isType = tab === "injuryType";
+    const codeKey = isType ? "Mã số" : "Mã nghề";
+    const nameKey = isType ? "Tên loại chấn thương" : "Tên nghề nghiệp";
+
+    rows.forEach((row, idx) => {
+      const rowErrs: Record<string, string> = {};
+      const ma = row[codeKey];
+      const ten = row[nameKey];
+      const capStr = row["Cấp"];
+
+      if (!ma) {
+        rowErrs[codeKey] = "Mã không được để trống";
+      } else if (seenMas.has(ma)) {
+        rowErrs[codeKey] = "Mã bị trùng trong file";
+      } else {
+        seenMas.add(ma);
+      }
+
+      if (!ten) {
+        rowErrs[nameKey] = "Tên không được để trống";
+      }
+
+      if (!capStr) {
+        rowErrs["Cấp"] = "Cấp không được để trống";
+      } else {
+        const cap = parseInt(capStr, 10);
+        if (isNaN(cap) || cap < 1 || cap > 4) {
+          rowErrs["Cấp"] = "Cấp phải là số từ 1 đến 4";
+        }
+      }
+
+      if (Object.keys(rowErrs).length > 0) {
+        errs[idx] = rowErrs;
+      }
+    });
+
+    return errs;
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawJson = XLSX.utils.sheet_to_json<any>(ws, { defval: "" });
+
+        if (rawJson.length === 0) {
+          setToast({ message: "File không có dữ liệu", variant: "error" });
+          return;
+        }
+
+        let normalized: any[] = [];
+        let errs: Record<number, Record<string, string>> = {};
+
+        if (tab === "factor") {
+          normalized = normalizeFactorRows(rawJson);
+          errs = validateFactorImport(normalized);
+        } else {
+          normalized = normalizeTreeRows(rawJson);
+          errs = validateTreeImport(normalized);
+        }
+
+        setImportRows(normalized);
+        setImportErrors(errs);
+        setImportPreviewOpen(true);
+      } catch (err) {
+        setToast({ message: "Lỗi khi đọc file Excel", variant: "error" });
+      } finally {
+        if (importRef.current) importRef.current.value = "";
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleCellChange = (rowIdx: number, field: string, val: string) => {
+    const updated = [...importRows];
+    updated[rowIdx] = { ...updated[rowIdx], [field]: val };
+    setImportRows(updated);
+
+    let errs: Record<number, Record<string, string>> = {};
+    if (tab === "factor") {
+      errs = validateFactorImport(updated);
+    } else {
+      errs = validateTreeImport(updated);
+    }
+    setImportErrors(errs);
+  };
+
+  const confirmImport = async () => {
+    setIsImportSubmitting(true);
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(importRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const file = new File([blob], importFileName || "import.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+      let res;
+      if (tab === "factor") {
+        res = await importInjuryFactors(file);
+      } else if (tab === "injuryType") {
+        res = await importInjuryTypes(file);
+      } else {
+        res = await importOccupations(file);
+      }
+
+      setToast({ message: res.message || "Import thành công", variant: "success" });
+      setImportPreviewOpen(false);
+
+      if (tab === "factor") {
+        getInjuryFactorList().then(setFactors).catch(() => {});
+      } else if (tab === "injuryType") {
+        getInjuryTypeList().then(setInjuryTypes).catch(() => {});
+      } else {
+        getOccupationList().then(setOccupations).catch(() => {});
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.message) {
+        const newErrs = { ...importErrors };
+        let hasMappedErrors = false;
+
+        const lines = err.message.split("\n");
+        const codeKey = tab === "factor" ? "Mã yếu tố" : (tab === "injuryType" ? "Mã số" : "Mã nghề");
+        const nameKey = tab === "factor" ? "Tên yếu tố gây chấn thương" : (tab === "injuryType" ? "Tên loại chấn thương" : "Tên nghề nghiệp");
+
+        lines.forEach((line) => {
+          const match = line.match(/^Dòng\s+(\d+):\s*(.*)$/i);
+          if (match) {
+            const rowIdx = parseInt(match[1], 10) - 1;
+            const msg = match[2];
+            if (rowIdx >= 0 && rowIdx < importRows.length) {
+              if (!newErrs[rowIdx]) newErrs[rowIdx] = {};
+              
+              if (msg.includes("Mã")) {
+                newErrs[rowIdx][codeKey] = msg;
+              } else if (msg.includes("Tên")) {
+                newErrs[rowIdx][nameKey] = msg;
+              } else {
+                newErrs[rowIdx][codeKey] = msg;
+              }
+              hasMappedErrors = true;
+            }
+          }
+        });
+
+        if (hasMappedErrors) {
+          setImportErrors(newErrs);
+          setToast({ message: "Phát hiện một số lỗi dữ liệu đã tồn tại trong hệ thống. Vui lòng kiểm tra các ô màu đỏ.", variant: "error" });
+          return;
+        }
+      }
+      setToast({ message: err instanceof ApiError ? err.message : "Import thất bại", variant: "error" });
+    } finally {
+      setIsImportSubmitting(false);
     }
   };
 
@@ -286,32 +573,31 @@ export default function CategoryPage() {
       <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
         <h1 className="text-base font-semibold text-ink">Khai báo danh mục</h1>
         <div className="flex gap-2.5">
-          {tab !== "occupation" ? (
-            <button
-              type="button"
-              className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
+          <button
+            type="button"
+            onClick={handleExport}
+            className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Xuất danh sách
-            </button>
-          ) : null}
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Xuất danh sách
+          </button>
           <input
             ref={importRef}
             type="file"
             accept=".csv,.xlsx,.xls"
             className="hidden"
-            onChange={() => setToast("Đã nhận file. Vui lòng chờ xử lý.")}
+            onChange={handleImport}
           />
           <button
             type="button"
@@ -879,7 +1165,250 @@ export default function CategoryPage() {
         </p>
       </Modal>
 
-      <Toast message={toast} onDone={() => setToast(null)} />
+      {/* Modal Preview Import */}
+      {importPreviewOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/45 transition-opacity duration-200">
+          <div className="flex h-[90vh] w-[90vw] max-w-5xl flex-col rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-transform duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between rounded-t-[10px] bg-primary px-6 py-4 text-white">
+              <h3 className="text-base font-bold">
+                Xem trước dữ liệu import {TAB_META[tab].option}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setImportPreviewOpen(false)}
+                className="text-white hover:text-gray-200 transition-colors"
+                aria-label="Đóng"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Info bar */}
+            <div className="flex items-center justify-between border-b border-line bg-body px-6 py-2.5 text-[12.5px] text-[#4b5563]">
+              <span>File nguồn: <strong className="text-ink">{importFileName}</strong></span>
+              <span>Số dòng: <strong className="text-ink">{importRows.length}</strong></span>
+            </div>
+
+            {/* Scrollable table container */}
+            <div className="flex-1 overflow-auto p-6">
+              <div className="h-full overflow-auto rounded-lg border border-line">
+                <table className="w-full border-collapse text-[13.5px]">
+                  <thead className="sticky top-0 z-10 bg-[#f9fafb]">
+                    <tr className="border-b border-line text-left font-semibold text-[#374151]">
+                      <th className="w-14 px-3 py-2.5 text-center bg-[#f9fafb] sticky left-0 z-20">STT</th>
+                      {tab === "factor" ? (
+                        <>
+                          <th className="px-3 py-2.5 min-w-[200px]">Mã yếu tố *</th>
+                          <th className="px-3 py-2.5 min-w-[300px]">Tên yếu tố gây chấn thương *</th>
+                          <th className="px-3 py-2.5 min-w-[150px]">Trạng thái</th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="px-3 py-2.5 min-w-[200px]">
+                            {tab === "injuryType" ? "Mã số *" : "Mã nghề *"}
+                          </th>
+                          <th className="px-3 py-2.5 min-w-[300px]">
+                            {tab === "injuryType" ? "Tên loại chấn thương *" : "Tên nghề nghiệp *"}
+                          </th>
+                          <th className="px-3 py-2.5 min-w-[120px]">Cấp *</th>
+                          <th className="px-3 py-2.5 min-w-[200px]">Mã cha</th>
+                        </>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importRows.map((row, idx) => {
+                      const rowErrs = importErrors[idx] || {};
+                      
+                      if (tab === "factor") {
+                        const hasMaError = !!rowErrs["Mã yếu tố"];
+                        const hasTenError = !!rowErrs["Tên yếu tố gây chấn thương"];
+                        return (
+                          <tr key={idx} className="border-b border-line hover:bg-body/30">
+                            <td className="px-3 py-2 text-center text-muted font-medium bg-[#f9fafb] sticky left-0 z-10">
+                              {idx + 1}
+                            </td>
+                            <td className="p-2 relative align-top">
+                              <input
+                                type="text"
+                                value={row["Mã yếu tố"] || ""}
+                                onChange={(e) => handleCellChange(idx, "Mã yếu tố", e.target.value)}
+                                className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                  hasMaError
+                                    ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                    : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                }`}
+                              />
+                              {hasMaError && (
+                                <div className="text-[11px] text-danger font-medium mt-1 leading-tight">
+                                  {rowErrs["Mã yếu tố"]}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-2 relative align-top">
+                              <input
+                                type="text"
+                                value={row["Tên yếu tố gây chấn thương"] || ""}
+                                onChange={(e) => handleCellChange(idx, "Tên yếu tố gây chấn thương", e.target.value)}
+                                className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                  hasTenError
+                                    ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                    : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                }`}
+                              />
+                              {hasTenError && (
+                                <div className="text-[11px] text-danger font-medium mt-1 leading-tight">
+                                  {rowErrs["Tên yếu tố gây chấn thương"]}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-2 relative align-top">
+                              <select
+                                value={row["Trạng thái"] || "Sử dụng"}
+                                onChange={(e) => handleCellChange(idx, "Trạng thái", e.target.value)}
+                                className="w-full h-8 px-2 rounded border border-line text-[12.5px] outline-none focus:border-primary bg-white cursor-pointer"
+                              >
+                                <option value="Sử dụng">Sử dụng</option>
+                                <option value="Ngừng">Ngừng</option>
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      } else {
+                        const codeKey = tab === "injuryType" ? "Mã số" : "Mã nghề";
+                        const nameKey = tab === "injuryType" ? "Tên loại chấn thương" : "Tên nghề nghiệp";
+                        const hasCodeError = !!rowErrs[codeKey];
+                        const hasNameError = !!rowErrs[nameKey];
+                        const hasCapError = !!rowErrs["Cấp"];
+
+                        return (
+                          <tr key={idx} className="border-b border-line hover:bg-body/30">
+                            <td className="px-3 py-2 text-center text-muted font-medium bg-[#f9fafb] sticky left-0 z-10">
+                              {idx + 1}
+                            </td>
+                            <td className="p-2 relative align-top">
+                              <input
+                                type="text"
+                                value={row[codeKey] || ""}
+                                onChange={(e) => handleCellChange(idx, codeKey, e.target.value)}
+                                className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                  hasCodeError
+                                    ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                    : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                }`}
+                              />
+                              {hasCodeError && (
+                                <div className="text-[11px] text-danger font-medium mt-1 leading-tight">
+                                  {rowErrs[codeKey]}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-2 relative align-top">
+                              <input
+                                type="text"
+                                value={row[nameKey] || ""}
+                                onChange={(e) => handleCellChange(idx, nameKey, e.target.value)}
+                                className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                  hasNameError
+                                    ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                    : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                }`}
+                              />
+                              {hasNameError && (
+                                <div className="text-[11px] text-danger font-medium mt-1 leading-tight">
+                                  {rowErrs[nameKey]}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-2 relative align-top">
+                              <input
+                                type="number"
+                                min={1}
+                                max={4}
+                                value={row["Cấp"] || ""}
+                                onChange={(e) => handleCellChange(idx, "Cấp", e.target.value)}
+                                className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                  hasCapError
+                                    ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                    : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                }`}
+                              />
+                              {hasCapError && (
+                                <div className="text-[11px] text-danger font-medium mt-1 leading-tight">
+                                  {rowErrs["Cấp"]}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-2 relative align-top">
+                              <input
+                                type="text"
+                                value={row["Mã cha"] || ""}
+                                onChange={(e) => handleCellChange(idx, "Mã cha", e.target.value)}
+                                className="w-full h-8 px-2 rounded border border-line text-[12.5px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      }
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-line bg-[#f8fafc] px-6 py-4">
+              <div>
+                {Object.keys(importErrors).length > 0 ? (
+                  <span className="text-[13px] font-semibold text-danger flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    Phát hiện lỗi ở {Object.keys(importErrors).length} dòng. Vui lòng sửa lỗi.
+                  </span>
+                ) : (
+                  <span className="text-[13px] font-semibold text-success flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Tất cả dữ liệu đã hợp lệ.
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setImportPreviewOpen(false)}
+                  disabled={isImportSubmitting}
+                  className="h-9 rounded-md border border-line px-5 text-[13px] font-semibold text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50 bg-white"
+                >
+                  Huỷ bỏ
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmImport}
+                  disabled={isImportSubmitting || Object.keys(importErrors).length > 0}
+                  className="h-9 rounded-md bg-primary px-6 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isImportSubmitting ? "Đang gửi..." : "Xác nhận & Gửi"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Toast
+        message={toast?.message ?? null}
+        variant={toast?.variant}
+        onDone={() => setToast(null)}
+      />
     </>
   );
 }

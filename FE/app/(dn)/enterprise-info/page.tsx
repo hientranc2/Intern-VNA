@@ -819,7 +819,6 @@ export default function EnterpriseInfoPage() {
                     required
                     options={loaiHinhOptions}
                     value={editForm.loai}
-                    placeholder="-- Chọn loại hình --"
                     onChange={(v) => setField("loai", v)}
                   />
                 </div>
@@ -830,7 +829,6 @@ export default function EnterpriseInfoPage() {
                     required
                     options={nganhCap4Options}
                     value={editForm.nganh}
-                    placeholder="-- Chọn ngành nghề --"
                     error={!!editErrors.nganh}
                     helperText={editErrors.nganh}
                     onChange={(v) => {
@@ -851,7 +849,6 @@ export default function EnterpriseInfoPage() {
                     required
                     options={PROVINCES}
                     value={editForm.tinh}
-                    placeholder="-- Chọn tỉnh/thành phố --"
                     error={!!editErrors.tinh}
                     helperText={editErrors.tinh}
                     onChange={(v) => {
@@ -869,7 +866,6 @@ export default function EnterpriseInfoPage() {
                     required
                     options={phuongOptions}
                     value={editForm.phuong}
-                    placeholder="-- Chọn phường/xã --"
                     disabled={!editForm.tinh}
                     error={!!editErrors.phuong}
                     helperText={editErrors.phuong}
@@ -1177,7 +1173,6 @@ export default function EnterpriseInfoPage() {
                   className="h-10 w-full rounded-md border border-line px-3 text-sm outline-none focus:border-[#3b82f6]"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  placeholder="122456"
                 />
               </div>
 
@@ -1222,7 +1217,6 @@ export default function EnterpriseInfoPage() {
                   className="h-10 w-full rounded-md border border-line px-3 text-sm outline-none focus:border-[#3b82f6]"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="vnagroup01@gmail.com"
                   type="email"
                 />
               </div>

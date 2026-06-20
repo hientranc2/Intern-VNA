@@ -16,7 +16,7 @@ import { LoadingOverlay } from "@/libs/shared/core/components/LoadingOverlay/Loa
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { isValidEmail, isValidPhone } from "@/libs/tts/auth/authValidation";
 
-type WizardMode = "add" | "edit";
+type WizardMode = "add" | "edit" | "view";
 type Account = { username: string; password: string };
 
 type WizardFieldErrors = {
@@ -194,11 +194,11 @@ export function EnterpriseWizard({
 }: EnterpriseWizardProps) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<BusinessFormData>(
-    mode === "edit" && detail ? detailToForm(detail) : EMPTY_BUSINESS_FORM,
+    (mode === "edit" || mode === "view") && detail ? detailToForm(detail) : EMPTY_BUSINESS_FORM,
   );
   const [fieldErrors, setFieldErrors] = useState<WizardFieldErrors>({});
   const [attachments, setAttachments] = useState<AttachedFile[]>(
-    mode === "edit" && detail
+    (mode === "edit" || mode === "view") && detail
       ? makeAttachments(detail.licenseFile, detail.otherFile)
       : makeAttachments(),
   );
@@ -419,7 +419,9 @@ export function EnterpriseWizard({
             <div className="mb-4 text-[15px] font-bold text-ink">
               {mode === "add"
                 ? "Thêm mới doanh nghiệp"
-                : "Cập nhật doanh nghiệp"}
+                : mode === "edit"
+                  ? "Cập nhật doanh nghiệp"
+                  : "Chi tiết doanh nghiệp"}
             </div>
             <div className="mb-4 rounded-lg border border-[#e5e7eb] p-5">
               <div className="mb-6 grid grid-cols-3 gap-3.5">
@@ -427,6 +429,7 @@ export function EnterpriseWizard({
                   label="Tên doanh nghiệp"
                   required
                   value={form.businessName}
+                  disabled={mode === "view"}
                   onChange={(e) => {
                     setField("businessName", e.target.value);
                     if (fieldErrors.businessName)
@@ -444,7 +447,7 @@ export function EnterpriseWizard({
                   label="Mã số thuế"
                   required
                   value={form.taxCode}
-                  disabled={mode === "edit"}
+                  disabled={mode === "edit" || mode === "view"}
                   onChange={(e) => {
                     const input = e.target;
                     const caret = input.selectionStart ?? input.value.length;
@@ -469,7 +472,6 @@ export function EnterpriseWizard({
                   }}
                   error={!!fieldErrors.taxCode}
                   helperText={fieldErrors.taxCode}
-                  placeholder="VD: 0310000888"
                   size="small"
                   fullWidth
                   slotProps={{ htmlInput: { maxLength: 16 } }}
@@ -481,7 +483,7 @@ export function EnterpriseWizard({
                   helperText={fieldErrors.businessType}
                   options={loaiHinhOptions}
                   value={form.businessType}
-                  placeholder="-- Chọn loại hình --"
+                  disabled={mode === "view"}
                   onChange={(v) => {
                     setField("businessType", v);
                     if (fieldErrors.businessType)
@@ -500,7 +502,7 @@ export function EnterpriseWizard({
                   helperText={fieldErrors.mainIndustry}
                   options={nganhCap4Options}
                   value={form.mainIndustry}
-                  placeholder="-- Chọn ngành nghề --"
+                  disabled={mode === "view"}
                   onChange={(v) => {
                     setField("mainIndustry", v);
                     if (fieldErrors.mainIndustry)
@@ -513,6 +515,7 @@ export function EnterpriseWizard({
                 <DateInput
                   label="Ngày cấp GPKD"
                   value={form.licenseDate}
+                  disabled={mode === "view"}
                   onChange={(v) => setField("licenseDate", v)}
                   max={localISODate(new Date())}
                 />
@@ -523,7 +526,7 @@ export function EnterpriseWizard({
                   helperText={fieldErrors.registeredProvince}
                   options={PROVINCES}
                   value={form.registeredProvince}
-                  placeholder="-- Chọn tỉnh/thành phố --"
+                  disabled={mode === "view"}
                   onChange={(v) => {
                     setField("registeredProvince", v);
                     setField("registeredWard", "");
@@ -543,8 +546,7 @@ export function EnterpriseWizard({
                   helperText={fieldErrors.registeredWard}
                   options={phuongDKKDOptions}
                   value={form.registeredWard}
-                  placeholder="-- Chọn phường/xã --"
-                  disabled={!form.registeredProvince}
+                  disabled={mode === "view" || !form.registeredProvince}
                   onChange={(v) => {
                     setField("registeredWard", v);
                     if (fieldErrors.registeredWard)
@@ -557,8 +559,8 @@ export function EnterpriseWizard({
                 <TextField
                   label="Địa chỉ"
                   value={form.address}
+                  disabled={mode === "view"}
                   onChange={(e) => setField("address", e.target.value)}
-                  placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc"
                   size="small"
                   fullWidth
                 />
@@ -573,8 +575,8 @@ export function EnterpriseWizard({
                 <TextField
                   label="Tên viết bằng tiếng nước ngoài"
                   value={form.foreignName}
+                  disabled={mode === "view"}
                   onChange={(e) => setField("foreignName", e.target.value)}
-                  placeholder="VD: VNA Group"
                   size="small"
                   fullWidth
                 />
@@ -582,6 +584,7 @@ export function EnterpriseWizard({
                   label="Email"
                   type="email"
                   value={form.email}
+                  disabled={mode === "view"}
                   onChange={(e) => {
                     setField("email", e.target.value);
                     if (fieldErrors.email)
@@ -589,7 +592,6 @@ export function EnterpriseWizard({
                   }}
                   error={!!fieldErrors.email}
                   helperText={fieldErrors.email}
-                  placeholder="vna@gmail.com"
                   size="small"
                   fullWidth
                   required
@@ -597,6 +599,7 @@ export function EnterpriseWizard({
                 <TextField
                   label="Số điện thoại cơ quan"
                   value={form.officePhone}
+                  disabled={mode === "view"}
                   onChange={(e) => {
                     setField("officePhone", e.target.value);
                     if (fieldErrors.officePhone)
@@ -607,7 +610,6 @@ export function EnterpriseWizard({
                   }}
                   error={!!fieldErrors.officePhone}
                   helperText={fieldErrors.officePhone}
-                  placeholder="VD: 0283xxxxxxx"
                   size="small"
                   fullWidth
                 />
@@ -617,7 +619,7 @@ export function EnterpriseWizard({
                   label="Tỉnh/TP hoạt động KD"
                   options={PROVINCES}
                   value={form.operatingProvince}
-                  placeholder="-- Chọn tỉnh --"
+                  disabled={mode === "view"}
                   onChange={(v) => {
                     setField("operatingProvince", v);
                     setField("operatingWard", "");
@@ -627,8 +629,7 @@ export function EnterpriseWizard({
                   label="Phường/xã hoạt động KD"
                   options={phuongHDOptions}
                   value={form.operatingWard}
-                  placeholder="-- Chọn phường/xã --"
-                  disabled={!form.operatingProvince}
+                  disabled={mode === "view" || !form.operatingProvince}
                   onChange={(v) => setField("operatingWard", v)}
                 />
                 <div />
@@ -637,6 +638,7 @@ export function EnterpriseWizard({
                 <TextField
                   label="Địa điểm kinh doanh"
                   value={form.operatingAddress}
+                  disabled={mode === "view"}
                   onChange={(e) => setField("operatingAddress", e.target.value)}
                   size="small"
                   fullWidth
@@ -644,6 +646,7 @@ export function EnterpriseWizard({
                 <TextField
                   label="Người đứng đầu doanh nghiệp"
                   value={form.representative}
+                  disabled={mode === "view"}
                   onChange={(e) => setField("representative", e.target.value)}
                   size="small"
                   fullWidth
@@ -651,6 +654,7 @@ export function EnterpriseWizard({
                 <TextField
                   label="SĐT liên hệ người đứng đầu"
                   value={form.representativePhone}
+                  disabled={mode === "view"}
                   onChange={(e) => {
                     setField("representativePhone", e.target.value);
                     if (fieldErrors.representativePhone)
@@ -726,50 +730,54 @@ export function EnterpriseWizard({
                               <circle cx="12" cy="12" r="3" />
                             </svg>
                           </button>
-                          <button
-                            type="button"
-                            title="Tải lên"
-                            onClick={() => fileRefs[idx]?.current?.click()}
-                            className="hover:text-primary"
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
+                          {mode !== "view" && (
+                            <button
+                              type="button"
+                              title="Tải lên"
+                              onClick={() => fileRefs[idx]?.current?.click()}
+                              className="hover:text-primary"
                             >
-                              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                              <polyline points="17 8 12 3 7 8" />
-                              <line x1="12" y1="3" x2="12" y2="15" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            title="Xóa"
-                            onClick={() => handleFileDelete(idx)}
-                            disabled={!attachments[idx].file}
-                            className={
-                              attachments[idx].file
-                                ? "hover:text-danger"
-                                : "cursor-not-allowed opacity-40"
-                            }
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                              </svg>
+                            </button>
+                          )}
+                          {mode !== "view" && (
+                            <button
+                              type="button"
+                              title="Xóa"
+                              onClick={() => handleFileDelete(idx)}
+                              disabled={!attachments[idx].file}
+                              className={
+                                attachments[idx].file
+                                  ? "hover:text-danger"
+                                  : "cursor-not-allowed opacity-40"
+                              }
                             >
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6l-1 14H6L5 6" />
-                              <path d="M10 11v6M14 11v6" />
-                              <path d="M9 6V4h6v2" />
-                            </svg>
-                          </button>
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14H6L5 6" />
+                                <path d="M10 11v6M14 11v6" />
+                                <path d="M9 6V4h6v2" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -894,30 +902,40 @@ export function EnterpriseWizard({
             >
               Trở về
             </button>
-            <button
-              type="button"
-              onClick={confirm}
-              disabled={isSubmitting}
-              className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
-            >
-              {isSubmitting ? (
-                "Đang xử lý..."
-              ) : (
-                <>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Xác nhận
-                </>
-              )}
-            </button>
+            {mode === "view" ? (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="h-[38px] rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
+              >
+                Đóng
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={confirm}
+                disabled={isSubmitting}
+                className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+              >
+                {isSubmitting ? (
+                  "Đang xử lý..."
+                ) : (
+                  <>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Xác nhận
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </>
       )}

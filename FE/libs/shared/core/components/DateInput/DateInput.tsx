@@ -56,8 +56,8 @@ export function DateInput({
       <div
         onClick={openPicker}
         className={[
-          "relative group flex w-full items-center rounded-md px-3 text-sm transition-colors",
-          disabled || readOnly ? "bg-[#f9fafb]" : "bg-white cursor-pointer",
+          "relative group flex w-full items-center rounded-md px-3 text-sm transition-colors bg-white",
+          disabled || readOnly ? "" : "cursor-pointer",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -69,7 +69,9 @@ export function DateInput({
               ? "border-[#1976d2] border-2"
               : error
                 ? "border-danger border-2"
-                : "border-line group-hover:border-ink"
+                : disabled || readOnly
+                  ? "border-line"
+                  : "border-line group-hover:border-ink"
           }`}
         >
           {label && (
@@ -86,8 +88,8 @@ export function DateInput({
             className={`absolute left-3 transition-all pointer-events-none px-1 ${
               isFloated
                 ? "-top-2 text-[11px] z-10 bg-white " +
-                  (error ? "text-danger" : focused ? "text-[#1976d2]" : "text-muted")
-                : "top-[10px] text-sm " + (error ? "text-danger" : "text-muted")
+                  (error ? "text-danger" : focused ? "text-[#1976d2]" : disabled || readOnly ? "text-[#9ca3af]" : "text-muted")
+                : "top-[10px] text-sm " + (error ? "text-danger" : disabled || readOnly ? "text-[#9ca3af]" : "text-muted")
             }`}
           >
             {label} {required && <span className="text-danger">*</span>}
@@ -97,7 +99,9 @@ export function DateInput({
         <span
           className={`flex-1 select-none truncate ${
             value
-              ? "text-[#111827]"
+              ? disabled || readOnly
+                ? "text-[#9ca3af]"
+                : "text-[#111827]"
               : isFloated || !label
                 ? "text-[#9ca3af]"
                 : "text-transparent"

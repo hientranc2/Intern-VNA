@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
@@ -20,6 +20,8 @@ import {
   rejectAtvsldReports,
 } from "@/libs/tts/accident-report/atvsldReportApi";
 import { useCan } from "@/libs/tts/auth/abilityContext";
+
+import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 
 type ViewMode = "list" | "detail";
 
@@ -42,6 +44,7 @@ function StatusCell({ status }: { status: ReportStatus }) {
 
 export default function SignReportPage() {
   const canApprove = useCan("update", "SIGN_REPORT");
+  const lastFetchRef = useRef<string>("");
   const [view, setView] = useState<ViewMode>("list");
   const [reports, setReports] = useState<AtvsldReport[]>([]);
   const [viewingReport, setViewingReport] = useState<AtvsldReport | null>(null);
@@ -53,22 +56,77 @@ export default function SignReportPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [fTen, setFTen] = useState("");
   const [fMST, setFMST] = useState("");
-  const [fNgayNop, setFNgayNop] = useState("");
   const [fPhuong, setFPhuong] = useState("");
   const [fStatus, setFStatus] = useState("");
 
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
-  const loadReports = useCallback(() => {
-    getAtvsldReportList({ nam: year ? Number(year) : undefined, pageSize: 100 })
-      .then((res) => setReports(res.data))
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const dTen = useDebounce(fTen, 300);
+  const dMST = useDebounce(fMST, 300);
+  const dPhuong = useDebounce(fPhuong, 300);
+
+  const lastPage = Math.max(1, Math.ceil(total / pageSize));
+  const start = (currentPage - 1) * pageSize;
+  const end = Math.min(start + pageSize, total);
+
+  const loadReports = useCallback((force = false) => {
+    const fetchKey = JSON.stringify({
+      year,
+      dTen,
+      dMST,
+      dPhuong,
+      fStatus,
+      currentPage,
+      pageSize,
+    });
+
+    if (!force && lastFetchRef.current === fetchKey) {
+      return;
+    }
+    lastFetchRef.current = fetchKey;
+
+    getAtvsldReportList({
+      nam: year ? Number(year) : undefined,
+      ten: dTen || undefined,
+      mst: dMST || undefined,
+      ward: dPhuong || undefined,
+      status: fStatus || undefined,
+      page: currentPage,
+      pageSize: pageSize,
+    })
+      .then((res) => {
+        setReports(res.data);
+        setTotal(res.total);
+      })
       .catch(() => setToast("Không tải được danh sách báo cáo"));
-  }, [year]);
+  }, [year, dTen, dMST, dPhuong, fStatus, currentPage, pageSize]);
 
   useEffect(() => {
+    const filtersKey = JSON.stringify({ year, dTen, dMST, dPhuong, fStatus });
+    const lastFilters = lastFetchRef.current ? JSON.parse(lastFetchRef.current) : null;
+    const filtersChanged = lastFilters && JSON.stringify({
+      year: lastFilters.year,
+      dTen: lastFilters.dTen,
+      dMST: lastFilters.dMST,
+      dPhuong: lastFilters.dPhuong,
+      fStatus: lastFilters.fStatus,
+    }) !== filtersKey;
+
+    if (filtersChanged) {
+      setSelectedIds(new Set());
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return;
+      }
+    }
+
     loadReports();
-  }, [loadReports]);
+  }, [year, dTen, dMST, dPhuong, fStatus, currentPage, pageSize, loadReports]);
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -79,28 +137,15 @@ export default function SignReportPage() {
     });
   };
 
-  const filtered = useMemo(
-    () =>
-      reports.filter(
-        (r) =>
-          r.ten.toLowerCase().includes(fTen.toLowerCase()) &&
-          r.mst.toLowerCase().includes(fMST.toLowerCase()) &&
-          r.ngayNop.includes(fNgayNop.trim()) &&
-          r.ward.toLowerCase().includes(fPhuong.toLowerCase()) &&
-          (!fStatus || r.status === fStatus),
-      ),
-    [reports, fTen, fMST, fNgayNop, fPhuong, fStatus],
-  );
-
   const allSelected =
-    filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id));
-  const someSelected = filtered.some((r) => selectedIds.has(r.id));
+    reports.length > 0 && reports.every((r) => selectedIds.has(r.id));
+  const someSelected = reports.some((r) => selectedIds.has(r.id));
 
   const toggleSelectAll = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (allSelected) filtered.forEach((r) => next.delete(r.id));
-      else filtered.forEach((r) => next.add(r.id));
+      if (allSelected) reports.forEach((r) => next.delete(r.id));
+      else reports.forEach((r) => next.add(r.id));
       return next;
     });
   };
@@ -111,7 +156,7 @@ export default function SignReportPage() {
       await approveAtvsldReports(ids);
       setToast(`Đã duyệt ${ids.length} báo cáo`);
       setSelectedIds(new Set());
-      loadReports();
+      loadReports(true);
     } catch (e) {
       setToast(e instanceof Error ? e.message : "Duyệt báo cáo thất bại");
     }
@@ -136,7 +181,7 @@ export default function SignReportPage() {
       setSelectedIds(new Set());
       setRejectReason("");
       setRejectOpen(false);
-      loadReports();
+      loadReports(true);
     } catch (e) {
       setToast(e instanceof Error ? e.message : "Từ chối báo cáo thất bại");
     }
@@ -213,14 +258,7 @@ export default function SignReportPage() {
                           onChange={(e) => setFMST(e.target.value)}
                         />
                       </th>
-                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input
-                          className={FILTER_INPUT}
-                          placeholder="dd/MM/yyyy"
-                          value={fNgayNop}
-                          onChange={(e) => setFNgayNop(e.target.value)}
-                        />
-                      </th>
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <input
                           className={FILTER_INPUT}
@@ -244,7 +282,7 @@ export default function SignReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.length === 0 ? (
+                    {reports.length === 0 ? (
                       <tr>
                         <td
                           colSpan={8}
@@ -254,7 +292,7 @@ export default function SignReportPage() {
                         </td>
                       </tr>
                     ) : (
-                      filtered.map((r) => (
+                      reports.map((r) => (
                         <tr
                           key={r.id}
                           className="border-b border-[#f3f4f6] hover:bg-[#f9fafb]"
@@ -309,10 +347,65 @@ export default function SignReportPage() {
                   </tbody>
                 </table>
               </div>
-              <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#6b7280]">
-                <span>
-                  1 - {filtered.length} of {filtered.length}
-                </span>
+              <div className="flex items-center justify-end gap-3 border-t border-[#f3f4f6] px-4 py-3 text-[13px] text-[#374151]">
+                <div className="ml-auto flex items-center gap-3">
+                  <select
+                    className="h-[30px] cursor-pointer rounded-[5px] border border-line px-1.5 text-[13px] outline-none bg-white"
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="text-[#6b7280]">
+                    {total === 0
+                      ? "0 of 0"
+                      : `${start + 1} - ${end} of ${total}`}
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1}
+                      className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(lastPage, p + 1))
+                      }
+                      disabled={currentPage >= lastPage}
+                      className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-line bg-white text-[#374151] hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -439,7 +532,6 @@ export default function SignReportPage() {
         </label>
         <textarea
           className="min-h-22.5 w-full rounded-md border border-line px-3 py-2 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
-          placeholder="Nhập lý do từ chối báo cáo..."
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
         />

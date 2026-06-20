@@ -1,4 +1,4 @@
-import { request } from "@/libs/tts/auth/apiClient";
+import { request, requestFormData } from "@/libs/tts/auth/apiClient";
 import type { InjuryFactor, TreeNode } from "./categoryData";
 
 // --- Yếu tố gây chấn thương ---
@@ -97,4 +97,22 @@ export function deleteOccupation(id: number) {
   return request<{ message: string }>(`/categories/occupations/${id}`, {
     method: "DELETE",
   });
+}
+
+export function importInjuryFactors(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return requestFormData<{ message: string; imported: number }>("/categories/injury-factors/import", fd, "POST");
+}
+
+export function importInjuryTypes(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return requestFormData<{ message: string; imported: number }>("/categories/injury-types/import", fd, "POST");
+}
+
+export function importOccupations(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return requestFormData<{ message: string; imported: number }>("/categories/occupations/import", fd, "POST");
 }

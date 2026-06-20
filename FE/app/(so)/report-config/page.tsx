@@ -218,7 +218,6 @@ export default function ReportConfigPage() {
                         setFNam(e.target.value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Năm"
                     />
                   </th>
                   <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
@@ -454,7 +453,6 @@ export default function ReportConfigPage() {
             }}
             error={!!panelErrors.nam}
             helperText={panelErrors.nam}
-            placeholder="VD: 2024"
             size="small"
             fullWidth
             required

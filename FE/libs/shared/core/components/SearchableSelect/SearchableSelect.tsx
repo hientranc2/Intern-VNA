@@ -169,7 +169,9 @@ export function SearchableSelect({
                   ? "border-[#1976d2] border-2"
                   : error
                     ? "border-danger border-2"
-                    : "border-line group-hover:border-ink"
+                    : disabled
+                      ? "border-line"
+                      : "border-line group-hover:border-ink"
               }`}
             >
               {label && (
@@ -190,9 +192,15 @@ export function SearchableSelect({
                         ? "text-danger"
                         : open
                           ? "text-[#1976d2]"
-                          : "text-muted")
+                          : disabled
+                            ? "text-[#9ca3af]"
+                            : "text-muted")
                     : "top-[10px] text-sm " +
-                      (error ? "text-danger" : "text-muted")
+                      (error
+                        ? "text-danger"
+                        : disabled
+                          ? "text-[#9ca3af]"
+                          : "text-muted")
                 }`}
               >
                 {label} {required && <span className="text-danger">*</span>}
@@ -206,9 +214,7 @@ export function SearchableSelect({
           type="button"
           disabled={disabled}
           onClick={toggle}
-          className={`w-full h-full p-0 outline-none transition-colors disabled:cursor-not-allowed disabled:text-muted ${
-            disabled ? "bg-[#f9fafb]" : "bg-white"
-          } ${
+          className={`w-full h-full p-0 outline-none transition-colors disabled:cursor-not-allowed disabled:text-[#9ca3af] bg-white ${
             compact
               ? "rounded-[5px] border border-line text-xs"
               : "rounded-md text-sm"
@@ -222,9 +228,13 @@ export function SearchableSelect({
             <span
               className={`truncate ${
                 value
-                  ? "text-ink"
+                  ? disabled
+                    ? "text-[#9ca3af]"
+                    : "text-ink"
                   : open || !label
-                    ? "text-muted"
+                    ? disabled
+                      ? "text-[#9ca3af]"
+                      : "text-muted"
                     : "text-transparent"
               }`}
             >

@@ -945,7 +945,6 @@ export default function UserPage() {
                           fixed
                           options={PROVINCES}
                           value={fProvince}
-                          placeholder="Tất cả"
                           onChange={(v) => {
                             setFProvince(v);
                             setCurrentPage(1);
