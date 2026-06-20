@@ -130,3 +130,10 @@ export function resetUserPassword(id: string, newPassword: string) {
 export function deleteUser(id: string) {
   return request<{ message: string }>(`/admin/users/${id}`, { method: "DELETE" });
 }
+
+export function importUsers(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return requestFormData<{ message: string; imported: number }>("/admin/users/import", fd, "POST");
+}
+

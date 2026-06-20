@@ -1,5 +1,6 @@
 "use client";
 
+import * as XLSX from "xlsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Autocomplete, MenuItem, TextField } from "@mui/material";
@@ -20,6 +21,7 @@ import {
   toggleBusinessStatus,
   deleteBusiness,
   resetBusinessPassword,
+  importBusinesses,
 } from "@/libs/tts/enterprise/enterpriseApi";
 import { ApiError } from "@/libs/tts/auth/apiClient";
 import { getEnterpriseTypeList } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
@@ -178,6 +180,7 @@ export default function EnterprisePage() {
   const fileRef0 = useRef<HTMLInputElement>(null);
   const fileRef1 = useRef<HTMLInputElement>(null);
   const fileRefs = [fileRef0, fileRef1];
+  const importRef = useRef<HTMLInputElement>(null);
 
   const [accountInfo, setAccountInfo] = useState<{
     username: string;
@@ -195,6 +198,15 @@ export default function EnterprisePage() {
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Import preview states
+  const [importFileName, setImportFileName] = useState("");
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importErrors, setImportErrors] = useState<
+    Record<number, Record<string, string>>
+  >({});
+  const [isImportSubmitting, setIsImportSubmitting] = useState(false);
 
   const setField = <K extends keyof BusinessFormData>(
     key: K,
@@ -307,6 +319,265 @@ export default function EnterprisePage() {
       setViewModalOpen(false);
     } finally {
       setViewLoading(false);
+    }
+  };
+
+  const normalizeBusinessRows = (rawRows: any[]) => {
+    return rawRows.map((row) => {
+      const pick = (candidates: string[]) => {
+        for (const k of Object.keys(row)) {
+          if (
+            candidates
+              .map((c) => c.toLowerCase().trim())
+              .includes(k.toLowerCase().trim())
+          ) {
+            return String(row[k] ?? "").trim();
+          }
+        }
+        return "";
+      };
+
+      return {
+        "Tên doanh nghiệp": pick(["Tên doanh nghiệp", "Tên công ty"]),
+        "Mã số thuế": pick(["Mã số thuế", "MST"]),
+        "Loại hình kinh doanh": pick(["Loại hình kinh doanh", "Loại hình KD"]),
+        "Ngành nghề kinh doanh": pick([
+          "Ngành nghề kinh doanh",
+          "Ngành nghề KD",
+        ]),
+        "Ngày cấp GPKD": pick(["Ngày cấp GPKD"]),
+        "Tỉnh ĐKKD": pick(["Tỉnh ĐKKD", "Tỉnh/Thành ĐKKD"]),
+        "Phường ĐKKD": pick(["Phường ĐKKD", "Phường/Xã ĐKKD"]),
+        "Địa chỉ": pick(["Địa chỉ"]),
+        "Tên tiếng nước ngoài": pick(["Tên tiếng nước ngoài"]),
+        Email: pick(["Email", "E-mail"]),
+        "SĐT văn phòng": pick(["SĐT văn phòng", "Điện thoại văn phòng"]),
+        "Tỉnh hoạt động": pick(["Tỉnh hoạt động", "Tỉnh/Thành hoạt động"]),
+        "Phường hoạt động": pick(["Phường hoạt động", "Phường/Xã hoạt động"]),
+        "Địa chỉ hoạt động": pick(["Địa chỉ hoạt động"]),
+        "Người đại diện": pick(["Người đại diện"]),
+        "SĐT đại diện": pick(["SĐT đại diện", "Điện thoại đại diện"]),
+      };
+    });
+  };
+
+  const validateBusinessImport = (rows: any[]) => {
+    const errs: Record<number, Record<string, string>> = {};
+    const seenTaxCodes = new Set<string>();
+    const seenEmails = new Set<string>();
+
+    rows.forEach((row, idx) => {
+      const rowErrs: Record<string, string> = {};
+      const businessName = (row["Tên doanh nghiệp"] || "").toString().trim();
+      const taxCode = (row["Mã số thuế"] || "").toString().trim();
+      const businessType = (row["Loại hình kinh doanh"] || "")
+        .toString()
+        .trim();
+      const mainIndustry = (row["Ngành nghề kinh doanh"] || "")
+        .toString()
+        .trim();
+      const registeredProvince = (row["Tỉnh ĐKKD"] || "").toString().trim();
+      const registeredWard = (row["Phường ĐKKD"] || "").toString().trim();
+      const email = (row["Email"] || "").toString().trim().toLowerCase();
+      const officePhone = (row["SĐT văn phòng"] || "").toString().trim();
+      const representativePhone = (row["SĐT đại diện"] || "").toString().trim();
+
+      if (!businessName) rowErrs["Tên doanh nghiệp"] = "Thiếu tên doanh nghiệp";
+
+      if (!taxCode) {
+        rowErrs["Mã số thuế"] = "Thiếu mã số thuế";
+      } else if (!/^\d{10}(-\d{1,5})?$/.test(taxCode)) {
+        rowErrs["Mã số thuế"] = "Mã số thuế không hợp lệ (cần 10 số)";
+      } else if (seenTaxCodes.has(taxCode)) {
+        rowErrs["Mã số thuế"] = "Trùng mã số thuế trong file";
+      } else {
+        seenTaxCodes.add(taxCode);
+      }
+
+      if (!businessType)
+        rowErrs["Loại hình kinh doanh"] = "Thiếu loại hình kinh doanh";
+      if (!mainIndustry) rowErrs["Ngành nghề kinh doanh"] = "Thiếu ngành nghề";
+      if (!registeredProvince) rowErrs["Tỉnh ĐKKD"] = "Thiếu tỉnh ĐKKD";
+      if (!registeredWard) rowErrs["Phường ĐKKD"] = "Thiếu phường ĐKKD";
+
+      if (!email) {
+        rowErrs["Email"] = "Thiếu email";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        rowErrs["Email"] = "Email không hợp lệ";
+      } else if (seenEmails.has(email)) {
+        rowErrs["Email"] = "Trùng email trong file";
+      } else {
+        seenEmails.add(email);
+      }
+
+      if (officePhone && !/^0\d{9,10}$/.test(officePhone)) {
+        rowErrs["SĐT văn phòng"] = "SĐT không hợp lệ";
+      }
+      if (representativePhone && !/^0\d{9,10}$/.test(representativePhone)) {
+        rowErrs["SĐT đại diện"] = "SĐT không hợp lệ";
+      }
+
+      if (Object.keys(rowErrs).length > 0) {
+        errs[idx] = rowErrs;
+      }
+    });
+
+    return errs;
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFileName(file.name);
+    setIsLoading(true);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        if (!data) throw new Error("Không đọc được dữ liệu file");
+
+        const workbook = XLSX.read(new Uint8Array(data as ArrayBuffer), {
+          type: "array",
+        });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) throw new Error("File không có sheet nào");
+
+        const sheet = workbook.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "" });
+        if (rawRows.length === 0)
+          throw new Error("File không có dòng dữ liệu nào");
+
+        const normalized = normalizeBusinessRows(rawRows);
+        const errs = validateBusinessImport(normalized);
+
+        setImportRows(normalized);
+        setImportErrors(errs);
+        setImportPreviewOpen(true);
+      } catch (err) {
+        setToast({
+          message:
+            err instanceof Error ? err.message : "Đọc file Excel thất bại",
+          variant: "error",
+        });
+      } finally {
+        setIsLoading(false);
+        if (importRef.current) importRef.current.value = "";
+      }
+    };
+
+    reader.onerror = () => {
+      setToast({ message: "Không thể đọc file", variant: "error" });
+      setIsLoading(false);
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleCellChange = (rowIdx: number, field: string, val: string) => {
+    const updated = [...importRows];
+    updated[rowIdx] = { ...updated[rowIdx], [field]: val };
+    setImportRows(updated);
+
+    const clientErrs = validateBusinessImport(updated);
+    const newErrs: Record<number, Record<string, string>> = {};
+
+    Object.keys(importErrors).forEach((idxStr) => {
+      const idx = parseInt(idxStr, 10);
+      const rowErrs = importErrors[idx];
+      if (rowErrs) {
+        Object.keys(rowErrs).forEach((col) => {
+          const isEditedCell = idx === rowIdx && col === field;
+          const isDbError = rowErrs[col].includes("tồn tại trong hệ thống");
+          if (isDbError && !isEditedCell) {
+            if (!newErrs[idx]) newErrs[idx] = {};
+            newErrs[idx][col] = rowErrs[col];
+          }
+        });
+      }
+    });
+
+    Object.keys(clientErrs).forEach((idxStr) => {
+      const idx = parseInt(idxStr, 10);
+      if (!newErrs[idx]) newErrs[idx] = {};
+      newErrs[idx] = { ...newErrs[idx], ...clientErrs[idx] };
+    });
+
+    setImportErrors(newErrs);
+  };
+
+  const confirmImport = async () => {
+    const errs = validateBusinessImport(importRows);
+    if (Object.keys(errs).length > 0) {
+      setImportErrors(errs);
+      setToast({
+        message: "Vui lòng sửa hết lỗi trước khi import!",
+        variant: "error",
+      });
+      return;
+    }
+
+    setIsImportSubmitting(true);
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(importRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const file = new File([blob], importFileName || "businesses.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const res = await importBusinesses(file);
+      setToast({
+        message: res.message || "Import thành công doanh nghiệp",
+        variant: "success",
+      });
+      setImportPreviewOpen(false);
+      fetchList();
+    } catch (err) {
+      if (err instanceof ApiError && err.message) {
+        const lines = err.message.split("\n");
+        const newErrs = { ...importErrors };
+        let hasMappedErrors = false;
+
+        lines.forEach((line) => {
+          const match = line.match(/^Dòng\s+(\d+):\s*"([^"]+)"\s*(.+)$/);
+          if (match) {
+            const rowIdx = parseInt(match[1], 10) - 1;
+            const column = match[2];
+            const msg = match[3];
+
+            if (rowIdx >= 0 && rowIdx < importRows.length) {
+              if (!newErrs[rowIdx]) newErrs[rowIdx] = {};
+              newErrs[rowIdx][column] = msg;
+              hasMappedErrors = true;
+            }
+          }
+        });
+
+        if (hasMappedErrors) {
+          setImportErrors(newErrs);
+          setToast({
+            message:
+              "Phát hiện một số lỗi dữ liệu đã tồn tại trong hệ thống. Vui lòng kiểm tra các ô màu đỏ.",
+            variant: "error",
+          });
+          return;
+        }
+      }
+      setToast({
+        message: err instanceof ApiError ? err.message : "Import thất bại",
+        variant: "error",
+      });
+    } finally {
+      setIsImportSubmitting(false);
     }
   };
 
@@ -553,9 +824,23 @@ export default function EnterprisePage() {
             Danh sách doanh nghiệp
           </h1>
           <div className="flex gap-2.5">
+            <input
+              ref={importRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={handleImport}
+            />
             <button
               type="button"
-              className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
+              onClick={() => importRef.current?.click()}
+              disabled={!canCreate}
+              title={
+                canCreate
+                  ? undefined
+                  : "Bạn không có quyền thêm mới doanh nghiệp"
+              }
+              className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
             >
               <svg
                 width="14"
@@ -2015,6 +2300,200 @@ export default function EnterprisePage() {
       />
 
       <LoadingOverlay open={isDeleting} message="Đang xóa..." />
+
+      {/* Modal Preview & Sửa lỗi Import */}
+      {importPreviewOpen && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/45 transition-opacity duration-200">
+          <div className="w-11/12 max-w-7xl h-[85vh] flex flex-col overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+            <div className="bg-primary px-6 py-4 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-white">
+                Kiểm tra dữ liệu Import Doanh nghiệp: {importFileName}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setImportPreviewOpen(false)}
+                className="text-white hover:text-white/80 transition-colors"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="bg-[#f8fafc] px-6 py-3 border-b border-line flex items-center justify-between text-[13px] text-ink font-medium">
+              <div className="flex gap-4">
+                <span>
+                  Tổng số dòng:{" "}
+                  <strong className="text-primary">{importRows.length}</strong>
+                </span>
+                <span>
+                  Hợp lệ:{" "}
+                  <strong className="text-success">
+                    {importRows.length - Object.keys(importErrors).length}
+                  </strong>
+                </span>
+                <span>
+                  Lỗi:{" "}
+                  <strong className="text-danger">
+                    {Object.keys(importErrors).length}
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6 bg-body">
+              <div className="overflow-x-auto rounded-lg border border-line bg-white shadow-sm">
+                <table className="w-full border-collapse text-[13px] min-w-[2000px]">
+                  <thead>
+                    <tr className="bg-[#f9fafb] border-b border-line">
+                      <th className="border-r border-line px-3 py-2.5 text-center text-ink font-semibold w-12 sticky left-0 bg-[#f9fafb] z-10">
+                        STT
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-64">
+                        Tên doanh nghiệp *
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">
+                        Mã số thuế *
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-48">
+                        Loại hình kinh doanh *
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-56">
+                        Ngành nghề KD *
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">
+                        Ngày cấp GPKD
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">
+                        Tỉnh ĐKKD *
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">
+                        Phường ĐKKD *
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-48">
+                        Địa chỉ ĐKKD
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-48">
+                        Tên nước ngoài
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-48">
+                        Email *
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">
+                        SĐT văn phòng
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">
+                        Tỉnh hoạt động
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">
+                        Phường hoạt động
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-48">
+                        Địa chỉ hoạt động
+                      </th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-40">
+                        Người đại diện
+                      </th>
+                      <th className="px-3 py-2.5 text-left text-ink font-semibold w-36">
+                        SĐT đại diện
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importRows.map((row, idx) => {
+                      const rowErrs = importErrors[idx] || {};
+                      const hasErr = Object.keys(rowErrs).length > 0;
+                      return (
+                        <tr
+                          key={idx}
+                          className={`border-b border-line ${hasErr ? "bg-red-50/20" : "hover:bg-[#f9fafb]"}`}
+                        >
+                          <td className="border-r border-line px-3 py-3 text-center text-muted font-medium bg-[#f9fafb] sticky left-0 z-10">
+                            {idx + 1}
+                          </td>
+                          {[
+                            "Tên doanh nghiệp",
+                            "Mã số thuế",
+                            "Loại hình kinh doanh",
+                            "Ngành nghề kinh doanh",
+                            "Ngày cấp GPKD",
+                            "Tỉnh ĐKKD",
+                            "Phường ĐKKD",
+                            "Địa chỉ",
+                            "Tên tiếng nước ngoài",
+                            "Email",
+                            "SĐT văn phòng",
+                            "Tỉnh hoạt động",
+                            "Phường hoạt động",
+                            "Địa chỉ hoạt động",
+                            "Người đại diện",
+                            "SĐT đại diện",
+                          ].map((col, colIdx) => {
+                            const err = rowErrs[col];
+                            const isLast = colIdx === 15;
+                            return (
+                              <td
+                                key={col}
+                                className={`p-2 relative align-top ${isLast ? "" : "border-r border-line"}`}
+                              >
+                                <input
+                                  type="text"
+                                  value={row[col] || ""}
+                                  onChange={(e) =>
+                                    handleCellChange(idx, col, e.target.value)
+                                  }
+                                  className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                    err
+                                      ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                      : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                  }`}
+                                />
+                                {err && (
+                                  <div className="text-[11px] text-danger font-medium mt-1.5 leading-tight">
+                                    {err}
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-line bg-[#f8fafc]">
+              <button
+                type="button"
+                onClick={() => setImportPreviewOpen(false)}
+                className="h-[38px] rounded-md px-5 text-sm font-medium text-muted hover:bg-white hover:text-ink border border-line transition-colors bg-white"
+              >
+                Huỷ bỏ
+              </button>
+              <button
+                type="button"
+                onClick={confirmImport}
+                disabled={
+                  isImportSubmitting || Object.keys(importErrors).length > 0
+                }
+                className="h-[38px] rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                {isImportSubmitting ? "Đang import..." : "Xác nhận & Gửi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Toast
         message={toast?.message ?? null}

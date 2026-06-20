@@ -1,4 +1,4 @@
-import { request } from "@/libs/tts/auth/apiClient";
+import { request, requestFormData } from "@/libs/tts/auth/apiClient";
 import type { EnterpriseType } from "./enterpriseTypeData";
 
 export type CreateEnterpriseTypeInput = {
@@ -36,4 +36,10 @@ export function toggleEnterpriseTypeActive(id: number, active: boolean) {
     method: "PATCH",
     body: { active },
   });
+}
+
+export function importEnterpriseTypes(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return requestFormData<{ message: string; imported: number }>("/enterprise-types/import", fd, "POST");
 }

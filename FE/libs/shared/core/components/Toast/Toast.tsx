@@ -88,7 +88,7 @@ export function Toast({
       className={`fixed right-5 top-17 z-999 flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[13px] shadow-[0_4px_12px_rgba(0,0,0,0.15)] ${STYLES[variant]}`}
     >
       {getIcon()}
-      <span>{message}</span>
+      <span className="whitespace-pre-line">{message}</span>
     </div>
   );
 }

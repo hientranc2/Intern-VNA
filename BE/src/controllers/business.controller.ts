@@ -12,13 +12,15 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
+  UploadedFile,
   BadRequestException,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 
 import { BusinessService } from '../services/business.service';
+import { importFileOptions } from '../config/import-upload.config';
 import {
   BusinessCreateDto,
   BusinessUpdateDto,
@@ -103,6 +105,13 @@ export class BusinessController {
       files?.licenseFile?.[0],
       files?.otherFile?.[0],
     );
+  }
+
+  @Post('import')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(FileInterceptor('file', importFileOptions))
+  importBusinesses(@UploadedFile() file: Express.Multer.File) {
+    return this.businessService.importBusinesses(file);
   }
 
   @Put(':id')

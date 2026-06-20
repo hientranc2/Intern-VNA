@@ -10,9 +10,13 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { BusinessSectorService } from '../services/business-sector.service';
+import { importFileOptions } from '../config/import-upload.config';
 import {
   CreateBusinessSectorDto,
   UpdateBusinessSectorDto,
@@ -37,6 +41,14 @@ export class BusinessSectorController {
   @UseGuards(AuthGuard('jwt'))
   create(@Body() dto: CreateBusinessSectorDto) {
     return this.service.create(dto);
+  }
+
+  @Post('import')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file', importFileOptions))
+  importBusinessSectors(@UploadedFile() file: Express.Multer.File) {
+    return this.service.importBusinessSectors(file);
   }
 
   @Put(':id')

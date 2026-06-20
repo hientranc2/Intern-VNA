@@ -1,5 +1,6 @@
 "use client";
 
+import * as XLSX from "xlsx";
 import {
   useCallback,
   useEffect,
@@ -29,6 +30,7 @@ import {
   toggleUserStatus,
   resetUserPassword,
   deleteUser,
+  importUsers,
 } from "@/libs/tts/user/userApi";
 import { ApiError, assetUrl } from "@/libs/tts/auth/apiClient";
 import { getProfile, clearToken, getIsSuper } from "@/libs/tts/auth/authApi";
@@ -134,6 +136,13 @@ export default function UserPage() {
     variant: "success" | "error";
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Import preview states
+  const [importFileName, setImportFileName] = useState("");
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importErrors, setImportErrors] = useState<Record<number, Record<string, string>>>({});
+  const [isImportSubmitting, setIsImportSubmitting] = useState(false);
 
   // Server-side pagination
   const [pageSize, setPageSize] = useState(10);
@@ -356,6 +365,221 @@ export default function UserPage() {
     setAvatarFile(file);
   };
 
+  const normalizeUserRows = (rawRows: any[]) => {
+    return rawRows.map((row) => {
+      const pick = (candidates: string[]) => {
+        for (const k of Object.keys(row)) {
+          if (candidates.map(c => c.toLowerCase().trim()).includes(k.toLowerCase().trim())) {
+            return String(row[k] ?? "").trim();
+          }
+        }
+        return "";
+      };
+
+      return {
+        'Tên đăng nhập': pick(['Tên đăng nhập', 'Username', 'Tài khoản']),
+        'Họ và tên': pick(['Họ và tên', 'Họ tên', 'Tên đầy đủ']),
+        'Email': pick(['Email', 'E-mail']),
+        'Vai trò': pick(['Vai trò', 'Role']),
+        'Chức danh': pick(['Chức danh', 'Chức vụ']),
+        'Tỉnh/Thành': pick(['Tỉnh/Thành', 'Tỉnh', 'Thành phố']),
+        'Phường/Xã': pick(['Phường/Xã', 'Phường', 'Xã']),
+        'Địa chỉ': pick(['Địa chỉ']),
+        'Ngày sinh': pick(['Ngày sinh']),
+        'Giới tính': pick(['Giới tính']),
+      };
+    });
+  };
+
+  const validateUserImport = (rows: any[]) => {
+    const errs: Record<number, Record<string, string>> = {};
+    const seenUsernames = new Set<string>();
+    const seenEmails = new Set<string>();
+
+    rows.forEach((row, idx) => {
+      const rowErrs: Record<string, string> = {};
+      const username = (row['Tên đăng nhập'] || '').toString().trim();
+      const email = (row['Email'] || '').toString().trim().toLowerCase();
+      const fullName = (row['Họ và tên'] || '').toString().trim();
+      const roleMa = (row['Vai trò'] || '').toString().trim();
+
+      if (!username) {
+        rowErrs['Tên đăng nhập'] = 'Thiếu tên đăng nhập';
+      } else if (!/^[a-zA-Z0-9_ ]+$/.test(username)) {
+        rowErrs['Tên đăng nhập'] = 'Chỉ được chứa chữ, số, khoảng trắng và _';
+      } else if (seenUsernames.has(username)) {
+        rowErrs['Tên đăng nhập'] = 'Trùng tên đăng nhập trong file';
+      } else {
+        seenUsernames.add(username);
+      }
+
+      if (!email) {
+        rowErrs['Email'] = 'Thiếu email';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        rowErrs['Email'] = 'Email không hợp lệ';
+      } else if (seenEmails.has(email)) {
+        rowErrs['Email'] = 'Trùng email trong file';
+      } else {
+        seenEmails.add(email);
+      }
+
+      if (!fullName) {
+        rowErrs['Họ và tên'] = 'Thiếu họ và tên';
+      }
+
+      if (roleMa) {
+        const roleExists = roles.some((r) => r.ma === roleMa);
+        if (!roleExists) {
+          rowErrs['Vai trò'] = `Vai trò "${roleMa}" không tồn tại`;
+        }
+      }
+
+      if (Object.keys(rowErrs).length > 0) {
+        errs[idx] = rowErrs;
+      }
+    });
+
+    return errs;
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFileName(file.name);
+    setIsLoading(true);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        if (!data) throw new Error("Không đọc được dữ liệu file");
+        
+        const workbook = XLSX.read(new Uint8Array(data as ArrayBuffer), { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) throw new Error("File không có sheet nào");
+
+        const sheet = workbook.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "" });
+        if (rawRows.length === 0) throw new Error("File không có dòng dữ liệu nào");
+
+        const normalized = normalizeUserRows(rawRows);
+        const errs = validateUserImport(normalized);
+
+        setImportRows(normalized);
+        setImportErrors(errs);
+        setImportPreviewOpen(true);
+      } catch (err) {
+        setToast({
+          message: err instanceof Error ? err.message : "Đọc file Excel thất bại",
+          variant: "error",
+        });
+      } finally {
+        setIsLoading(false);
+        if (importRef.current) importRef.current.value = "";
+      }
+    };
+
+    reader.onerror = () => {
+      setToast({ message: "Không thể đọc file", variant: "error" });
+      setIsLoading(false);
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleCellChange = (rowIdx: number, field: string, val: string) => {
+    const updated = [...importRows];
+    updated[rowIdx] = { ...updated[rowIdx], [field]: val };
+    setImportRows(updated);
+
+    const clientErrs = validateUserImport(updated);
+    const newErrs: Record<number, Record<string, string>> = {};
+
+    Object.keys(importErrors).forEach((idxStr) => {
+      const idx = parseInt(idxStr, 10);
+      const rowErrs = importErrors[idx];
+      if (rowErrs) {
+        Object.keys(rowErrs).forEach((col) => {
+          const isEditedCell = idx === rowIdx && col === field;
+          const isDbError = rowErrs[col].includes("tồn tại trong hệ thống");
+          if (isDbError && !isEditedCell) {
+            if (!newErrs[idx]) newErrs[idx] = {};
+            newErrs[idx][col] = rowErrs[col];
+          }
+        });
+      }
+    });
+
+    Object.keys(clientErrs).forEach((idxStr) => {
+      const idx = parseInt(idxStr, 10);
+      if (!newErrs[idx]) newErrs[idx] = {};
+      newErrs[idx] = { ...newErrs[idx], ...clientErrs[idx] };
+    });
+
+    setImportErrors(newErrs);
+  };
+
+  const confirmImport = async () => {
+    const errs = validateUserImport(importRows);
+    if (Object.keys(errs).length > 0) {
+      setImportErrors(errs);
+      setToast({ message: "Vui lòng sửa hết lỗi trước khi import!", variant: "error" });
+      return;
+    }
+
+    setIsImportSubmitting(true);
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(importRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const file = new File([blob], importFileName || "users.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+      const res = await importUsers(file);
+      setToast({
+        message: res.message || "Import thành công người dùng",
+        variant: "success",
+      });
+      setImportPreviewOpen(false);
+      loadUsers();
+    } catch (err) {
+      if (err instanceof ApiError && err.message) {
+        const lines = err.message.split("\n");
+        const newErrs = { ...importErrors };
+        let hasMappedErrors = false;
+
+        lines.forEach((line) => {
+          const match = line.match(/^Dòng\s+(\d+):\s*"([^"]+)"\s*(.+)$/);
+          if (match) {
+            const rowIdx = parseInt(match[1], 10) - 1;
+            const column = match[2];
+            const msg = match[3];
+
+            if (rowIdx >= 0 && rowIdx < importRows.length) {
+              if (!newErrs[rowIdx]) newErrs[rowIdx] = {};
+              newErrs[rowIdx][column] = msg;
+              hasMappedErrors = true;
+            }
+          }
+        });
+
+        if (hasMappedErrors) {
+          setImportErrors(newErrs);
+          setToast({ message: "Phát hiện một số lỗi dữ liệu đã tồn tại trong hệ thống. Vui lòng kiểm tra các ô màu đỏ.", variant: "error" });
+          return;
+        }
+      }
+      setToast({
+        message: err instanceof ApiError ? err.message : "Import thất bại",
+        variant: "error",
+      });
+    } finally {
+      setIsImportSubmitting(false);
+    }
+  };
+
   const openAdd = () => {
     setEditingId(null);
     setEditingAvatarUrl(null);
@@ -569,17 +793,14 @@ export default function UserPage() {
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 className="hidden"
-                onChange={() =>
-                  setToast({
-                    message: "Đã nhận file. Vui lòng chờ xử lý.",
-                    variant: "success",
-                  })
-                }
+                onChange={handleImport}
               />
               <button
                 type="button"
                 onClick={() => importRef.current?.click()}
-                className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
+                disabled={!canCreate}
+                title={canCreate ? undefined : "Bạn không có quyền thêm mới người dùng"}
+                className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
               >
                 <svg
                   width="14"
@@ -1487,6 +1708,119 @@ export default function UserPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Preview & Sửa lỗi Import */}
+      {importPreviewOpen && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/45 transition-opacity duration-200">
+          <div className="w-11/12 max-w-6xl h-[85vh] flex flex-col overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+            <div className="bg-primary px-6 py-4 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-white">Kiểm tra dữ liệu Import: {importFileName}</h3>
+              <button
+                type="button"
+                onClick={() => setImportPreviewOpen(false)}
+                className="text-white hover:text-white/80 transition-colors"
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="bg-[#f8fafc] px-6 py-3 border-b border-line flex items-center justify-between text-[13px] text-ink font-medium">
+              <div className="flex gap-4">
+                <span>Tổng số dòng: <strong className="text-primary">{importRows.length}</strong></span>
+                <span>Hợp lệ: <strong className="text-success">{importRows.length - Object.keys(importErrors).length}</strong></span>
+                <span>Lỗi: <strong className="text-danger">{Object.keys(importErrors).length}</strong></span>
+              </div>
+            
+            </div>
+
+            <div className="flex-1 overflow-auto p-6 bg-body">
+              <div className="overflow-x-auto rounded-lg border border-line bg-white shadow-sm">
+                <table className="w-full border-collapse text-[13px] min-w-[1200px]">
+                  <thead>
+                    <tr className="bg-[#f9fafb] border-b border-line">
+                      <th className="border-r border-line px-3 py-2.5 text-center text-ink font-semibold w-12">STT</th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-40">Tên đăng nhập *</th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-48">Họ và tên *</th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-56">Email *</th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-32">Vai trò</th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">Chức danh</th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">Tỉnh/Thành</th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">Phường/Xã</th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-48">Địa chỉ</th>
+                      <th className="border-r border-line px-3 py-2.5 text-left text-ink font-semibold w-36">Ngày sinh</th>
+                      <th className="px-3 py-2.5 text-left text-ink font-semibold w-28">Giới tính</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importRows.map((row, idx) => {
+                      const rowErrs = importErrors[idx] || {};
+                      const hasErr = Object.keys(rowErrs).length > 0;
+                      return (
+                        <tr key={idx} className={`border-b border-line ${hasErr ? "bg-red-50/20" : "hover:bg-[#f9fafb]"}`}>
+                          <td className="border-r border-line px-3 py-3 text-center text-muted font-medium bg-[#f9fafb]">{idx + 1}</td>
+                          {[
+                            { key: 'Tên đăng nhập', type: 'text' },
+                            { key: 'Họ và tên', type: 'text' },
+                            { key: 'Email', type: 'text' },
+                            { key: 'Vai trò', type: 'text' },
+                            { key: 'Chức danh', type: 'text' },
+                            { key: 'Tỉnh/Thành', type: 'text' },
+                            { key: 'Phường/Xã', type: 'text' },
+                            { key: 'Địa chỉ', type: 'text' },
+                            { key: 'Ngày sinh', type: 'text' },
+                            { key: 'Giới tính', type: 'text' },
+                          ].map((field, colIdx) => {
+                            const err = rowErrs[field.key];
+                            const isLast = colIdx === 9;
+                            return (
+                              <td key={field.key} className={`p-2 relative align-top ${isLast ? "" : "border-r border-line"}`}>
+                                <input
+                                  type="text"
+                                  value={row[field.key] || ""}
+                                  onChange={(e) => handleCellChange(idx, field.key, e.target.value)}
+                                  className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                    err
+                                      ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                      : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                  }`}
+                                />
+                                {err && (
+                                  <div className="text-[11px] text-danger font-medium mt-1.5 leading-tight">{err}</div>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-line bg-[#f8fafc]">
+              <button
+                type="button"
+                onClick={() => setImportPreviewOpen(false)}
+                className="h-[38px] rounded-md px-5 text-sm font-medium text-muted hover:bg-white hover:text-ink border border-line transition-colors bg-white"
+              >
+                Huỷ bỏ
+              </button>
+              <button
+                type="button"
+                onClick={confirmImport}
+                disabled={isImportSubmitting || Object.keys(importErrors).length > 0}
+                className="h-[38px] rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                {isImportSubmitting ? "Đang import..." : "Xác nhận & Gửi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Toast
         message={toast?.message ?? null}

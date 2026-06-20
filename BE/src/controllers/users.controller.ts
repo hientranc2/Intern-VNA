@@ -17,6 +17,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from '../services/users.service';
 import { avatarMulterOptions } from '../config/avatar-upload.config';
+import { importFileOptions } from '../config/import-upload.config';
 import {
   GetUsersFilterDto,
   CreateUserAdminDto,
@@ -36,6 +37,12 @@ export class UsersController {
   @Get()
   getUsers(@Query() filterDto: GetUsersFilterDto) {
     return this.usersService.getUsers(filterDto);
+  }
+
+  @Post('import')
+  @UseInterceptors(FileInterceptor('file', importFileOptions))
+  importUsers(@UploadedFile() file: Express.Multer.File) {
+    return this.usersService.importUsers(file);
   }
 
   @Post()

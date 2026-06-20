@@ -11,9 +11,13 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { EnterpriseTypeService } from '../services/enterprise-type.service';
+import { importFileOptions } from '../config/import-upload.config';
 import {
   CreateEnterpriseTypeDto,
   UpdateEnterpriseTypeDto,
@@ -39,6 +43,14 @@ export class EnterpriseTypeController {
   @UseGuards(AuthGuard('jwt'))
   create(@Body() dto: CreateEnterpriseTypeDto) {
     return this.service.create(dto);
+  }
+
+  @Post('import')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file', importFileOptions))
+  importEnterpriseTypes(@UploadedFile() file: Express.Multer.File) {
+    return this.service.importEnterpriseTypes(file);
   }
 
   @Put(':id')

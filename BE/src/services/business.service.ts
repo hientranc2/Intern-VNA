@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import { DataSource, Repository, Like, FindOptionsWhere } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { createClient } from '@supabase/supabase-js';
 import * as WebSocket from 'ws';
@@ -21,8 +21,39 @@ import {
   BusinessListDto,
   AccountPopupDto,
 } from '../../libs/shared/models/business.dto';
+import {
+  parseExcelToRows,
+  pickCell,
+  excelRowNumber,
+} from '../utils/excel-import.util';
 
 const DEFAULT_PASSWORD = '12345678';
+
+// Regex MST Việt Nam: 10 số (hoặc 10 số + dấu gạch + tối đa 5 số cho chi nhánh).
+const TAX_CODE_REGEX = /^\d{10}(-\d{1,5})?$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// SĐT Việt Nam (đơn giản hoá cho import: 10-11 số bắt đầu bằng 0).
+const PHONE_REGEX = /^0\d{9,10}$/;
+
+// Header (có thể nhiều tên) cho mỗi trường trong file mẫu import doanh nghiệp.
+const BUSINESS_HEADER_MAP = {
+  businessName: ['Tên doanh nghiệp', 'Tên công ty'],
+  taxCode: ['Mã số thuế', 'MST'],
+  businessType: ['Loại hình kinh doanh', 'Loại hình KD'],
+  mainIndustry: ['Ngành nghề kinh doanh', 'Ngành nghề KD'],
+  licenseDate: ['Ngày cấp GPKD'],
+  registeredProvince: ['Tỉnh ĐKKD', 'Tỉnh/Thành ĐKKD'],
+  registeredWard: ['Phường ĐKKD', 'Phường/Xã ĐKKD'],
+  address: ['Địa chỉ'],
+  foreignName: ['Tên tiếng nước ngoài'],
+  email: ['Email', 'E-mail'],
+  officePhone: ['SĐT văn phòng', 'Điện thoại văn phòng'],
+  operatingProvince: ['Tỉnh hoạt động', 'Tỉnh/Thành hoạt động'],
+  operatingWard: ['Phường hoạt động', 'Phường/Xã hoạt động'],
+  operatingAddress: ['Địa chỉ hoạt động'],
+  representative: ['Người đại diện'],
+  representativePhone: ['SĐT đại diện', 'Điện thoại đại diện'],
+} as const;
 
 @Injectable()
 export class BusinessService {
@@ -43,6 +74,8 @@ export class BusinessService {
 
     @InjectRepository(Account)
     private accountRepository: Repository<Account>,
+
+    private dataSource: DataSource,
   ) {}
 
   private async uploadFile(
@@ -297,5 +330,216 @@ export class BusinessService {
     business.account.passwordChangedAt = new Date();
     await this.accountRepository.save(business.account);
     return { message: 'Đặt lại mật khẩu tài khoản doanh nghiệp thành công' };
+  }
+
+  // IMPORT HÀNG LOẠT TỪ FILE EXCEL/CSV
+  // All-or-nothing: nếu BẤT KỲ dòng nào lỗi → rollback toàn bộ, không insert dòng nào.
+  // Giống create(): mỗi doanh nghiệp tạo kèm 1 account (username = taxCode, password default).
+  async importBusinesses(file?: Express.Multer.File) {
+    if (!file?.buffer) {
+      throw new BadRequestException('Vui lòng chọn file để import');
+    }
+
+    const rows = parseExcelToRows(file.buffer);
+
+    // Validate + chuẩn hoá từng dòng trước khi mở transaction.
+    type ImportRecord = {
+      business: Partial<Business>;
+      taxCode: string;
+      email: string;
+    };
+    const records: ImportRecord[] = [];
+    const seenTaxCodes = new Set<string>();
+    const seenEmails = new Set<string>();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = excelRowNumber(i);
+
+      const businessName = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.businessName,
+      ]);
+      const taxCode = pickCell(row, [...BUSINESS_HEADER_MAP.taxCode]);
+      const businessType = pickCell(row, [...BUSINESS_HEADER_MAP.businessType]);
+      const mainIndustry = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.mainIndustry,
+      ]);
+      const licenseDate = pickCell(row, [...BUSINESS_HEADER_MAP.licenseDate]);
+      const registeredProvince = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.registeredProvince,
+      ]);
+      const registeredWard = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.registeredWard,
+      ]);
+      const address = pickCell(row, [...BUSINESS_HEADER_MAP.address]);
+      const foreignName = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.foreignName,
+      ]);
+      const email = pickCell(row, [...BUSINESS_HEADER_MAP.email]).toLowerCase();
+      const officePhone = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.officePhone,
+      ]);
+      const operatingProvince = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.operatingProvince,
+      ]);
+      const operatingWard = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.operatingWard,
+      ]);
+      const operatingAddress = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.operatingAddress,
+      ]);
+      const representative = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.representative,
+      ]);
+      const representativePhone = pickCell(row, [
+        ...BUSINESS_HEADER_MAP.representativePhone,
+      ]);
+
+      if (!businessName) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: thiếu "Tên doanh nghiệp"`,
+        );
+      }
+      if (!taxCode) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Mã số thuế"`);
+      }
+      if (!TAX_CODE_REGEX.test(taxCode)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Mã số thuế" "${taxCode}" không hợp lệ (cần 10 chữ số)`,
+        );
+      }
+      if (!businessType) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: thiếu "Loại hình kinh doanh"`,
+        );
+      }
+      if (!mainIndustry) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: thiếu "Ngành nghề kinh doanh"`,
+        );
+      }
+      if (!registeredProvince) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Tỉnh ĐKKD"`);
+      }
+      if (!registeredWard) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Phường ĐKKD"`);
+      }
+      if (!email) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Email"`);
+      }
+      if (!EMAIL_REGEX.test(email)) {
+        throw new BadRequestException(`Dòng ${rowNum}: Email không hợp lệ`);
+      }
+      if (officePhone && !PHONE_REGEX.test(officePhone)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "SĐT văn phòng" không hợp lệ`,
+        );
+      }
+      if (representativePhone && !PHONE_REGEX.test(representativePhone)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "SĐT đại diện" không hợp lệ`,
+        );
+      }
+      if (seenTaxCodes.has(taxCode)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Mã số thuế" "${taxCode}" bị trùng trong file`,
+        );
+      }
+      if (seenEmails.has(email)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Email" "${email}" bị trùng trong file`,
+        );
+      }
+
+      seenTaxCodes.add(taxCode);
+      seenEmails.add(email);
+
+      records.push({
+        taxCode,
+        email,
+        business: {
+          businessName,
+          taxCode,
+          businessType,
+          mainIndustry,
+          ...(licenseDate && { licenseDate: new Date(licenseDate) }),
+          registeredProvince,
+          registeredWard,
+          ...(address && { address }),
+          ...(foreignName && { foreignName }),
+          email,
+          ...(officePhone && { officePhone }),
+          ...(operatingProvince && { operatingProvince }),
+          ...(operatingWard && { operatingWard }),
+          ...(operatingAddress && { operatingAddress }),
+          ...(representative && { representative }),
+          ...(representativePhone && { representativePhone }),
+          isActive: true,
+          licenseFile: null,
+          otherFile: null,
+        },
+      });
+    }
+
+    // Kiểm tra trùng MST/email với DB (1 truy vấn).
+    const existing = await this.businessRepository.find({
+      where: records.flatMap((r) => [
+        { taxCode: r.taxCode },
+        { email: r.email },
+      ]),
+      select: { taxCode: true, email: true },
+    });
+    const errors: string[] = [];
+    if (existing.length > 0) {
+      const takenTaxCodes = new Set(existing.map((b) => b.taxCode));
+      const takenEmails = new Set(existing.map((b) => b.email));
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        if (takenTaxCodes.has(r.taxCode)) {
+          errors.push(`Dòng ${i + 1}: "Mã số thuế" "${r.taxCode}" đã tồn tại trong hệ thống`);
+        }
+        if (takenEmails.has(r.email)) {
+          errors.push(`Dòng ${i + 1}: "Email" "${r.email}" đã tồn tại trong hệ thống`);
+        }
+      }
+    }
+    if (errors.length > 0) {
+      throw new ConflictException(errors.join('\n'));
+    }
+
+    // Mọi dòng hợp lệ → insert business + account trong 1 transaction.
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      for (const rec of records) {
+        const business = queryRunner.manager.create(Business, rec.business);
+        const savedBusiness = await queryRunner.manager.save(business);
+
+        const account = queryRunner.manager.create(Account, {
+          username: rec.taxCode,
+          password: hashedPassword,
+          role: 'DoanhNghiep',
+        });
+        const savedAccount = await queryRunner.manager.save(account);
+
+        savedBusiness.accountId = savedAccount.id;
+        await queryRunner.manager.save(savedBusiness);
+      }
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(
+        `Lỗi khi ghi dữ liệu: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      message: `Đã import thành công ${records.length} doanh nghiệp`,
+      imported: records.length,
+    };
   }
 }

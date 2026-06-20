@@ -6,7 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../entities/user.entity';
 import { Role } from '../entities/role.entity';
@@ -17,12 +17,37 @@ import {
   UpdateUserAdminDto,
   ResetPasswordAdminDto,
 } from '../dtos/user-admin.dto';
+import {
+  parseExcelToRows,
+  pickCell,
+  excelRowNumber,
+} from '../utils/excel-import.util';
+
+// Mật khẩu mặc định khi import hàng loạt — giống pattern tạo doanh nghiệp.
+// Admin có thể đặt lại sau qua endpoint reset-password.
+const IMPORT_DEFAULT_PASSWORD = '12345678';
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Danh sách header (có thể nhiều tên) cho mỗi trường trong file mẫu import user.
+const USER_HEADER_MAP = {
+  username: ['Tên đăng nhập', 'Username', 'Tài khoản'],
+  email: ['Email', 'E-mail'],
+  fullName: ['Họ và tên', 'Họ tên', 'Tên đầy đủ'],
+  role: ['Vai trò', 'Role'],
+  jobTitle: ['Chức danh', 'Chức vụ'],
+  province: ['Tỉnh/Thành', 'Tỉnh', 'Thành phố'],
+  ward: ['Phường/Xã', 'Phường', 'Xã'],
+  address: ['Địa chỉ'],
+  dob: ['Ngày sinh'],
+  gender: ['Giới tính'],
+} as const;
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Role) private roleRepository: Repository<Role>,
+    private dataSource: DataSource,
   ) {}
 
   // 1. LẤY DANH SÁCH & TÌM KIẾM CÓ PHÂN TRANG
@@ -224,5 +249,145 @@ export class UsersService {
       where: { id: user.roleId },
     });
     return role?.ma === 'SUPER_ADMIN';
+  }
+
+  // 6. IMPORT HÀNG LOẠT TỪ FILE EXCEL/CSV
+  // All-or-nothing: nếu BẤT KỲ dòng nào lỗi → rollback toàn bộ, không insert dòng nào.
+  async importUsers(file?: Express.Multer.File) {
+    if (!file?.buffer) {
+      throw new BadRequestException('Vui lòng chọn file để import');
+    }
+
+    const rows = parseExcelToRows(file.buffer);
+
+    // Tải trước toàn bộ vai trò (mã → id) để tra cứu nhanh.
+    const roles = await this.roleRepository.find();
+    const roleByMa = new Map(roles.map((r) => [r.ma, r]));
+
+    // Validate + chuẩn hoá từng dòng trước khi mở transaction.
+    const records: Partial<User>[] = [];
+    const seenUsernames = new Set<string>();
+    const seenEmails = new Set<string>();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = excelRowNumber(i);
+      const username = pickCell(row, [...USER_HEADER_MAP.username]);
+      const email = pickCell(row, [...USER_HEADER_MAP.email]).toLowerCase();
+      const fullName = pickCell(row, [...USER_HEADER_MAP.fullName]);
+      const roleMa = pickCell(row, [...USER_HEADER_MAP.role]);
+      const jobTitle = pickCell(row, [...USER_HEADER_MAP.jobTitle]);
+      const province = pickCell(row, [...USER_HEADER_MAP.province]);
+      const ward = pickCell(row, [...USER_HEADER_MAP.ward]);
+      const address = pickCell(row, [...USER_HEADER_MAP.address]);
+      const dob = pickCell(row, [...USER_HEADER_MAP.dob]);
+      const gender = pickCell(row, [...USER_HEADER_MAP.gender]);
+
+      if (!username) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Tên đăng nhập"`);
+      }
+      if (!email) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Email"`);
+      }
+      if (!EMAIL_REGEX.test(email)) {
+        throw new BadRequestException(`Dòng ${rowNum}: Email không hợp lệ`);
+      }
+      if (!fullName) {
+        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Họ và tên"`);
+      }
+      if (seenUsernames.has(username)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Tên đăng nhập" "${username}" bị trùng trong file`,
+        );
+      }
+      if (seenEmails.has(email)) {
+        throw new BadRequestException(
+          `Dòng ${rowNum}: "Email" "${email}" bị trùng trong file`,
+        );
+      }
+
+      // Tra vai trò: nếu có thì phải đúng mã, không thì bỏ qua (roleId = undefined).
+      let roleId: number | undefined;
+      if (roleMa) {
+        const role = roleByMa.get(roleMa);
+        if (!role) {
+          throw new BadRequestException(
+            `Dòng ${rowNum}: vai trò "${roleMa}" không tồn tại`,
+          );
+        }
+        roleId = role.id;
+      }
+
+      seenUsernames.add(username);
+      seenEmails.add(email);
+
+      records.push({
+        username,
+        email,
+        fullName,
+        password: '', // gắn password hash sau khi đã validate xong
+        roleId,
+        role: roleId ? undefined : 'USER',
+        ...(jobTitle && { jobTitle }),
+        ...(province && { province }),
+        ...(ward && { ward }),
+        ...(address && { address }),
+        ...(gender && { gender }),
+        ...(dob && { dob: new Date(dob) }),
+        isActive: true,
+      });
+    }
+
+    // Kiểm tra trùng username/email với DB (1 truy vấn, tránh N lần query).
+    const existing = await this.userRepository.find({
+      where: records.flatMap((r) => [
+        ...(r.username ? [{ username: r.username }] : []),
+        ...(r.email ? [{ email: r.email }] : []),
+      ]),
+      select: { username: true, email: true },
+    });
+    const errors: string[] = [];
+    if (existing.length > 0) {
+      const takenUsernames = new Set(existing.map((u) => u.username));
+      const takenEmails = new Set(existing.map((u) => u.email));
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        if (r.username && takenUsernames.has(r.username)) {
+          errors.push(`Dòng ${i + 1}: "Tên đăng nhập" "${r.username}" đã tồn tại trong hệ thống`);
+        }
+        if (r.email && takenEmails.has(r.email)) {
+          errors.push(`Dòng ${i + 1}: "Email" "${r.email}" đã tồn tại trong hệ thống`);
+        }
+      }
+    }
+    if (errors.length > 0) {
+      throw new ConflictException(errors.join('\n'));
+    }
+
+    // Mọi dòng hợp lệ → hash password default 1 lần rồi insert trong 1 transaction.
+    const hashedPassword = await bcrypt.hash(IMPORT_DEFAULT_PASSWORD, 10);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const toInsert = records.map((r) => ({
+        ...r,
+        password: hashedPassword,
+      }));
+      await queryRunner.manager.insert(User, toInsert);
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(
+        `Lỗi khi ghi dữ liệu: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      message: `Đã import thành công ${records.length} người dùng`,
+      imported: records.length,
+    };
   }
 }

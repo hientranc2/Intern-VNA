@@ -105,3 +105,10 @@ export function checkBusinessEmail(email: string) {
 export function checkBusinessTaxCode(taxCode: string) {
   return request<{ exists: boolean }>(`/businesses/check-tax-code?taxCode=${encodeURIComponent(taxCode)}`);
 }
+
+export function importBusinesses(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return requestFormData<{ message: string; imported: number }>("/businesses/import", fd, "POST");
+}
+
