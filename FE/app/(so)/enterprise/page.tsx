@@ -164,6 +164,7 @@ export default function EnterprisePage() {
   const [wizardMode, setWizardMode] = useState<WizardMode>("add");
   const [wizardStep, setWizardStep] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const loadedBusinessDetailRef = useRef<any>(null);
   const [isWizardLoading, setIsWizardLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<BusinessFormData>(EMPTY_BUSINESS_FORM);
@@ -573,6 +574,7 @@ export default function EnterprisePage() {
       setWizardOpen(true);
       try {
         const detail = await getBusinessById(b.id);
+        loadedBusinessDetailRef.current = detail;
         setForm({
           businessName: detail.businessName ?? "",
           taxCode: detail.taxCode ?? "",
@@ -663,7 +665,43 @@ export default function EnterprisePage() {
     return fd;
   };
 
+  const isBusinessFormChanged = () => {
+    if (!loadedBusinessDetailRef.current) return true;
+    const detail = loadedBusinessDetailRef.current;
+    const formFields = [
+      { formVal: form.businessName, dbVal: detail.businessName },
+      { formVal: form.businessType, dbVal: detail.businessType },
+      { formVal: form.mainIndustry, dbVal: detail.mainIndustry },
+      { formVal: form.licenseDate, dbVal: formatLicenseDate(detail.licenseDate) },
+      { formVal: form.registeredProvince, dbVal: detail.registeredProvince },
+      { formVal: form.registeredWard, dbVal: detail.registeredWard },
+      { formVal: form.address, dbVal: detail.address },
+      { formVal: form.foreignName, dbVal: detail.foreignName },
+      { formVal: form.email, dbVal: detail.email },
+      { formVal: form.officePhone, dbVal: detail.officePhone },
+      { formVal: form.operatingProvince, dbVal: detail.operatingProvince },
+      { formVal: form.operatingWard, dbVal: detail.operatingWard },
+      { formVal: form.operatingAddress, dbVal: detail.operatingAddress },
+      { formVal: form.representative, dbVal: detail.representative },
+      { formVal: form.representativePhone, dbVal: detail.representativePhone },
+    ];
+    for (const f of formFields) {
+      if ((f.formVal ?? "").trim() !== (f.dbVal ?? "").trim()) {
+        return true;
+      }
+    }
+    if (attachments[0].file || attachments[1].file) {
+      return true;
+    }
+    return false;
+  };
+
   const confirmWizard = async () => {
+    if (wizardMode === "edit" && !isBusinessFormChanged()) {
+      setToast({ message: "Không có thay đổi nào cần cập nhật", variant: "success" });
+      setWizardOpen(false);
+      return;
+    }
     setIsSubmitting(true);
     try {
       if (wizardMode === "add") {
@@ -1792,7 +1830,7 @@ export default function EnterprisePage() {
                   onClick={confirmWizard}
                   disabled={
                     isSubmitting ||
-                    (wizardMode === "add" ? !canCreate : !canUpdate)
+                    (wizardMode === "add" ? !canCreate : (!canUpdate || !isBusinessFormChanged()))
                   }
                   className="flex h-[38px] items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
                 >

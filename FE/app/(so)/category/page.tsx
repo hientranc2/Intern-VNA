@@ -185,6 +185,25 @@ export default function CategoryPage() {
     setPanelOpen(true);
   };
 
+  const isCategoryChanged = useMemo(() => {
+    if (!isEdit || editId == null) return true;
+    const ten = inputTen.trim();
+    const cha = inputCha.trim();
+    if (tab === "factor") {
+      const original = factors.find((r) => r.id === editId);
+      if (original && ten === original.ten && (inputActive === "1") === original.active) {
+        return false;
+      }
+    } else {
+      const list = tab === "injuryType" ? injuryTypes : occupations;
+      const original = list.find((r) => r.id === editId);
+      if (original && ten === original.ten && cha === (original.cha || "")) {
+        return false;
+      }
+    }
+    return true;
+  }, [isEdit, editId, tab, factors, inputTen, inputActive, injuryTypes, occupations, inputCha]);
+
   const savePanel = async () => {
     const errors: { ma?: string; ten?: string } = {};
     if (!inputMa.trim()) errors.ma = "Mã không được để trống";
@@ -197,6 +216,13 @@ export default function CategoryPage() {
     const ma = inputMa.trim();
     const ten = inputTen.trim();
     const cha = inputCha.trim();
+
+    if (isEdit && editId != null && !isCategoryChanged) {
+      setToast({ message: "Không có thay đổi nào cần cập nhật", variant: "success" });
+      setPanelOpen(false);
+      return;
+    }
+
     setSaving(true);
     try {
       if (tab === "factor") {
@@ -977,7 +1003,7 @@ export default function CategoryPage() {
             <button
               type="button"
               onClick={savePanel}
-              disabled={saving || (isEdit ? !canUpdate : !canCreate)}
+              disabled={saving || (isEdit ? (!canUpdate || !isCategoryChanged) : !canCreate)}
               className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg

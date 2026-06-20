@@ -24,6 +24,10 @@ export type AccidentReport = {
   thiethaiTaiSan: number;
   // Phân loại phần II: key mã hạng mục "1".."24" -> number[13]
   phanLoaiRows?: Record<string, number[]>;
+  submittedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  nam?: string | null;
 };
 
 export type ReportRow =

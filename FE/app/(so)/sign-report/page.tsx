@@ -50,7 +50,7 @@ export default function SignReportPage() {
   const [viewingReport, setViewingReport] = useState<AtvsldReport | null>(null);
   const [viewValues, setViewValues] =
     useState<DeclarationValues>(EMPTY_DECLARATION);
-  const [year, setYear] = useState("2022");
+  const [year, setYear] = useState("Tất cả");
   const [toast, setToast] = useState<string | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -74,48 +74,55 @@ export default function SignReportPage() {
   const start = (currentPage - 1) * pageSize;
   const end = Math.min(start + pageSize, total);
 
-  const loadReports = useCallback((force = false) => {
-    const fetchKey = JSON.stringify({
-      year,
-      dTen,
-      dMST,
-      dPhuong,
-      fStatus,
-      currentPage,
-      pageSize,
-    });
+  const loadReports = useCallback(
+    (force = false) => {
+      const fetchKey = JSON.stringify({
+        year,
+        dTen,
+        dMST,
+        dPhuong,
+        fStatus,
+        currentPage,
+        pageSize,
+      });
 
-    if (!force && lastFetchRef.current === fetchKey) {
-      return;
-    }
-    lastFetchRef.current = fetchKey;
+      if (!force && lastFetchRef.current === fetchKey) {
+        return;
+      }
+      lastFetchRef.current = fetchKey;
 
-    getAtvsldReportList({
-      nam: year ? Number(year) : undefined,
-      ten: dTen || undefined,
-      mst: dMST || undefined,
-      ward: dPhuong || undefined,
-      status: fStatus || undefined,
-      page: currentPage,
-      pageSize: pageSize,
-    })
-      .then((res) => {
-        setReports(res.data);
-        setTotal(res.total);
+      getAtvsldReportList({
+        nam: year ? Number(year) : undefined,
+        ten: dTen || undefined,
+        mst: dMST || undefined,
+        ward: dPhuong || undefined,
+        status: fStatus || undefined,
+        page: currentPage,
+        pageSize: pageSize,
       })
-      .catch(() => setToast("Không tải được danh sách báo cáo"));
-  }, [year, dTen, dMST, dPhuong, fStatus, currentPage, pageSize]);
+        .then((res) => {
+          setReports(res.data);
+          setTotal(res.total);
+        })
+        .catch(() => setToast("Không tải được danh sách báo cáo"));
+    },
+    [year, dTen, dMST, dPhuong, fStatus, currentPage, pageSize],
+  );
 
   useEffect(() => {
     const filtersKey = JSON.stringify({ year, dTen, dMST, dPhuong, fStatus });
-    const lastFilters = lastFetchRef.current ? JSON.parse(lastFetchRef.current) : null;
-    const filtersChanged = lastFilters && JSON.stringify({
-      year: lastFilters.year,
-      dTen: lastFilters.dTen,
-      dMST: lastFilters.dMST,
-      dPhuong: lastFilters.dPhuong,
-      fStatus: lastFilters.fStatus,
-    }) !== filtersKey;
+    const lastFilters = lastFetchRef.current
+      ? JSON.parse(lastFetchRef.current)
+      : null;
+    const filtersChanged =
+      lastFilters &&
+      JSON.stringify({
+        year: lastFilters.year,
+        dTen: lastFilters.dTen,
+        dMST: lastFilters.dMST,
+        dPhuong: lastFilters.dPhuong,
+        fStatus: lastFilters.fStatus,
+      }) !== filtersKey;
 
     if (filtersChanged) {
       setSelectedIds(new Set());
@@ -141,6 +148,36 @@ export default function SignReportPage() {
     reports.length > 0 && reports.every((r) => selectedIds.has(r.id));
   const someSelected = reports.some((r) => selectedIds.has(r.id));
 
+  const selectedReports = useMemo(() => {
+    return reports.filter((r) => selectedIds.has(r.id));
+  }, [reports, selectedIds]);
+
+  const disableRejectButton = useMemo(() => {
+    if (!canApprove) return true;
+    return selectedReports.some((r) => r.status === "Từ chối");
+  }, [selectedReports, canApprove]);
+
+  const disableApproveButton = useMemo(() => {
+    if (!canApprove) return true;
+    return selectedReports.some((r) => r.status === "Hoàn thành");
+  }, [selectedReports, canApprove]);
+
+  const rejectTitle = useMemo(() => {
+    if (!canApprove) return "Bạn không có quyền duyệt/từ chối";
+    if (selectedReports.some((r) => r.status === "Từ chối")) {
+      return "Không thể từ chối báo cáo đã bị từ chối trước đó";
+    }
+    return undefined;
+  }, [selectedReports, canApprove]);
+
+  const approveTitle = useMemo(() => {
+    if (!canApprove) return "Bạn không có quyền duyệt/từ chối";
+    if (selectedReports.some((r) => r.status === "Hoàn thành")) {
+      return "Không thể duyệt báo cáo đã hoàn thành trước đó";
+    }
+    return undefined;
+  }, [selectedReports, canApprove]);
+
   const toggleSelectAll = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -162,14 +199,81 @@ export default function SignReportPage() {
     }
   };
 
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyReport, setHistoryReport] = useState<AtvsldReport | null>(null);
+
+  const parseDate = (dStr: string) => {
+    if (!dStr) return new Date();
+    const parts = dStr.split("/");
+    if (parts.length === 3) {
+      return new Date(
+        Number(parts[2]),
+        Number(parts[1]) - 1,
+        Number(parts[0]),
+        8,
+        0,
+      );
+    }
+    return new Date();
+  };
+
+  const displayHistory = useMemo(() => {
+    if (!historyReport) return [];
+
+    const list = historyReport.history ? [...historyReport.history] : [];
+
+    // 1. Tự động thêm sự kiện tạo bản nháp nếu thiếu
+    const hasCreate = list.some((h) => h.action === "đã tạo bản nháp báo cáo");
+    if (!hasCreate) {
+      const createdDate = parseDate(historyReport.ngayCapNhat);
+      list.unshift({
+        timestamp: createdDate.toISOString(),
+        actor: historyReport.ten,
+        action: "đã tạo bản nháp báo cáo",
+      });
+    }
+
+    // 2. Tự động thêm sự kiện nộp báo cáo nếu thiếu và đã nộp
+    const hasSubmit = list.some((h) => h.action === "đã gửi báo cáo");
+    if (
+      !hasSubmit &&
+      historyReport.ngayNop &&
+      historyReport.ngayNop !== "–" &&
+      historyReport.ngayNop !== ""
+    ) {
+      const nopDate = parseDate(historyReport.ngayNop);
+      list.splice(1, 0, {
+        timestamp: nopDate.toISOString(),
+        actor: historyReport.ten,
+        action: "đã gửi báo cáo",
+      });
+    }
+
+    return list;
+  }, [historyReport]);
+
+  const openHistory = (report: AtvsldReport) => {
+    setHistoryReport(report);
+    setHistoryOpen(true);
+    getAtvsldReportById(report.id)
+      .then((detail) => {
+        setHistoryReport(detail);
+        setReports((prev) =>
+          prev.map((r) => (r.id === report.id ? detail : r)),
+        );
+      })
+      .catch(() => {});
+  };
+
   const openDetail = (report: AtvsldReport) => {
     setViewingReport(report);
     setViewValues(EMPTY_DECLARATION);
     setView("detail");
     getAtvsldReportById(report.id)
-      .then((detail) =>
-        setViewValues({ ...EMPTY_DECLARATION, ...detail.declaration }),
-      )
+      .then((detail) => {
+        setViewingReport(detail);
+        setViewValues({ ...EMPTY_DECLARATION, ...detail.declaration });
+      })
       .catch(() => setToast("Không tải được nội dung báo cáo"));
   };
 
@@ -304,24 +408,44 @@ export default function SignReportPage() {
                             />
                           </td>
                           <td className="px-3.5 py-2.5">
-                            <button
-                              type="button"
-                              onClick={() => openDetail(r)}
-                              title="Xem"
-                              className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
-                            >
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openDetail(r)}
+                                title="Xem"
+                                className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                               >
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                              </svg>
-                            </button>
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                  <circle cx="12" cy="12" r="3" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openHistory(r)}
+                                title="Lịch sử xử lý"
+                                className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <circle cx="12" cy="12" r="10" />
+                                  <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                              </button>
+                            </div>
                           </td>
                           <td className="px-3.5 py-2.5 text-[#374151]">
                             {r.ten}
@@ -421,10 +545,8 @@ export default function SignReportPage() {
               <button
                 type="button"
                 onClick={() => setRejectOpen(true)}
-                disabled={!canApprove}
-                title={
-                  canApprove ? undefined : "Bạn không có quyền duyệt/từ chối"
-                }
+                disabled={disableRejectButton}
+                title={rejectTitle}
                 className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
               >
                 <svg
@@ -443,10 +565,8 @@ export default function SignReportPage() {
               <button
                 type="button"
                 onClick={approveSelected}
-                disabled={!canApprove}
-                title={
-                  canApprove ? undefined : "Bạn không có quyền duyệt/từ chối"
-                }
+                disabled={disableApproveButton}
+                title={approveTitle}
                 className="flex h-8 items-center gap-1.5 rounded-md bg-success px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-success"
               >
                 <svg
@@ -535,6 +655,71 @@ export default function SignReportPage() {
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
         />
+      </Modal>
+
+      <Modal
+        open={historyOpen}
+        title="Tiến độ xử lý"
+        onClose={() => setHistoryOpen(false)}
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(false)}
+              className="h-9.5 rounded-md border border-line bg-white px-5 text-sm font-medium text-[#374151] hover:bg-[#f9fafb]"
+            >
+              Đóng
+            </button>
+          </div>
+        }
+      >
+        <div className="relative bg-white min-h-[100px] py-2">
+          {displayHistory.length > 0 ? (
+            <div className="relative">
+              {/* Vertical connector line */}
+              <div className="absolute left-[6px] top-[10px] bottom-[10px] w-[1.5px] bg-[#e2e8f0]" />
+
+              <div className="space-y-6">
+                {[...displayHistory].reverse().map((h, i) => {
+                  const dateObj = new Date(h.timestamp);
+                  const day = String(dateObj.getDate()).padStart(2, "0");
+                  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+                  const year = dateObj.getFullYear();
+                  const hours = String(dateObj.getHours()).padStart(2, "0");
+                  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+                  const formattedTime = `${day}/${month}/${year} ${hours}:${minutes}`;
+
+                  return (
+                    <div key={i} className="relative pl-7 text-[13.5px]">
+                      {/* Timeline circle node */}
+                      <div className="absolute left-0 top-[4px] h-3.5 w-3.5 rounded-full border-2 border-[#cbd5e1] bg-white z-10" />
+
+                      <div className="text-[#6b7280] text-[12.5px] mb-1">
+                        {formattedTime}
+                      </div>
+                      <div className="text-ink">
+                        <span className="font-bold text-[#1f2937]">
+                          {h.actor}
+                        </span>{" "}
+                        <span className="text-[#4b5563]">{h.action}</span>
+                      </div>
+                      {h.lyDo && (
+                        <div className="mt-1 text-[13.5px]">
+                          <span className="font-bold text-danger">Lý do: </span>
+                          <span className="text-[#1f2937]">{h.lyDo}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-[#6b7280] py-4">
+              Chưa có lịch sử xử lý
+            </div>
+          )}
+        </div>
       </Modal>
     </>
   );

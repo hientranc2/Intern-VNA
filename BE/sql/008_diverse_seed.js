@@ -230,9 +230,11 @@ async function seedAtvsldReports(c, businesses) {
       if (bi % 4 === yi) continue; // mỗi DN vắng 1 năm → tập DN mỗi năm khác nhau
       for (const ky of ['6 tháng', 'Cả năm']) {
         const status = STATUSES_ATVSLD[seed % STATUSES_ATVSLD.length];
-        const batDau = `01/01/${y}`;
-        const ketThuc = ky === '6 tháng' ? `30/06/${y}` : `31/12/${y}`;
-        const nop = (status === 'Chờ báo cáo' || status === 'Nhập liệu') ? '' : `15/07/${y}`;
+        const batDau = ky === '6 tháng' ? `01/07/${y}` : `15/12/${y}`;
+        const ketThuc = ky === '6 tháng' ? `05/07/${y}` : `10/01/${y + 1}`;
+        const nop = (status === 'Chờ báo cáo' || status === 'Nhập liệu')
+          ? ''
+          : (ky === '6 tháng' ? `02/07/${y}` : `28/12/${y}`);
         const lyDo = status === 'Từ chối' ? 'Số liệu chưa khớp, đề nghị kiểm tra lại' : null;
         await c.query(
           `INSERT INTO atvsld_reports
@@ -242,7 +244,7 @@ async function seedAtvsldReports(c, businesses) {
           [
             b.id, b.name, b.tax, y, ky, batDau, ketThuc, nop, 'Người đại diện DN',
             b.province, b.ward, status, lyDo, declTemplate(seed),
-            nop ? new Date(`${y}-07-15`) : null,
+            nop ? (ky === '6 tháng' ? new Date(`${y}-07-02`) : new Date(`${y}-12-28`)) : null,
           ],
         );
         n++; seed++;

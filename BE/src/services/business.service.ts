@@ -255,7 +255,10 @@ export class BusinessService {
         );
     }
 
-    if (licenseFile) {
+    if (dto.deleteLicenseFile) {
+      await this.deleteFile(business.licenseFile);
+      business.licenseFile = null;
+    } else if (licenseFile) {
       await this.deleteFile(business.licenseFile);
       business.licenseFile = await this.uploadFile(
         licenseFile,
@@ -263,7 +266,11 @@ export class BusinessService {
         'license',
       );
     }
-    if (otherFile) {
+
+    if (dto.deleteOtherFile) {
+      await this.deleteFile(business.otherFile);
+      business.otherFile = null;
+    } else if (otherFile) {
       await this.deleteFile(business.otherFile);
       business.otherFile = await this.uploadFile(
         otherFile,

@@ -327,6 +327,13 @@ export default function BusinessSectorPage() {
     }
   };
 
+  const isSectorFormChanged = useMemo(() => {
+    if (!editId) return true;
+    const originalItem = items.find((r) => r.id === editId);
+    if (!originalItem) return true;
+    return inputTen.trim() !== originalItem.ten;
+  }, [editId, items, inputTen]);
+
   const savePanel = async () => {
     const ma = inputMa.trim();
     const ten = inputTen.trim();
@@ -341,6 +348,11 @@ export default function BusinessSectorPage() {
     setSaving(true);
     try {
       if (editId) {
+        if (!isSectorFormChanged) {
+          setToast({ message: "Không có thay đổi nào cần cập nhật", variant: "success" });
+          setPanelOpen(false);
+          return;
+        }
         const updated = await updateBusinessSector(editId, { ten });
         setItems((prev) => prev.map((r) => (r.id === editId ? updated : r)));
       } else {
@@ -609,8 +621,8 @@ export default function BusinessSectorPage() {
             <button
               type="button"
               onClick={savePanel}
-              disabled={saving}
-              className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+              disabled={saving || (editId ? !isSectorFormChanged : false)}
+              className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg
                 width="13"

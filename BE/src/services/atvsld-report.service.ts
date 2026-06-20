@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
 import { AtvsldReport } from '../entities/atvsld-report.entity';
 import { Business } from '../entities/business.entity';
+import { User } from '../entities/user.entity';
 import {
   AtvsldReportQueryDto,
   MyAtvsldReportQueryDto,
@@ -27,6 +28,8 @@ export class AtvsldReportService {
     private readonly repo: Repository<AtvsldReport>,
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   // ===== Role Sở =====
@@ -62,44 +65,99 @@ export class AtvsldReportService {
     return { ...this.toRecord(report), declaration: report.declaration ?? {} };
   }
 
-  async approve(id: number): Promise<{ message: string }> {
+  async approve(userId: string, id: number): Promise<{ message: string }> {
     const report = await this.repo.findOne({ where: { id } });
     if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
 
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const actorName = user ? user.fullName : 'Cán bộ Sở';
+
     report.status = STATUS_DONE;
     report.lyDoTuChoi = null;
+    report.ngayKetThuc = this.formatDate(new Date());
+
+    const history = report.history || [];
+    history.push({
+      timestamp: new Date().toISOString(),
+      actor: actorName,
+      action: 'đã duyệt báo cáo',
+    });
+    report.history = history;
+
     await this.repo.save(report);
     return { message: 'Đã duyệt báo cáo' };
   }
 
-  async reject(id: number, lyDoTuChoi: string): Promise<{ message: string }> {
+  async reject(userId: string, id: number, lyDoTuChoi: string): Promise<{ message: string }> {
     const report = await this.repo.findOne({ where: { id } });
     if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
 
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const actorName = user ? user.fullName : 'Cán bộ Sở';
+
     report.status = STATUS_REJECTED;
     report.lyDoTuChoi = lyDoTuChoi;
+    report.ngayKetThuc = '';
+
+    const history = report.history || [];
+    history.push({
+      timestamp: new Date().toISOString(),
+      actor: actorName,
+      action: 'từ chối báo cáo',
+      lyDo: lyDoTuChoi,
+    });
+    report.history = history;
+
     await this.repo.save(report);
     return { message: 'Đã từ chối báo cáo' };
   }
 
-  async approveMany(ids: number[]): Promise<{ message: string }> {
+  async approveMany(userId: string, ids: number[]): Promise<{ message: string }> {
     if (ids.length === 0) throw new BadRequestException('Danh sách trống');
-    await this.repo.update(
-      { id: In(ids) },
-      { status: STATUS_DONE, lyDoTuChoi: null },
-    );
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const actorName = user ? user.fullName : 'Cán bộ Sở';
+
+    const reports = await this.repo.find({ where: { id: In(ids) } });
+    for (const report of reports) {
+      report.status = STATUS_DONE;
+      report.lyDoTuChoi = null;
+      report.ngayKetThuc = this.formatDate(new Date());
+      const history = report.history || [];
+      history.push({
+        timestamp: new Date().toISOString(),
+        actor: actorName,
+        action: 'đã duyệt báo cáo',
+      });
+      report.history = history;
+    }
+    await this.repo.save(reports);
     return { message: `Đã duyệt ${ids.length} báo cáo` };
   }
 
   async rejectMany(
+    userId: string,
     ids: number[],
     lyDoTuChoi: string,
   ): Promise<{ message: string }> {
     if (ids.length === 0) throw new BadRequestException('Danh sách trống');
-    await this.repo.update(
-      { id: In(ids) },
-      { status: STATUS_REJECTED, lyDoTuChoi },
-    );
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const actorName = user ? user.fullName : 'Cán bộ Sở';
+
+    const reports = await this.repo.find({ where: { id: In(ids) } });
+    for (const report of reports) {
+      report.status = STATUS_REJECTED;
+      report.lyDoTuChoi = lyDoTuChoi;
+      report.ngayKetThuc = '';
+      const history = report.history || [];
+      history.push({
+        timestamp: new Date().toISOString(),
+        actor: actorName,
+        action: 'từ chối báo cáo',
+        lyDo: lyDoTuChoi,
+      });
+      report.history = history;
+    }
+    await this.repo.save(reports);
     return { message: `Đã từ chối ${ids.length} báo cáo` };
   }
 
@@ -128,7 +186,8 @@ export class AtvsldReportService {
 
   async create(userId: string, dto: CreateAtvsldReportDto) {
     const business = await this.resolveBusiness(userId);
-    const { ngayBatDau, ngayKetThuc } = this.resolvePeriod(dto.ky, dto.nam);
+    const ngayBatDau = this.formatDate(new Date());
+    const ngayKetThuc = '';
 
     const report = this.repo.create({
       enterpriseId: business.id,
@@ -143,6 +202,13 @@ export class AtvsldReportService {
       ward: business.registeredWard,
       status: STATUS_DRAFT,
       declaration: dto.declaration ?? {},
+      history: [
+        {
+          timestamp: new Date().toISOString(),
+          actor: business.businessName,
+          action: 'đã tạo bản nháp báo cáo',
+        },
+      ],
     });
     const saved = await this.repo.save(report);
     return this.toRecord(saved);
@@ -154,12 +220,8 @@ export class AtvsldReportService {
     const report = await this.assertOwnReport(business.id, id);
 
     if (dto.nam !== undefined) report.nam = dto.nam;
-    if (dto.ky !== undefined || dto.nam !== undefined) {
-      const period = this.resolvePeriod(dto.ky ?? report.ky, report.nam);
-      report.ky = dto.ky ?? report.ky;
-      report.ngayBatDau = period.ngayBatDau;
-      report.ngayKetThuc = period.ngayKetThuc;
-    }
+    if (dto.ky !== undefined) report.ky = dto.ky;
+    report.ngayKetThuc = '';
     if (dto.declaration !== undefined) report.declaration = dto.declaration;
 
     report.status = STATUS_DRAFT;
@@ -182,6 +244,14 @@ export class AtvsldReportService {
     report.lyDoTuChoi = null;
     report.ngayNop = this.formatDate(new Date());
     report.submittedAt = new Date();
+
+    const history = report.history || [];
+    history.push({
+      timestamp: new Date().toISOString(),
+      actor: business.businessName,
+      action: 'đã gửi báo cáo',
+    });
+    report.history = history;
 
     const saved = await this.repo.save(report);
     return this.toRecord(saved);
@@ -209,15 +279,7 @@ export class AtvsldReportService {
     return report;
   }
 
-  // Kỳ "6 tháng" → nửa đầu năm; "Cả năm" → trọn năm.
-  private resolvePeriod(
-    ky: string,
-    nam: number,
-  ): { ngayBatDau: string; ngayKetThuc: string } {
-    const ngayBatDau = `01/01/${nam}`;
-    const ngayKetThuc = ky === '6 tháng' ? `30/06/${nam}` : `31/12/${nam}`;
-    return { ngayBatDau, ngayKetThuc };
-  }
+
 
   private formatDate(d: Date): string {
     const dd = String(d.getDate()).padStart(2, '0');
@@ -242,6 +304,7 @@ export class AtvsldReportService {
       ward: r.ward,
       status: r.status,
       lyDoTuChoi: r.lyDoTuChoi ?? undefined,
+      history: r.history ?? [],
     };
   }
 }

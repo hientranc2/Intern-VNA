@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
@@ -31,6 +31,25 @@ type ReportRecord = {
   nam: string | null;
   tt: "Đang báo cáo" | "Đã nộp";
   configId: number;
+  submittedAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+const formatTime = (dStr?: string | null): string => {
+  if (!dStr) return "–";
+  try {
+    const d = new Date(dStr);
+    if (isNaN(d.getTime())) return "–";
+    const date = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${date}/${month}/${year} ${hours}:${minutes}`;
+  } catch {
+    return "–";
+  }
 };
 
 type AccidentDetail = {
@@ -115,16 +134,17 @@ export default function EnterpriseReportPage() {
     );
   }, [availableConfigs, createYear, createKy]);
 
+  const isAlreadyCreated = useMemo(() => {
+    return reports.some(
+      (r) => r.nam === createYear && r.ky === createKy,
+    );
+  }, [reports, createYear, createKy]);
+
   const openCreateModal = async () => {
     try {
       const allConfigs = await getReportConfigList();
       const activeConfigs = allConfigs.filter((c) => c.active);
-      const existingConfigIds = new Set(reports.map((r) => r.configId));
-      const filteredConfigs = activeConfigs.filter(
-        (c) => !existingConfigIds.has(c.id),
-      );
-
-      setAvailableConfigs(filteredConfigs);
+      setAvailableConfigs(activeConfigs);
       setCreateYear(String(new Date().getFullYear()));
       setCreateKy("6 tháng");
       setCreateModalOpen(true);
@@ -134,14 +154,16 @@ export default function EnterpriseReportPage() {
   };
 
   const confirmCreateReport = async () => {
-    if (!matchedConfig) {
-      setToast("Vui lòng chọn kỳ báo cáo hợp lệ");
+    if (isAlreadyCreated) {
+      setToast("Bạn đã tạo báo cáo cho kỳ này rồi");
       return;
     }
     setCreating(true);
     try {
       const created = await submitDnReport({
-        configId: matchedConfig.id,
+        configId: matchedConfig?.id,
+        nam: createYear,
+        ky: createKy,
         tongSoRows: {},
         chiTietRows: [],
         status: "Đang báo cáo",
@@ -202,6 +224,10 @@ export default function EnterpriseReportPage() {
   const [phanLoai, setPhanLoai] =
     useState<Record<string, string[]>>(emptyPhanLoai);
   const [saving, setSaving] = useState(false);
+  const originalReportRef = useRef<{
+    tongHop: any;
+    phanLoai: any;
+  } | null>(null);
 
   const setPhanLoaiCell = (ma: string, col: number, val: string) =>
     setPhanLoai((prev) => ({
@@ -217,6 +243,10 @@ export default function EnterpriseReportPage() {
     getDnReportById(r.id)
       .then((res) => {
         const t = res.form.tongHop;
+        originalReportRef.current = {
+          tongHop: t,
+          phanLoai: res.form.phanLoaiRows || {},
+        };
         setTotalLao(String(t.soLaoDong));
         setTongVu(String(t.soVu));
         setVuChet(String(t.soVuCoNguoiChet));
@@ -327,6 +357,48 @@ export default function EnterpriseReportPage() {
       setToast("Không xác định được báo cáo để lưu");
       return;
     }
+
+    const isReportChanged = () => {
+      if (!originalReportRef.current) return true;
+      const orig = originalReportRef.current;
+      
+      const currentTH = buildTongHop();
+      const keysToCheck: (keyof typeof currentTH)[] = [
+        "soLaoDong", "soLDNu", "soVu", "soVuCoNguoiChet", "soVuCo2NguoiBiNan",
+        "soNguoiBiNan", "soNguoiBiChet", "soNguoiBiThuongNang", "soNgayNghi",
+        "tongSoTien", "chiPhiYTe", "chiPhiTraLuong", "boiThuongTroCap", "thiethaiTaiSan"
+      ];
+      for (const key of keysToCheck) {
+        if (Number(currentTH[key]) !== Number(orig.tongHop[key] || 0)) {
+          return true;
+        }
+      }
+
+      const currentPL = buildPhanLoai();
+      for (const ma of PHAN_LOAI_MAS) {
+        const origArr = orig.phanLoai[ma] || [];
+        const currArr = currentPL[ma] || [];
+        const maxLen = Math.max(origArr.length, currArr.length);
+        for (let i = 0; i < maxLen; i++) {
+          if (Number(origArr[i] || 0) !== Number(currArr[i] || 0)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    };
+
+    const originalStatus = reports.find((r) => r.id === editingId)?.tt;
+    const isStatusChanged = originalStatus !== status;
+    const isDataChanged = isReportChanged();
+
+    if (!isStatusChanged && !isDataChanged) {
+      setToast("Không có thay đổi nào cần lưu");
+      setView("list");
+      return;
+    }
+
     setSaving(true);
     try {
       await updateDnReport(editingId, {
@@ -369,10 +441,15 @@ export default function EnterpriseReportPage() {
     setAccidentDetails((prev) => prev.filter((d) => d.id !== id));
   };
 
-  // Năm để lọc lấy từ chính dữ liệu báo cáo (report_configs.nam), không hard-code.
-  const yearOptions = Array.from(
-    new Set(reports.map((r) => r.nam).filter((n): n is string => !!n)),
-  ).sort((a, b) => b.localeCompare(a));
+  // Năm để lọc lấy từ chính dữ liệu báo cáo (report_configs.nam), đồng thời hiển thị đến năm hiện tại (2026).
+  const yearOptions = useMemo(() => {
+    const years = new Set(reports.map((r) => r.nam).filter((n): n is string => !!n));
+    const currentYear = new Date().getFullYear();
+    for (let y = 2022; y <= currentYear; y++) {
+      years.add(String(y));
+    }
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [reports]);
   const filteredReports = filterYear
     ? reports.filter((r) => r.nam === filterYear)
     : reports;
@@ -437,7 +514,16 @@ export default function EnterpriseReportPage() {
                     <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Kỳ báo cáo
                     </th>
+                    <th className="w-24 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Năm
+                    </th>
                     <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Ngày cập nhật
+                    </th>
+                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Ngày nộp
+                    </th>
+                    <th className="w-36 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Trạng thái
                     </th>
                   </tr>
@@ -491,6 +577,9 @@ export default function EnterpriseReportPage() {
                       <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
                       <td className="px-3.5 py-2.5 text-[#374151]">{r.mst}</td>
                       <td className="px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">{r.nam || "–"}</td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">{formatTime(r.updatedAt)}</td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">{formatTime(r.submittedAt)}</td>
                       <td className="px-3.5 py-2.5">
                         <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
                           <span
@@ -1245,7 +1334,7 @@ export default function EnterpriseReportPage() {
             <button
               type="button"
               onClick={confirmCreateReport}
-              disabled={creating || !matchedConfig}
+              disabled={creating || isAlreadyCreated}
               className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {creating ? "Đang tạo..." : "Bắt đầu khai báo"}
@@ -1258,53 +1347,43 @@ export default function EnterpriseReportPage() {
             <label className="text-[12.5px] font-medium text-[#374151]">
               Năm báo cáo <span className="text-danger">*</span>
             </label>
-            {availableConfigs.length === 0 ? (
-              <p className="text-[13.5px] text-danger font-medium mt-1">
-                Không có kỳ báo cáo khả dụng (bạn đã khai báo tất cả các kỳ hoặc
-                chưa có kỳ cấu hình mới).
-              </p>
-            ) : (
-              <select
-                className={SC}
-                value={createYear}
-                onChange={(e) => setCreateYear(e.target.value)}
-              >
-                {(() => {
-                  const maxYear = new Date().getFullYear() + 2;
-                  const years = [];
-                  for (let y = maxYear; y >= 2022; y--) {
-                    years.push(String(y));
-                  }
-                  return years.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ));
-                })()}
-              </select>
-            )}
+            <select
+              className={SC}
+              value={createYear}
+              onChange={(e) => setCreateYear(e.target.value)}
+            >
+              {(() => {
+                const maxYear = new Date().getFullYear() + 2;
+                const years = [];
+                for (let y = maxYear; y >= 2022; y--) {
+                  years.push(String(y));
+                }
+                return years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ));
+              })()}
+            </select>
           </div>
 
-          {availableConfigs.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[12.5px] font-medium text-[#374151]">
-                Kỳ báo cáo <span className="text-danger">*</span>
-              </label>
-              <select
-                className={SC}
-                value={createKy}
-                onChange={(e) => setCreateKy(e.target.value)}
-              >
-                <option value="6 tháng">6 tháng</option>
-                <option value="Cả năm">Cả năm</option>
-              </select>
-            </div>
-          )}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12.5px] font-medium text-[#374151]">
+              Kỳ báo cáo <span className="text-danger">*</span>
+            </label>
+            <select
+              className={SC}
+              value={createKy}
+              onChange={(e) => setCreateKy(e.target.value)}
+            >
+              <option value="6 tháng">6 tháng</option>
+              <option value="Cả năm">Cả năm</option>
+            </select>
+          </div>
 
-          {availableConfigs.length > 0 && !matchedConfig && (
+          {isAlreadyCreated && (
             <p className="text-[12.5px] text-danger font-medium">
-              Kỳ báo cáo cho năm {createYear} ({createKy}) chưa được cấu hình
-              bởi Sở hoặc bạn đã tạo báo cáo này rồi.
+              Bạn đã tạo báo cáo cho năm {createYear} ({createKy}) rồi.
             </p>
           )}
         </div>

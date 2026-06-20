@@ -9,6 +9,9 @@ export type DnReportRecord = {
   nam: string | null;
   tt: "Đang báo cáo" | "Đã nộp";
   configId: number;
+  submittedAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
 export type AccidentDetailRow = {
@@ -44,7 +47,9 @@ export type ReportTongHop = {
 };
 
 export type DnReportForm = {
-  configId: number;
+  configId?: number;
+  nam?: string;
+  ky?: string;
   status?: string;
   tongSoRows: Record<string, number[]>;
   chiTietRows: AccidentDetailRow[];

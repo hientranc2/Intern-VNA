@@ -111,17 +111,16 @@ async function seedSampleAtvsldReports(c, businessId) {
     mayTongSo: '4', qtTongMau: '60', qtKhongDat: '20', thoiDiemDanhGia: '04/2022',
   });
   const rows = [
-    ['Cả năm', '01/01/2022', '31/12/2022', '', '', 'Nhập liệu', null],
-    ['6 tháng', '01/01/2022', '30/06/2022', '01/07/2022', '01/07/2022', 'Chờ tiếp nhận', null],
-    ['Cả năm', '01/01/2021', '31/12/2021', '03/07/2021', '06/07/2021', 'Từ chối', 'Kiểm tra lại dữ liệu'],
+    ['Cả năm', 2022, '15/12/2022', '10/01/2023', '', '', 'Nhập liệu', null],
+    ['6 tháng', 2022, '01/07/2022', '05/07/2022', '02/07/2022', '02/07/2022', 'Chờ tiếp nhận', null],
+    ['Cả năm', 2021, '15/12/2021', '10/01/2022', '28/12/2021', '28/12/2021', 'Từ chối', 'Kiểm tra lại dữ liệu'],
   ];
-  for (const [ky, batDau, ketThuc, nop, capNhat, status, lyDo] of rows) {
-    const nam = parseInt(ketThuc.slice(-4), 10);
+  for (const [ky, nam, batDau, ketThuc, nop, capNhat, status, lyDo] of rows) {
     await c.query(
       `INSERT INTO atvsld_reports
          (enterprise_id, ten, mst, nam, ky, ngay_bat_dau, ngay_ket_thuc, ngay_nop,
           nguoi_chinh_sua, province, ward, status, ly_do_tu_choi, declaration, submitted_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,$16)`,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,$16)`,
       [
         businessId, 'CÔNG TY TNHH DEMO VNA', '0300000001', nam, ky, batDau, ketThuc, nop,
         'Phan Thanh Tùng', 'Thành phố Hồ Chí Minh', 'Phường Bình Thọ', status, lyDo,

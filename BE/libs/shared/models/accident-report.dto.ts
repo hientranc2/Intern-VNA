@@ -89,9 +89,18 @@ class ReportTongHopFieldsDto {
 }
 
 export class CreateEnterpriseReportDto extends ReportTongHopFieldsDto {
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
-  configId: number;
+  configId?: number;
+
+  @IsOptional()
+  @IsString()
+  nam?: string;
+
+  @IsOptional()
+  @IsString()
+  ky?: string;
 
   @IsObject()
   tongSoRows: Record<string, number[]>;

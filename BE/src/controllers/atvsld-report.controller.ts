@@ -65,31 +65,32 @@ export class AtvsldReportController {
 
   @Post('approve')
   @HttpCode(HttpStatus.OK)
-  approveMany(@Body() dto: BulkApproveAtvsldDto) {
-    return this.service.approveMany(dto.ids);
+  approveMany(@Request() req: AuthRequest, @Body() dto: BulkApproveAtvsldDto) {
+    return this.service.approveMany(req.user.userId, dto.ids);
   }
 
   @Post('reject')
   @HttpCode(HttpStatus.OK)
-  rejectMany(@Body() dto: BulkRejectAtvsldDto) {
-    return this.service.rejectMany(dto.ids, dto.lyDoTuChoi);
+  rejectMany(@Request() req: AuthRequest, @Body() dto: BulkRejectAtvsldDto) {
+    return this.service.rejectMany(req.user.userId, dto.ids, dto.lyDoTuChoi);
   }
 
   // ===== Role Sở: đơn lẻ =====
 
   @Post(':id/approve')
   @HttpCode(HttpStatus.OK)
-  approve(@Param('id', ParseIntPipe) id: number) {
-    return this.service.approve(id);
+  approve(@Request() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    return this.service.approve(req.user.userId, id);
   }
 
   @Post(':id/reject')
   @HttpCode(HttpStatus.OK)
   reject(
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: RejectAtvsldReportDto,
   ) {
-    return this.service.reject(id, dto.lyDoTuChoi);
+    return this.service.reject(req.user.userId, id, dto.lyDoTuChoi);
   }
 
   // ===== Dùng chung =====

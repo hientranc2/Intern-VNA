@@ -31,6 +31,7 @@ export type AtvsldReport = {
   id: number;
   ten: string;
   mst: string;
+  nam: number;
   ky: "6 tháng" | "Cả năm";
   ngayBatDau: string; // dd/MM/yyyy
   ngayKetThuc: string;
@@ -41,37 +42,43 @@ export type AtvsldReport = {
   ward: string; // Phường/xã
   status: ReportStatus;
   lyDoTuChoi?: string;
+  history?: Array<{
+    timestamp: string;
+    actor: string;
+    action: string;
+    lyDo?: string;
+  }>;
 };
 
 export const INITIAL_ATVSLD_REPORTS: AtvsldReport[] = [
   {
-    id: 1, ten: "Công ty TNHH ABC", mst: "0313000900", ky: "Cả năm",
-    ngayBatDau: "01/07/2022", ngayKetThuc: "10/07/2022", ngayNop: "01/07/2022",
-    ngayCapNhat: "05/07/2022", nguoiChinhSua: "Phan Thanh Tùng",
+    id: 1, ten: "Công ty TNHH ABC", mst: "0313000900", nam: 2022, ky: "Cả năm",
+    ngayBatDau: "15/12/2022", ngayKetThuc: "", ngayNop: "",
+    ngayCapNhat: "28/12/2022", nguoiChinhSua: "Phan Thanh Tùng",
     province: "Thành phố Hồ Chí Minh", ward: "Phường Tam Bình", status: "Nhập liệu",
   },
   {
-    id: 2, ten: "Công ty TNHH ABC", mst: "0313000900", ky: "6 tháng",
-    ngayBatDau: "01/01/2022", ngayKetThuc: "30/06/2022", ngayNop: "01/07/2022",
+    id: 2, ten: "Công ty TNHH ABC", mst: "0313000900", nam: 2022, ky: "6 tháng",
+    ngayBatDau: "01/07/2022", ngayKetThuc: "", ngayNop: "02/07/2022",
     ngayCapNhat: "02/07/2022", nguoiChinhSua: "Phan Thanh Tùng",
     province: "Thành phố Hồ Chí Minh", ward: "Phường Tam Bình", status: "Chờ tiếp nhận",
   },
   {
-    id: 3, ten: "Công ty TNHH Phạm Thiên Ân", mst: "0317118106", ky: "Cả năm",
-    ngayBatDau: "01/07/2022", ngayKetThuc: "10/07/2022", ngayNop: "01/07/2022",
-    ngayCapNhat: "06/07/2022", nguoiChinhSua: "Nguyễn Văn B",
+    id: 3, ten: "Công ty TNHH Phạm Thiên Ân", mst: "0317118106", nam: 2022, ky: "Cả năm",
+    ngayBatDau: "15/12/2022", ngayKetThuc: "", ngayNop: "29/12/2022",
+    ngayCapNhat: "29/12/2022", nguoiChinhSua: "Nguyễn Văn B",
     province: "Thành phố Hồ Chí Minh", ward: "Phường Tam Bình", status: "Từ chối",
     lyDoTuChoi: "Kiểm tra lại dữ liệu",
   },
   {
-    id: 4, ten: "Công ty Cổ phần Xây dựng Đại Phát", mst: "0312345678", ky: "Cả năm",
-    ngayBatDau: "01/01/2022", ngayKetThuc: "31/12/2022", ngayNop: "03/07/2022",
-    ngayCapNhat: "08/07/2022", nguoiChinhSua: "Trần Thị C",
+    id: 4, ten: "Công ty Cổ phần Xây dựng Đại Phát", mst: "0312345678", nam: 2022, ky: "Cả năm",
+    ngayBatDau: "15/12/2022", ngayKetThuc: "27/12/2022", ngayNop: "27/12/2022",
+    ngayCapNhat: "27/12/2022", nguoiChinhSua: "Trần Thị C",
     province: "Thành phố Hồ Chí Minh", ward: "Phường Tân Định", status: "Hoàn thành",
   },
   {
-    id: 5, ten: "Công ty TNHH Sản xuất Cơ khí Minh Long", mst: "0319998887", ky: "6 tháng",
-    ngayBatDau: "01/01/2022", ngayKetThuc: "30/06/2022", ngayNop: "",
+    id: 5, ten: "Công ty TNHH Sản xuất Cơ khí Minh Long", mst: "0319998887", nam: 2022, ky: "6 tháng",
+    ngayBatDau: "01/07/2022", ngayKetThuc: "", ngayNop: "",
     ngayCapNhat: "", nguoiChinhSua: "",
     province: "Thành phố Hồ Chí Minh", ward: "Phường Bình Thọ", status: "Chờ báo cáo",
   },

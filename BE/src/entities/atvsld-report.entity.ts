@@ -58,6 +58,14 @@ export class AtvsldReport {
   @Column({ type: 'jsonb', default: () => "'{}'" })
   declaration: Record<string, string>;
 
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  history: Array<{
+    timestamp: string;
+    actor: string;
+    action: string;
+    lyDo?: string;
+  }>;
+
   @Column({ name: 'submitted_at', type: 'timestamp', nullable: true })
   submittedAt: Date | null;
 

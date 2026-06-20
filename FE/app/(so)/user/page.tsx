@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -166,6 +167,7 @@ export default function UserPage() {
 
   // Detail form
   const [editingId, setEditingId] = useState<string | null>(null);
+  const originalUserRef = useRef<any>(null);
   const [editingAvatarUrl, setEditingAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -594,11 +596,11 @@ export default function UserPage() {
     setEditingId(user.id);
     setEditingAvatarUrl(user.avatarUrl ?? null);
     clearAvatarSelection();
-    setForm({
+    const parsed: UserForm = {
       username: user.username,
       fullName: user.fullName,
       email: user.email,
-      roleId: user.roleId ?? "",
+      roleId: (user.roleId ?? "") as number | "",
       jobTitle: user.jobTitle ?? "",
       isActive: user.isActive,
       dob: user.dob ? String(user.dob).slice(0, 10) : "",
@@ -606,13 +608,38 @@ export default function UserPage() {
       province: user.province ?? "",
       ward: user.ward ?? "",
       address: user.address ?? "",
-    });
+    };
+    setForm(parsed);
+    originalUserRef.current = parsed;
     setPassword("");
     setFieldErrors({});
     setView("detail");
   };
 
+  const isUserFormChanged = useMemo(() => {
+    if (!editingId) return true;
+    if (!originalUserRef.current) return true;
+    const orig = originalUserRef.current;
+    const keys: Array<keyof UserForm> = [
+      "username", "fullName", "email", "roleId", "jobTitle", "isActive", "dob", "gender", "province", "ward", "address"
+    ];
+    for (const key of keys) {
+      if (form[key] !== orig[key]) {
+        return true;
+      }
+    }
+    if (avatarFile) {
+      return true;
+    }
+    return false;
+  }, [editingId, form, avatarFile]);
+
   const saveUser = async () => {
+    if (editingId && !isUserFormChanged) {
+      setToast({ message: "Không có thay đổi nào cần cập nhật", variant: "success" });
+      setView("list");
+      return;
+    }
     // Trim đầu/cuối + gộp nhiều khoảng trắng liên tiếp thành 1 khoảng trắng.
     const fullName = form.fullName.trim().replace(/\s+/g, " ");
     const email = form.email.trim();
@@ -1252,7 +1279,7 @@ export default function UserPage() {
               <button
                 type="button"
                 onClick={saveUser}
-                disabled={isSaving || (editingId ? !canUpdate : !canCreate)}
+                disabled={isSaving || (editingId ? (!canUpdate || !isUserFormChanged) : !canCreate)}
                 className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <svg

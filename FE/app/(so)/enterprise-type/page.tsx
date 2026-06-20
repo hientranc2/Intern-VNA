@@ -127,6 +127,13 @@ export default function EnterpriseTypePage() {
     setPanelOpen(true);
   };
 
+  const isTypeFormChanged = useMemo(() => {
+    if (!editId) return true;
+    const originalItem = items.find((r) => r.id === editId);
+    if (!originalItem) return true;
+    return inputTen.trim() !== originalItem.ten || (inputActive === "1") !== originalItem.active;
+  }, [editId, items, inputTen, inputActive]);
+
   const savePanel = async () => {
     const ma = inputMa.trim();
     const ten = inputTen.trim();
@@ -139,6 +146,11 @@ export default function EnterpriseTypePage() {
     setSaving(true);
     try {
       if (editId) {
+        if (!isTypeFormChanged) {
+          setToast({ message: "Không có thay đổi nào cần cập nhật", variant: "success" });
+          setPanelOpen(false);
+          return;
+        }
         const updated = await updateEnterpriseType(editId, { ten, active });
         setItems((prev) => prev.map((r) => (r.id === editId ? updated : r)));
       } else {
@@ -614,8 +626,8 @@ export default function EnterpriseTypePage() {
             <button
               type="button"
               onClick={savePanel}
-              disabled={saving}
-              className="h-9 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+              disabled={saving || (editId ? !isTypeFormChanged : false)}
+              className="flex h-9 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? "Đang lưu..." : "Lưu"}
             </button>

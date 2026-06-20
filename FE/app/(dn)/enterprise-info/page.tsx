@@ -401,7 +401,8 @@ export default function EnterpriseInfoPage() {
       next[idx] = {
         ...next[idx],
         file: null,
-        displayName: filenameFromUrl(next[idx].url),
+        url: undefined,
+        displayName: "Không có file",
       };
       return next;
     });
@@ -454,6 +455,28 @@ export default function EnterpriseInfoPage() {
 
   const doSave = async () => {
     if (!businessId.current) return;
+
+    const isFormChanged = () => {
+      const textFieldsChanged = (Object.keys(info) as Array<keyof BusinessFormState>).some(
+        (key) => info[key] !== editForm[key]
+      );
+      if (textFieldsChanged) return true;
+
+      const originalLicenseUrl = detailRef.current?.licenseFile ?? undefined;
+      const licenseChanged = !!attachments[0].file || (attachments[0].url !== originalLicenseUrl);
+
+      const originalOtherUrl = detailRef.current?.otherFile ?? undefined;
+      const otherChanged = !!attachments[1].file || (attachments[1].url !== originalOtherUrl);
+
+      return licenseChanged || otherChanged;
+    };
+
+    if (!isFormChanged()) {
+      showToast("Không có thay đổi nào cần cập nhật");
+      setMode("edit1");
+      return;
+    }
+
     setSaving(true);
     try {
       const formData = new FormData();
@@ -472,10 +495,17 @@ export default function EnterpriseInfoPage() {
       if (editForm.nguoiDD) formData.append("representative", editForm.nguoiDD);
       if (editForm.sdtDD)
         formData.append("representativePhone", editForm.sdtDD);
-      if (attachments[0].file)
+      if (attachments[0].file) {
         formData.append("licenseFile", attachments[0].file);
-      if (attachments[1].file)
+      } else if (!attachments[0].url && detailRef.current?.licenseFile) {
+        formData.append("deleteLicenseFile", "true");
+      }
+
+      if (attachments[1].file) {
         formData.append("otherFile", attachments[1].file);
+      } else if (!attachments[1].url && detailRef.current?.otherFile) {
+        formData.append("deleteOtherFile", "true");
+      }
 
       const updated = await updateBusiness(businessId.current, formData);
       detailRef.current = updated;
@@ -1042,9 +1072,9 @@ export default function EnterpriseInfoPage() {
                                 type="button"
                                 title="Xóa"
                                 onClick={() => handleFileDelete(idx)}
-                                disabled={!attachments[idx].file}
+                                disabled={!attachments[idx].file && !attachments[idx].url}
                                 className={
-                                  attachments[idx].file
+                                  attachments[idx].file || attachments[idx].url
                                     ? "hover:text-danger"
                                     : "cursor-not-allowed opacity-40"
                                 }

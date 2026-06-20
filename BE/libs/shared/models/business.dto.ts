@@ -169,6 +169,16 @@ export class BusinessUpdateDto {
   representative?: string;
 
   @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  deleteLicenseFile?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  deleteOtherFile?: boolean;
+
+  @IsOptional()
   @Transform(emptyToUndefined)
   @Matches(VN_PHONE_REGEX, {
     message: 'Số điện thoại người đại diện không hợp lệ',

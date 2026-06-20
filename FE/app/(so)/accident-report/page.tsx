@@ -30,6 +30,22 @@ const fmtMoney = (n: number) => n.toLocaleString("vi-VN");
 const fmtRate = (n: number, d: number) =>
   d === 0 ? "0" : ((n / d) * 1000).toFixed(2);
 
+const formatTime = (dStr?: string | null): string => {
+  if (!dStr) return "–";
+  try {
+    const d = new Date(dStr);
+    if (isNaN(d.getTime())) return "–";
+    const date = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${date}/${month}/${year} ${hours}:${minutes}`;
+  } catch {
+    return "–";
+  }
+};
+
 export default function AccidentReportPage() {
   const [view, setView] = useState<ViewMode>("list");
   const [reports, setReports] = useState<AccidentReport[]>([]);
@@ -231,6 +247,15 @@ export default function AccidentReportPage() {
                     <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Kỳ báo cáo
                     </th>
+                    <th className="w-24 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Năm
+                    </th>
+                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Ngày cập nhật
+                    </th>
+                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                      Ngày nộp
+                    </th>
                     <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Trạng thái
                     </th>
@@ -272,6 +297,9 @@ export default function AccidentReportPage() {
                         <option>Cả năm</option>
                       </select>
                     </th>
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                       <select
                         className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
@@ -293,7 +321,7 @@ export default function AccidentReportPage() {
                   {paged.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={9}
                         className="px-3.5 py-8 text-center text-[13.5px] text-muted"
                       >
                         Không có dữ liệu
@@ -338,6 +366,9 @@ export default function AccidentReportPage() {
                           {r.mst}
                         </td>
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">{r.nam || "–"}</td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">{formatTime(r.updatedAt)}</td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">{formatTime(r.submittedAt)}</td>
                         <td className="px-3.5 py-2.5">
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
                             <span

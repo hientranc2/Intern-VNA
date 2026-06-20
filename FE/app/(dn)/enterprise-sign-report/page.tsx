@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
+import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import { PhuLucIIView } from "@/libs/tts/accident-report/PhuLucIIView";
 import {
   DECLARATION_SECTIONS,
@@ -18,6 +19,7 @@ import {
   getAtvsldReportById,
   updateAtvsldReport,
   submitAtvsldReport,
+  createAtvsldReport,
 } from "@/libs/tts/accident-report/atvsldReportApi";
 
 type PageView = "list" | "form";
@@ -27,6 +29,8 @@ const FILTER_INPUT =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
 const FIELD =
   "h-[38px] w-full rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
+const SELECT_FIELD =
+  "h-[38px] w-full cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8 rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
 const YEAR_SELECT =
   "h-[34px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none";
 
@@ -36,12 +40,18 @@ const toDateNum = (s: string): number | null => {
   return m ? Number(m[3] + m[2] + m[1]) : null;
 };
 
-const EDITABLE_STATUSES: ReportStatus[] = ["Chờ báo cáo", "Nhập liệu", "Từ chối"];
+const EDITABLE_STATUSES: ReportStatus[] = [
+  "Chờ báo cáo",
+  "Nhập liệu",
+  "Từ chối",
+];
 
 function StatusCell({ status }: { status: ReportStatus }) {
   const meta = STATUS_META[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${meta.text}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${meta.text}`}
+    >
       <span className={`inline-block h-2 w-2 rounded-full ${meta.dot}`} />
       {status}
     </span>
@@ -60,7 +70,9 @@ function DeclarationField({
   invalid?: boolean;
 }) {
   return (
-    <div className={`flex flex-col gap-1.5 ${field.fullWidth ? "col-span-3" : ""}`}>
+    <div
+      className={`flex flex-col gap-1.5 ${field.fullWidth ? "col-span-3" : ""}`}
+    >
       <label className="text-[12.5px] font-medium text-[#374151]">
         {field.label}
         {field.required ? <span className="text-danger"> *</span> : null}
@@ -88,13 +100,54 @@ export default function EnterpriseSignReportPage() {
   const [view, setView] = useState<PageView>("list");
   const [step, setStep] = useState<FormStep>("khaibao");
   const [toast, setToast] = useState<string | null>(null);
-  const [year, setYear] = useState("2022");
+  const [year, setYear] = useState("Tất cả");
 
   const [reports, setReports] = useState<AtvsldReport[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [values, setValues] = useState<DeclarationValues>(EMPTY_DECLARATION);
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [saving, setSaving] = useState(false);
+  const originalDeclarationRef = useRef<DeclarationValues | null>(null);
+
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createYear, setCreateYear] = useState("");
+  const [createKy, setCreateKy] = useState("6 tháng");
+  const [creating, setCreating] = useState(false);
+
+  const isAlreadyCreated = useMemo(() => {
+    return reports.some(
+      (r) => r.nam === Number(createYear) && r.ky === createKy,
+    );
+  }, [reports, createYear, createKy]);
+
+  const openCreateModal = () => {
+    setCreateYear(String(new Date().getFullYear()));
+    setCreateKy("6 tháng");
+    setCreateModalOpen(true);
+  };
+
+  const confirmCreateReport = async () => {
+    if (isAlreadyCreated) {
+      setToast("Bạn đã tạo báo cáo cho kỳ này rồi");
+      return;
+    }
+    setCreating(true);
+    try {
+      const created = await createAtvsldReport({
+        nam: Number(createYear),
+        ky: createKy as AtvsldReport["ky"],
+        declaration: EMPTY_DECLARATION,
+      });
+      setCreateModalOpen(false);
+      setToast("Tạo báo cáo thành công");
+      loadReports();
+      openForm(created, false);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Tạo báo cáo thất bại");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const [fStatus, setFStatus] = useState("");
   const [fTen, setFTen] = useState("");
@@ -102,17 +155,82 @@ export default function EnterpriseSignReportPage() {
   const [fNguoi, setFNguoi] = useState("");
   const [fNgayBatDau, setFNgayBatDau] = useState("");
   const [fNgayKetThuc, setFNgayKetThuc] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyReport, setHistoryReport] = useState<AtvsldReport | null>(null);
 
   const editingReport = useMemo(
     () => reports.find((r) => r.id === editingId),
     [reports, editingId],
   );
 
+  const parseDate = (dStr: string) => {
+    if (!dStr) return new Date();
+    const parts = dStr.split("/");
+    if (parts.length === 3) {
+      return new Date(
+        Number(parts[2]),
+        Number(parts[1]) - 1,
+        Number(parts[0]),
+        8,
+        0,
+      );
+    }
+    return new Date();
+  };
+
+  const displayHistory = useMemo(() => {
+    if (!historyReport) return [];
+
+    const list = historyReport.history ? [...historyReport.history] : [];
+
+    // 1. Tự động thêm sự kiện tạo bản nháp nếu thiếu
+    const hasCreate = list.some((h) => h.action === "đã tạo bản nháp báo cáo");
+    if (!hasCreate) {
+      const createdDate = parseDate(historyReport.ngayCapNhat);
+      list.unshift({
+        timestamp: createdDate.toISOString(),
+        actor: historyReport.ten,
+        action: "đã tạo bản nháp báo cáo",
+      });
+    }
+
+    // 2. Tự động thêm sự kiện nộp báo cáo nếu thiếu và đã nộp
+    const hasSubmit = list.some((h) => h.action === "đã gửi báo cáo");
+    if (
+      !hasSubmit &&
+      historyReport.ngayNop &&
+      historyReport.ngayNop !== "–" &&
+      historyReport.ngayNop !== ""
+    ) {
+      const nopDate = parseDate(historyReport.ngayNop);
+      list.splice(1, 0, {
+        timestamp: nopDate.toISOString(),
+        actor: historyReport.ten,
+        action: "đã gửi báo cáo",
+      });
+    }
+
+    return list;
+  }, [historyReport]);
+
   const loadReports = useCallback(() => {
     getMyAtvsldReports({ nam: year ? Number(year) : undefined })
       .then(setReports)
       .catch(() => setToast("Không tải được danh sách báo cáo"));
   }, [year]);
+
+  const openHistory = (report: AtvsldReport) => {
+    setHistoryReport(report);
+    setHistoryOpen(true);
+    getAtvsldReportById(report.id)
+      .then((detail) => {
+        setHistoryReport(detail);
+        setReports((prev) =>
+          prev.map((r) => (r.id === report.id ? detail : r)),
+        );
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     loadReports();
@@ -147,7 +265,14 @@ export default function EnterpriseSignReportPage() {
     setStep(readonly ? "xembaocao" : "khaibao");
     setView("form");
     getAtvsldReportById(report.id)
-      .then((detail) => setValues({ ...EMPTY_DECLARATION, ...detail.declaration }))
+      .then((detail) => {
+        const loadedDec = { ...EMPTY_DECLARATION, ...detail.declaration };
+        setValues(loadedDec);
+        originalDeclarationRef.current = loadedDec;
+        setReports((prev) =>
+          prev.map((r) => (r.id === report.id ? detail : r)),
+        );
+      })
       .catch(() => setToast("Không tải được nội dung báo cáo"));
   };
 
@@ -167,8 +292,25 @@ export default function EnterpriseSignReportPage() {
     return true;
   };
 
+  const isDeclarationChanged = () => {
+    if (!originalDeclarationRef.current) return true;
+    const orig = originalDeclarationRef.current;
+    const allKeys = Object.keys(EMPTY_DECLARATION) as Array<keyof DeclarationValues>;
+    for (const key of allKeys) {
+      if ((values[key] ?? "") !== (orig[key] ?? "")) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const saveDraft = async () => {
     if (editingId == null) return;
+    if (!isDeclarationChanged()) {
+      setToast("Không có thay đổi nào cần lưu");
+      setView("list");
+      return;
+    }
     setSaving(true);
     try {
       await updateAtvsldReport(editingId, { declaration: values });
@@ -187,7 +329,9 @@ export default function EnterpriseSignReportPage() {
     if (editingId == null) return;
     setSaving(true);
     try {
-      await updateAtvsldReport(editingId, { declaration: values });
+      if (isDeclarationChanged()) {
+        await updateAtvsldReport(editingId, { declaration: values });
+      }
       await submitAtvsldReport(editingId);
       setView("list");
       setToast("Gửi báo cáo thành công");
@@ -209,18 +353,38 @@ export default function EnterpriseSignReportPage() {
             <h1 className="text-base font-semibold text-ink">
               Danh sách báo cáo ATVSLĐ
             </h1>
-            <select
-              className={YEAR_SELECT}
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-            >
-              <option value="">Tất cả</option>
-              <option value="2022">2022</option>
-              <option value="2023">2023</option>
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
-            </select>
+            <div className="flex items-center gap-3">
+              <select
+                className={YEAR_SELECT}
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+              >
+                <option value="">Tất cả</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+              </select>
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="flex h-[34px] items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Thêm mới
+              </button>
+            </div>
           </div>
 
           <div className="px-6 py-5">
@@ -234,9 +398,8 @@ export default function EnterpriseSignReportPage() {
                         "Trạng thái",
                         "Tên doanh nghiệp",
                         "Ngày bắt đầu",
-                        "Ngày kết thúc",
                         "Kỳ báo cáo",
-                        "Ngày cập nhật",
+                        "Ngày kết thúc",
                         "Người chỉnh sửa",
                       ].map((h) => (
                         <th
@@ -276,24 +439,23 @@ export default function EnterpriseSignReportPage() {
                         />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                        <select
+                          className={`${FILTER_INPUT} cursor-pointer bg-white`}
+                          value={fKy}
+                          onChange={(e) => setFKy(e.target.value)}
+                        >
+                          <option value="">Tất cả</option>
+                          <option>6 tháng</option>
+                          <option>Cả năm</option>
+                        </select>
+                      </th>
+                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <input
                           className={FILTER_INPUT}
                           value={fNgayKetThuc}
                           onChange={(e) => setFNgayKetThuc(e.target.value)}
                         />
                       </th>
-                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <select
-                          className={`${FILTER_INPUT} cursor-pointer bg-white`}
-                          value={fKy}
-                          onChange={(e) => setFKy(e.target.value)}
-                        >
-                          <option value="">Cả năm</option>
-                          <option>6 tháng</option>
-                          <option>Cả năm</option>
-                        </select>
-                      </th>
-                      <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <input
                           className={FILTER_INPUT}
@@ -307,7 +469,7 @@ export default function EnterpriseSignReportPage() {
                     {filtered.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={8}
+                          colSpan={7}
                           className="px-3.5 py-8 text-center text-[13.5px] text-muted"
                         >
                           Không có dữ liệu
@@ -339,6 +501,24 @@ export default function EnterpriseSignReportPage() {
                                   >
                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                     <circle cx="12" cy="12" r="3" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openHistory(r)}
+                                  title="Lịch sử xử lý"
+                                  className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                                >
+                                  <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
                                   </svg>
                                 </button>
                                 {canEdit ? (
@@ -373,13 +553,10 @@ export default function EnterpriseSignReportPage() {
                               {r.ngayBatDau}
                             </td>
                             <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
-                              {r.ngayKetThuc}
-                            </td>
-                            <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
                               {r.ky}
                             </td>
                             <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
-                              {r.ngayCapNhat || "–"}
+                              {r.ngayKetThuc}
                             </td>
                             <td className="whitespace-nowrap px-3.5 py-2.5 text-[#374151]">
                               {r.nguoiChinhSua || "–"}
@@ -547,6 +724,143 @@ export default function EnterpriseSignReportPage() {
           </div>
         </>
       )}
+
+      <Modal
+        open={historyOpen}
+        title="Tiến độ xử lý"
+        onClose={() => setHistoryOpen(false)}
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(false)}
+              className="h-9.5 rounded-md border border-line bg-white px-5 text-sm font-medium text-[#374151] hover:bg-[#f9fafb]"
+            >
+              Đóng
+            </button>
+          </div>
+        }
+      >
+        <div className="relative bg-white min-h-[100px] py-2">
+          {displayHistory.length > 0 ? (
+            <div className="relative">
+              {/* Vertical connector line */}
+              <div className="absolute left-[6px] top-[10px] bottom-[10px] w-[1.5px] bg-[#e2e8f0]" />
+
+              <div className="space-y-6">
+                {[...displayHistory].reverse().map((h, i) => {
+                  const dateObj = new Date(h.timestamp);
+                  const day = String(dateObj.getDate()).padStart(2, "0");
+                  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+                  const year = dateObj.getFullYear();
+                  const hours = String(dateObj.getHours()).padStart(2, "0");
+                  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+                  const formattedTime = `${day}/${month}/${year} ${hours}:${minutes}`;
+
+                  return (
+                    <div key={i} className="relative pl-7 text-[13.5px]">
+                      {/* Timeline circle node */}
+                      <div className="absolute left-0 top-[4px] h-3.5 w-3.5 rounded-full border-2 border-[#cbd5e1] bg-white z-10" />
+
+                      <div className="text-[#6b7280] text-[12.5px] mb-1">
+                        {formattedTime}
+                      </div>
+                      <div className="text-ink">
+                        <span className="font-bold text-[#1f2937]">
+                          {h.actor}
+                        </span>{" "}
+                        <span className="text-[#4b5563]">{h.action}</span>
+                      </div>
+                      {h.lyDo && (
+                        <div className="mt-1 text-[13.5px]">
+                          <span className="font-bold text-danger">Lý do: </span>
+                          <span className="text-[#1f2937]">{h.lyDo}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-[#6b7280] py-4">
+              Chưa có lịch sử xử lý
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={createModalOpen}
+        title="Thêm mới báo cáo định kỳ ATVSLĐ"
+        onClose={() => setCreateModalOpen(false)}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setCreateModalOpen(false)}
+              disabled={creating}
+              className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="button"
+              onClick={confirmCreateReport}
+              disabled={creating || isAlreadyCreated}
+              className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {creating ? "Đang tạo..." : "Bắt đầu khai báo"}
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12.5px] font-medium text-[#374151]">
+              Năm báo cáo <span className="text-danger">*</span>
+            </label>
+            <select
+              className={SELECT_FIELD}
+              value={createYear}
+              onChange={(e) => setCreateYear(e.target.value)}
+            >
+              {(() => {
+                const maxYear = new Date().getFullYear() + 2;
+                const years = [];
+                for (let y = maxYear; y >= 2022; y--) {
+                  years.push(String(y));
+                }
+                return years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ));
+              })()}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12.5px] font-medium text-[#374151]">
+              Kỳ báo cáo <span className="text-danger">*</span>
+            </label>
+            <select
+              className={SELECT_FIELD}
+              value={createKy}
+              onChange={(e) => setCreateKy(e.target.value)}
+            >
+              <option value="6 tháng">6 tháng</option>
+              <option value="Cả năm">Cả năm</option>
+            </select>
+          </div>
+
+          {isAlreadyCreated && (
+            <p className="text-[12.5px] text-danger font-medium">
+              Bạn đã tạo báo cáo cho năm {createYear} ({createKy}) rồi.
+            </p>
+          )}
+        </div>
+      </Modal>
     </>
   );
 }

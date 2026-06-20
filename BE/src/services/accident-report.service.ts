@@ -54,8 +54,14 @@ export class AccidentReportService {
       take: pageSize,
     });
 
+    const configIds = [...new Set(data.map((r) => r.configId))];
+    const configs = configIds.length
+      ? await this.configRepo.find({ where: { id: In(configIds) } })
+      : [];
+    const namByConfig = new Map(configs.map((c) => [c.id, c.nam]));
+
     return {
-      data: data.map((r) => this.toListItem(r)),
+      data: data.map((r) => this.toListItem(r, namByConfig.get(r.configId) ?? null)),
       total,
       page,
       pageSize,
@@ -163,16 +169,36 @@ export class AccidentReportService {
 
   async create(userId: string, dto: CreateEnterpriseReportDto) {
     const business = await this.resolveBusiness(userId);
-    const config = await this.configRepo.findOne({
-      where: { id: dto.configId },
-    });
+    let config = null;
+    if (dto.configId) {
+      config = await this.configRepo.findOne({
+        where: { id: dto.configId },
+      });
+    } else if (dto.nam && dto.ky) {
+      config = await this.configRepo.findOne({
+        where: { nam: dto.nam, ky: dto.ky },
+      });
+      if (!config) {
+        const batDau = dto.ky === '6 tháng' ? `01/07/${dto.nam}` : `15/12/${dto.nam}`;
+        const ketThuc = dto.ky === '6 tháng' ? `05/07/${dto.nam}` : `10/01/${Number(dto.nam) + 1}`;
+        config = this.configRepo.create({
+          nam: dto.nam,
+          ky: dto.ky,
+          ten: `Báo cáo TNLĐ ${dto.nam} (${dto.ky})`,
+          batDau,
+          ketThuc,
+          active: true,
+        });
+        config = await this.configRepo.save(config);
+      }
+    }
     if (!config)
       throw new NotFoundException('Không tìm thấy kỳ báo cáo tương ứng');
 
     const status = dto.status ?? STATUS_SUBMITTED;
     const report = this.repo.create({
       enterpriseId: business.id,
-      configId: dto.configId,
+      configId: config.id,
       ten: business.businessName,
       mst: business.taxCode,
       ky: config.ky,
@@ -254,12 +280,13 @@ export class AccidentReportService {
     return business;
   }
 
-  private toListItem(r: AccidentReport) {
+  private toListItem(r: AccidentReport, nam: string | null = null) {
     return {
       id: r.id,
       ten: r.ten,
       mst: r.mst,
       ky: r.ky,
+      nam,
       tt: r.status,
       province: r.province,
       ward: r.ward,
@@ -280,6 +307,9 @@ export class AccidentReportService {
       chiPhiTraLuong: r.chiPhiTraLuong,
       boiThuongTroCap: r.boiThuongTroCap,
       thiethaiTaiSan: r.thiethaiTaiSan,
+      submittedAt: r.submittedAt,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
     };
   }
 
@@ -292,6 +322,9 @@ export class AccidentReportService {
       nam,
       tt: r.status,
       configId: r.configId,
+      submittedAt: r.submittedAt,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
     };
   }
 
