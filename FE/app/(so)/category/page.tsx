@@ -97,8 +97,8 @@ export default function CategoryPage() {
   const [fTT, setFTT] = useState("");
   const [pageSize, setPageSize] = useState(10);
 
-  const dFMa = useDebounce(fMa, 300);
-  const dFTen = useDebounce(fTen, 300);
+  const [searchMa, setSearchMa] = useState("");
+  const [searchTen, setSearchTen] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -132,18 +132,18 @@ export default function CategoryPage() {
   const filteredFactors = useMemo(() => {
     return factors.filter(
       (r) =>
-        r.ma.toLowerCase().includes(dFMa.toLowerCase()) &&
-        r.ten.toLowerCase().includes(dFTen.toLowerCase()) &&
+        r.ma.toLowerCase().includes(searchMa.toLowerCase()) &&
+        r.ten.toLowerCase().includes(searchTen.toLowerCase()) &&
         (fTT === "" || (fTT === "1" ? r.active : !r.active)),
     );
-  }, [factors, dFMa, dFTen, fTT]);
+  }, [factors, searchMa, searchTen, fTT]);
 
   const filteredTree = useMemo(() => {
     const source = tab === "injuryType" ? injuryTypes : occupations;
     return source.filter(
-      (r) => r.ma.toLowerCase().includes(dFMa.toLowerCase()) && r.ten.toLowerCase().includes(dFTen.toLowerCase()),
+      (r) => r.ma.toLowerCase().includes(searchMa.toLowerCase()) && r.ten.toLowerCase().includes(searchTen.toLowerCase()),
     );
-  }, [tab, injuryTypes, occupations, dFMa, dFTen]);
+  }, [tab, injuryTypes, occupations, searchMa, searchTen]);
 
   const total = tab === "factor" ? filteredFactors.length : filteredTree.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -723,13 +723,18 @@ export default function CategoryPage() {
                 </tr>
                 <tr>
                   <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
-                  <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
+                   <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                     <input
                       className={FILTER_INPUT_CLASS}
                       value={fMa}
                       onChange={(e) => {
                         setFMa(e.target.value);
-                        setCurrentPage(1);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setSearchMa(fMa);
+                          setCurrentPage(1);
+                        }
                       }}
                     />
                   </th>
@@ -739,7 +744,12 @@ export default function CategoryPage() {
                       value={fTen}
                       onChange={(e) => {
                         setFTen(e.target.value);
-                        setCurrentPage(1);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setSearchTen(fTen);
+                          setCurrentPage(1);
+                        }
                       }}
                     />
                   </th>
@@ -835,7 +845,12 @@ export default function CategoryPage() {
                       value={fMa}
                       onChange={(e) => {
                         setFMa(e.target.value);
-                        setCurrentPage(1);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setSearchMa(fMa);
+                          setCurrentPage(1);
+                        }
                       }}
                     />
                   </th>
@@ -845,7 +860,12 @@ export default function CategoryPage() {
                       value={fTen}
                       onChange={(e) => {
                         setFTen(e.target.value);
-                        setCurrentPage(1);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setSearchTen(fTen);
+                          setCurrentPage(1);
+                        }
                       }}
                     />
                   </th>

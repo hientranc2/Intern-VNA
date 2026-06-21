@@ -160,10 +160,10 @@ export default function UserPage() {
   const [fActive, setFActive] = useState("");
   const [fProvince, setFProvince] = useState("");
 
-  const dFFullName = useDebounce(fFullName, 400);
-  const dFUsername = useDebounce(fUsername, 400);
-  const dFEmail = useDebounce(fEmail, 400);
-  const dFJobTitle = useDebounce(fJobTitle, 400);
+  const [searchFullName, setSearchFullName] = useState("");
+  const [searchUsername, setSearchUsername] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
+  const [searchJobTitle, setSearchJobTitle] = useState("");
 
   // Detail form
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -204,11 +204,11 @@ export default function UserPage() {
       const res = await getUserList({
         page: currentPage,
         limit: pageSize,
-        fullName: dFFullName || undefined,
-        username: dFUsername || undefined,
-        email: dFEmail || undefined,
+        fullName: searchFullName || undefined,
+        username: searchUsername || undefined,
+        email: searchEmail || undefined,
         roleId: fRoleId ? Number(fRoleId) : undefined,
-        jobTitle: dFJobTitle || undefined,
+        jobTitle: searchJobTitle || undefined,
         isActive: isActiveParam,
         province: fProvince || undefined,
       });
@@ -229,11 +229,11 @@ export default function UserPage() {
   }, [
     currentPage,
     pageSize,
-    dFFullName,
-    dFUsername,
-    dFEmail,
+    searchFullName,
+    searchUsername,
+    searchEmail,
     fRoleId,
-    dFJobTitle,
+    searchJobTitle,
     fActive,
     fProvince,
   ]);
@@ -915,7 +915,12 @@ export default function UserPage() {
                           value={fFullName}
                           onChange={(e) => {
                             setFFullName(e.target.value);
-                            setCurrentPage(1);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              setSearchFullName(fFullName);
+                              setCurrentPage(1);
+                            }
                           }}
                         />
                       </th>
@@ -925,7 +930,12 @@ export default function UserPage() {
                           value={fUsername}
                           onChange={(e) => {
                             setFUsername(e.target.value);
-                            setCurrentPage(1);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              setSearchUsername(fUsername);
+                              setCurrentPage(1);
+                            }
                           }}
                         />
                       </th>
@@ -935,7 +945,12 @@ export default function UserPage() {
                           value={fEmail}
                           onChange={(e) => {
                             setFEmail(e.target.value);
-                            setCurrentPage(1);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              setSearchEmail(fEmail);
+                              setCurrentPage(1);
+                            }
                           }}
                         />
                       </th>
@@ -962,7 +977,12 @@ export default function UserPage() {
                           value={fJobTitle}
                           onChange={(e) => {
                             setFJobTitle(e.target.value);
-                            setCurrentPage(1);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              setSearchJobTitle(fJobTitle);
+                              setCurrentPage(1);
+                            }
                           }}
                         />
                       </th>

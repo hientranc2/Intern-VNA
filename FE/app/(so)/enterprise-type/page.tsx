@@ -54,8 +54,8 @@ export default function EnterpriseTypePage() {
   const [fTrangThai, setFTrangThai] = useState("");
   const [pageSize, setPageSize] = useState(10);
 
-  const dFMa = useDebounce(fMa, 300);
-  const dFTen = useDebounce(fTen, 300);
+  const [searchMa, setSearchMa] = useState("");
+  const [searchTen, setSearchTen] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -70,11 +70,11 @@ export default function EnterpriseTypePage() {
   const filtered = useMemo(() => {
     return items.filter(
       (r) =>
-        r.ma.toLowerCase().includes(dFMa.toLowerCase()) &&
-        r.ten.toLowerCase().includes(dFTen.toLowerCase()) &&
+        r.ma.toLowerCase().includes(searchMa.toLowerCase()) &&
+        r.ten.toLowerCase().includes(searchTen.toLowerCase()) &&
         (fTrangThai === "" || (fTrangThai === "1" ? r.active : !r.active)),
     );
-  }, [items, dFMa, dFTen, fTrangThai]);
+  }, [items, searchMa, searchTen, fTrangThai]);
 
   const total = filtered.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -453,7 +453,12 @@ export default function EnterpriseTypePage() {
                     value={fMa}
                     onChange={(e) => {
                       setFMa(e.target.value);
-                      setCurrentPage(1);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setSearchMa(fMa);
+                        setCurrentPage(1);
+                      }
                     }}
                   />
                 </th>
@@ -463,7 +468,12 @@ export default function EnterpriseTypePage() {
                     value={fTen}
                     onChange={(e) => {
                       setFTen(e.target.value);
-                      setCurrentPage(1);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setSearchTen(fTen);
+                        setCurrentPage(1);
+                      }
                     }}
                   />
                 </th>

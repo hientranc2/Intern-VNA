@@ -21,6 +21,11 @@ import {
   submitAtvsldReport,
   createAtvsldReport,
 } from "@/libs/tts/accident-report/atvsldReportApi";
+import {
+  BusinessDetail,
+  getBusinessById,
+} from "@/libs/tts/enterprise/enterpriseApi";
+import { getBusinessId } from "@/libs/tts/auth/authApi";
 
 type PageView = "list" | "form";
 type FormStep = "khaibao" | "xembaocao";
@@ -76,7 +81,11 @@ function MiniDateFilter({
     <div
       className={`relative flex items-center justify-between h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] select-none ${disabled ? "bg-[#f3f4f6] cursor-not-allowed opacity-60" : "bg-white cursor-pointer"}`}
     >
-      <span className={disabled ? "text-[#9ca3af]" : value ? "text-ink" : "text-muted"}>
+      <span
+        className={
+          disabled ? "text-[#9ca3af]" : value ? "text-ink" : "text-muted"
+        }
+      >
         {formatted}
       </span>
       {value && !disabled ? (
@@ -190,6 +199,9 @@ export default function EnterpriseSignReportPage() {
   const [year, setYear] = useState("Tất cả");
 
   const [reports, setReports] = useState<AtvsldReport[]>([]);
+  const [businessDetail, setBusinessDetail] = useState<BusinessDetail | null>(
+    null,
+  );
   const [editingId, setEditingId] = useState<number | null>(null);
   const [values, setValues] = useState<DeclarationValues>(EMPTY_DECLARATION);
   const [triedSubmit, setTriedSubmit] = useState(false);
@@ -327,6 +339,15 @@ export default function EnterpriseSignReportPage() {
   }, [loadReports]);
 
   useEffect(() => {
+    const bizId = getBusinessId();
+    if (bizId) {
+      getBusinessById(bizId)
+        .then(setBusinessDetail)
+        .catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
     if (fNgayBatDau && fNgayCapNhat) {
       setFNgayKetThuc("");
     }
@@ -336,10 +357,15 @@ export default function EnterpriseSignReportPage() {
     const bothFilled = !!(fNgayBatDau && fNgayCapNhat);
     return reports.filter((r) => {
       if (fStatus && r.status !== fStatus) return false;
-      if (fTen && !(r.ten || "").toLowerCase().includes(fTen.toLowerCase())) return false;
+      if (fTen && !(r.ten || "").toLowerCase().includes(fTen.toLowerCase()))
+        return false;
       if (fKy && r.ky !== fKy) return false;
       if (fNam && String(r.nam) !== fNam) return false;
-      if (fNguoi && !(r.nguoiChinhSua || "").toLowerCase().includes(fNguoi.toLowerCase())) return false;
+      if (
+        fNguoi &&
+        !(r.nguoiChinhSua || "").toLowerCase().includes(fNguoi.toLowerCase())
+      )
+        return false;
 
       if (bothFilled) {
         // Lọc khoảng thời gian của Ngày bắt đầu: fNgayBatDau <= r.ngayBatDau <= fNgayCapNhat
@@ -363,7 +389,17 @@ export default function EnterpriseSignReportPage() {
       }
       return true;
     });
-  }, [reports, fStatus, fTen, fNgayBatDau, fNgayCapNhat, fNgayKetThuc, fKy, fNam, fNguoi]);
+  }, [
+    reports,
+    fStatus,
+    fTen,
+    fNgayBatDau,
+    fNgayCapNhat,
+    fNgayKetThuc,
+    fKy,
+    fNam,
+    fNguoi,
+  ]);
 
   const openForm = (report: AtvsldReport, readonly: boolean) => {
     setEditingId(report.id);
@@ -403,7 +439,9 @@ export default function EnterpriseSignReportPage() {
   const isDeclarationChanged = () => {
     if (!originalDeclarationRef.current) return true;
     const orig = originalDeclarationRef.current;
-    const allKeys = Object.keys(EMPTY_DECLARATION) as Array<keyof DeclarationValues>;
+    const allKeys = Object.keys(EMPTY_DECLARATION) as Array<
+      keyof DeclarationValues
+    >;
     for (const key of allKeys) {
       if ((values[key] ?? "") !== (orig[key] ?? "")) {
         return true;
@@ -510,7 +548,10 @@ export default function EnterpriseSignReportPage() {
                         { name: "Năm", width: "w-[80px]" },
                         { name: "Kỳ báo cáo", width: "w-[110px]" },
                         { name: "Ngày kết thúc", width: "w-[125px]" },
-                        { name: "Người chỉnh sửa", width: "w-[150px] max-w-[150px]" },
+                        {
+                          name: "Người chỉnh sửa",
+                          width: "w-[150px] max-w-[150px]",
+                        },
                       ].map((col) => (
                         <th
                           key={col.name}
@@ -854,7 +895,21 @@ export default function EnterpriseSignReportPage() {
               </div>
             ) : (
               <div className="rounded-lg bg-white p-8 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-                <PhuLucIIView values={values} report={editingReport} />
+                <PhuLucIIView
+                  values={values}
+                  report={editingReport}
+                  nganhNghe={businessDetail?.mainIndustry}
+                  loaiHinh={businessDetail?.businessType}
+                  diaChi={
+                    businessDetail
+                      ? `${businessDetail.address ?? ""}, ${businessDetail.registeredWard ?? ""}, ${businessDetail.registeredProvince ?? ""}`.replace(
+                          /^,\s*/,
+                          "",
+                        )
+                      : undefined
+                  }
+                  dienThoai={businessDetail?.officePhone}
+                />
               </div>
             )}
           </div>

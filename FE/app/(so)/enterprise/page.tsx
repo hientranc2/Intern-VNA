@@ -125,17 +125,15 @@ export default function EnterprisePage() {
   const [fWard, setFWard] = useState("");
   const [fStatus, setFStatus] = useState("");
 
-  const dBusinessName = useDebounce(fBusinessName, 300);
-  const dTaxCode = useDebounce(fTaxCode, 300);
-  const dMainIndustry = useDebounce(fMainIndustry, 300);
-  const dWard = useDebounce(fWard, 300);
+  const [searchBusinessName, setSearchBusinessName] = useState("");
+  const [searchTaxCode, setSearchTaxCode] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const hasTextFilter = Boolean(dBusinessName || fMainIndustry);
+  const hasTextFilter = Boolean(searchBusinessName || fMainIndustry);
   const filteredByText = useMemo(() => {
-    if (!fBusinessName && !fMainIndustry) return businesses;
-    const normName = fBusinessName.normalize("NFC").toLowerCase();
+    if (!searchBusinessName && !fMainIndustry) return businesses;
+    const normName = searchBusinessName.normalize("NFC").toLowerCase();
     // Option ngành là "<mã> - <tên>" còn DB lưu "– <tên>". So khớp theo phần tên:
     // bỏ tiền tố mã ở option và gạch đầu ở giá trị lưu rồi mới so.
     const normIndustry = fMainIndustry
@@ -154,7 +152,7 @@ export default function EnterprisePage() {
       const industryOk = !normIndustry || storedIndustry.includes(normIndustry);
       return nameOk && industryOk;
     });
-  }, [businesses, fBusinessName, fMainIndustry]);
+  }, [businesses, searchBusinessName, fMainIndustry]);
   const displayTotal = hasTextFilter ? filteredByText.length : total;
   const displayedRows = hasTextFilter
     ? filteredByText.slice((currentPage - 1) * pageSize, currentPage * pageSize)
@@ -229,13 +227,13 @@ export default function EnterprisePage() {
     displayedRows.every((b) => selectedIds.has(b.id));
 
   const fetchList = useCallback(async () => {
-    const isTextFilter = Boolean(dBusinessName || dMainIndustry);
+    const isTextFilter = Boolean(searchBusinessName || fMainIndustry);
     setIsLoading(true);
     try {
       const res = await getBusinessList({
-        taxCode: dTaxCode || undefined,
+        taxCode: searchTaxCode || undefined,
         businessType: fBusinessType || undefined,
-        registeredWard: dWard || undefined,
+        registeredWard: fWard || undefined,
         isActive: fStatus === "" ? undefined : fStatus === "1",
         page: isTextFilter ? 1 : currentPage,
         limit: isTextFilter ? 999 : pageSize,
@@ -254,11 +252,11 @@ export default function EnterprisePage() {
       setIsLoading(false);
     }
   }, [
-    dBusinessName,
-    dTaxCode,
+    searchBusinessName,
+    searchTaxCode,
     fBusinessType,
-    dMainIndustry,
-    dWard,
+    fMainIndustry,
+    fWard,
     fStatus,
     currentPage,
     pageSize,
@@ -926,7 +924,12 @@ export default function EnterprisePage() {
                         value={fBusinessName}
                         onChange={(e) => {
                           setFBusinessName(e.target.value);
-                          setCurrentPage(1);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            setSearchBusinessName(fBusinessName);
+                            setCurrentPage(1);
+                          }
                         }}
                       />
                     </th>
@@ -936,7 +939,12 @@ export default function EnterprisePage() {
                         value={fTaxCode}
                         onChange={(e) => {
                           setFTaxCode(e.target.value);
-                          setCurrentPage(1);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            setSearchTaxCode(fTaxCode);
+                            setCurrentPage(1);
+                          }
                         }}
                       />
                     </th>

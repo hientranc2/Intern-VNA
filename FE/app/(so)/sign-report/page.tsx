@@ -66,9 +66,9 @@ export default function SignReportPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const dTen = useDebounce(fTen, 300);
-  const dMST = useDebounce(fMST, 300);
-  const dPhuong = useDebounce(fPhuong, 300);
+  const [searchTen, setSearchTen] = useState("");
+  const [searchMST, setSearchMST] = useState("");
+  const [searchPhuong, setSearchPhuong] = useState("");
 
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
   const start = (currentPage - 1) * pageSize;
@@ -78,9 +78,9 @@ export default function SignReportPage() {
     (force = false) => {
       const fetchKey = JSON.stringify({
         year,
-        dTen,
-        dMST,
-        dPhuong,
+        searchTen,
+        searchMST,
+        searchPhuong,
         fStatus,
         currentPage,
         pageSize,
@@ -93,9 +93,9 @@ export default function SignReportPage() {
 
       getAtvsldReportList({
         nam: year ? Number(year) : undefined,
-        ten: dTen || undefined,
-        mst: dMST || undefined,
-        ward: dPhuong || undefined,
+        ten: searchTen || undefined,
+        mst: searchMST || undefined,
+        ward: searchPhuong || undefined,
         status: fStatus || undefined,
         page: currentPage,
         pageSize: pageSize,
@@ -106,11 +106,11 @@ export default function SignReportPage() {
         })
         .catch(() => setToast("Không tải được danh sách báo cáo"));
     },
-    [year, dTen, dMST, dPhuong, fStatus, currentPage, pageSize],
+    [year, searchTen, searchMST, searchPhuong, fStatus, currentPage, pageSize],
   );
 
   useEffect(() => {
-    const filtersKey = JSON.stringify({ year, dTen, dMST, dPhuong, fStatus });
+    const filtersKey = JSON.stringify({ year, searchTen, searchMST, searchPhuong, fStatus });
     const lastFilters = lastFetchRef.current
       ? JSON.parse(lastFetchRef.current)
       : null;
@@ -118,9 +118,9 @@ export default function SignReportPage() {
       lastFilters &&
       JSON.stringify({
         year: lastFilters.year,
-        dTen: lastFilters.dTen,
-        dMST: lastFilters.dMST,
-        dPhuong: lastFilters.dPhuong,
+        searchTen: lastFilters.searchTen,
+        searchMST: lastFilters.searchMST,
+        searchPhuong: lastFilters.searchPhuong,
         fStatus: lastFilters.fStatus,
       }) !== filtersKey;
 
@@ -133,7 +133,7 @@ export default function SignReportPage() {
     }
 
     loadReports();
-  }, [year, dTen, dMST, dPhuong, fStatus, currentPage, pageSize, loadReports]);
+  }, [year, searchTen, searchMST, searchPhuong, fStatus, currentPage, pageSize, loadReports]);
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -353,6 +353,11 @@ export default function SignReportPage() {
                           className={FILTER_INPUT}
                           value={fTen}
                           onChange={(e) => setFTen(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              setSearchTen(fTen);
+                            }
+                          }}
                         />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
@@ -360,6 +365,11 @@ export default function SignReportPage() {
                           className={FILTER_INPUT}
                           value={fMST}
                           onChange={(e) => setFMST(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              setSearchMST(fMST);
+                            }
+                          }}
                         />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
@@ -368,6 +378,11 @@ export default function SignReportPage() {
                           className={FILTER_INPUT}
                           value={fPhuong}
                           onChange={(e) => setFPhuong(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              setSearchPhuong(fPhuong);
+                            }
+                          }}
                         />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
