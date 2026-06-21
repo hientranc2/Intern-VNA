@@ -22,7 +22,8 @@ import { useCan } from "@/libs/tts/auth/abilityContext";
 
 
 const FILTER_INPUT_CLASS =
-  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
+  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
+const FILTER_SELECT_CLASS = `${FILTER_INPUT_CLASS} cursor-pointer appearance-none bg-white bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_8px_center] bg-no-repeat pr-6`;
 
 export default function EnterpriseTypePage() {
   const canCreate = useCan("create", "ENTERPRISE_TYPE");
@@ -57,6 +58,19 @@ export default function EnterpriseTypePage() {
   const [searchMa, setSearchMa] = useState("");
   const [searchTen, setSearchTen] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const hasActiveFilters = Boolean(
+    fMa || searchMa || fTen || searchTen || fTrangThai
+  );
+
+  const handleClearFilters = () => {
+    setFMa("");
+    setSearchMa("");
+    setFTen("");
+    setSearchTen("");
+    setFTrangThai("");
+    setCurrentPage(1);
+  };
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -372,6 +386,26 @@ export default function EnterpriseTypePage() {
           Danh sách loại hình kinh doanh
         </h1>
         <div className="flex gap-2.5">
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="flex h-9 items-center gap-1.5 rounded-md border border-[#e5e7eb] bg-white px-4 text-[13px] text-[#6b7280] hover:border-[#f87171] hover:text-[#ef4444] transition-colors"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+              Xóa bộ lọc
+            </button>
+          )}
           <input
             ref={importRef}
             type="file"
@@ -426,14 +460,14 @@ export default function EnterpriseTypePage() {
           <table className="w-full border-collapse text-[13.5px]">
             <thead>
               <tr>
-                <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left">
+                <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] pl-3.5 pr-1 py-2.5 text-left">
                   <TriCheckbox
                     checked={allPageChecked}
                     indeterminate={selectedIds.size > 0 && !allPageChecked}
                     onChange={toggleAll}
                   />
                 </th>
-                <th className="w-12 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
+                <th className="w-10 border-b border-[#e5e7eb] bg-[#f9fafb] pl-1 pr-3.5 py-2.5" />
                 <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                   Mã loại hình
                 </th>
@@ -445,14 +479,18 @@ export default function EnterpriseTypePage() {
                 </th>
               </tr>
               <tr>
-                <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
-                <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                <th className="border-b border-[#e5e7eb] bg-white pl-3.5 pr-1 py-1.5" />
+                <th className="border-b border-[#e5e7eb] bg-white pl-1 pr-3.5 py-1.5" />
                 <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                   <input
                     className={FILTER_INPUT_CLASS}
                     value={fMa}
                     onChange={(e) => {
                       setFMa(e.target.value);
+                      if (e.target.value === "") {
+                        setSearchMa("");
+                        setCurrentPage(1);
+                      }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -468,6 +506,10 @@ export default function EnterpriseTypePage() {
                     value={fTen}
                     onChange={(e) => {
                       setFTen(e.target.value);
+                      if (e.target.value === "") {
+                        setSearchTen("");
+                        setCurrentPage(1);
+                      }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -479,16 +521,17 @@ export default function EnterpriseTypePage() {
                 </th>
                 <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                   <select
-                    className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                    className={FILTER_SELECT_CLASS}
                     value={fTrangThai}
                     onChange={(e) => {
                       setFTrangThai(e.target.value);
                       setCurrentPage(1);
                     }}
+                    style={{ color: fTrangThai === "" ? "transparent" : "inherit" }}
                   >
-                    <option value="">Tất cả</option>
-                    <option value="1">Sử dụng</option>
-                    <option value="0">Ngừng sử dụng</option>
+                    <option value="" className="text-ink bg-white">Bỏ chọn</option>
+                    <option value="1" className="text-ink bg-white">Sử dụng</option>
+                    <option value="0" className="text-ink bg-white">Ngừng sử dụng</option>
                   </select>
                 </th>
               </tr>
@@ -511,13 +554,13 @@ export default function EnterpriseTypePage() {
                       key={r.id}
                       className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}
                     >
-                      <td className="px-3.5 py-2.5">
+                      <td className="pl-3.5 pr-1 py-2.5">
                         <TriCheckbox
                           checked={selected}
                           onChange={(c) => toggleRow(r.id, c)}
                         />
                       </td>
-                      <td className="px-3.5 py-2.5 text-center">
+                      <td className="pl-1 pr-3.5 py-2.5">
                         <button
                           type="button"
                           onClick={() => openEdit(r)}

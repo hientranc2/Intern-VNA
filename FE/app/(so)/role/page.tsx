@@ -25,7 +25,7 @@ type PermRow = {
 };
 
 const FILTER_INPUT_CLASS =
-  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
+  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
 
 export default function RolePage() {
   const canCreate = useCan("create", "ROLE");
@@ -57,6 +57,8 @@ export default function RolePage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [filterMa, setFilterMa] = useState("");
   const [filterTen, setFilterTen] = useState("");
+  const [searchMa, setSearchMa] = useState("");
+  const [searchTen, setSearchTen] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -72,14 +74,32 @@ export default function RolePage() {
   const [permFilterMa, setPermFilterMa] = useState("");
   const [permFilterTen, setPermFilterTen] = useState("");
 
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const hasActiveFilters = Boolean(
+    filterMa ||
+      searchMa ||
+      filterTen ||
+      searchTen
+  );
+
+  const handleClearFilters = () => {
+    setFilterMa("");
+    setSearchMa("");
+    setFilterTen("");
+    setSearchTen("");
+    setCurrentPage(1);
+  };
+
   const filteredRoles = useMemo(() => {
-    const ma = filterMa.toLowerCase();
-    const ten = filterTen.toLowerCase();
+    const ma = searchMa.toLowerCase();
+    const ten = searchTen.toLowerCase();
     return roles.filter(
       (r) =>
         r.ma.toLowerCase().includes(ma) && r.ten.toLowerCase().includes(ten),
     );
-  }, [roles, filterMa, filterTen]);
+  }, [roles, searchMa, searchTen]);
 
   const total = filteredRoles.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -118,9 +138,10 @@ export default function RolePage() {
     const ids = [...selectedIds].filter((id) => !protectedIds.has(id));
     if (ids.length === 0) {
       setToast("Vai trò hệ thống cấp cao không thể xóa");
+      setDeleteConfirmOpen(false);
       return;
     }
-    if (!window.confirm(`Xoá ${ids.length} vai trò đã chọn?`)) return;
+    setIsDeleting(true);
     try {
       await Promise.all(ids.map((id) => deleteRole(id)));
       setRoles((prev) => prev.filter((r) => !ids.includes(r.id)));
@@ -131,6 +152,9 @@ export default function RolePage() {
       setToast(
         e instanceof Error ? e.message : "Xóa thất bại. Vui lòng thử lại.",
       );
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmOpen(false);
     }
   };
 
@@ -163,6 +187,22 @@ export default function RolePage() {
     );
     setPermExpanded(expandedGroups);
   };
+
+  const isFormChanged = useMemo(() => {
+    if (!editingId) return true;
+    const originalRole = roles.find((r) => r.id === editingId);
+    if (!originalRole) return true;
+
+    if (formTen.trim() !== originalRole.ten) return true;
+
+    const origPerms = originalRole.perms ?? [];
+    if (checkedPerms.size !== origPerms.length) return true;
+    for (const code of origPerms) {
+      if (!checkedPerms.has(code)) return true;
+    }
+
+    return false;
+  }, [editingId, roles, formTen, checkedPerms]);
 
   const saveRole = async () => {
     const ma = formMa.trim();
@@ -268,89 +308,85 @@ export default function RolePage() {
     <>
       <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-6 py-3.5">
         <h1 className="text-base font-semibold text-ink">Danh sách vai trò</h1>
-        <button
-          type="button"
-          onClick={openAdd}
-          disabled={!canCreate}
-          title={canCreate ? undefined : "Bạn không có quyền thêm"}
-          className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-          >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Thêm mới
-        </button>
-      </div>
-
-      <div className="px-6 py-5">
-        {selectedIds.size > 0 ? (
-          <div className="mb-3 flex items-center gap-3 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-4 py-2 text-[13px] font-medium text-primary">
-            <span className="flex-1">{selectedIds.size} dữ liệu được chọn</span>
+        <div className="flex gap-2.5">
+          {hasActiveFilters && (
             <button
               type="button"
-              onClick={deleteSelected}
-              disabled={!canDelete}
-              title={canDelete ? undefined : "Bạn không có quyền xóa"}
-              className="flex h-[30px] items-center gap-1.5 rounded-[5px] bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
+              onClick={handleClearFilters}
+              className="flex h-9 items-center gap-1.5 rounded-md border border-[#e5e7eb] bg-white px-4 text-[13px] text-[#6b7280] hover:border-[#f87171] hover:text-[#ef4444] transition-colors"
             >
               <svg
-                width="13"
-                height="13"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
               >
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14H6L5 6" />
-                <path d="M10 11v6M14 11v6" />
-                <path d="M9 6V4h6v2" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
-              Xoá
+              Xóa bộ lọc
             </button>
-            <button
-              type="button"
-              onClick={() => setSelectedIds(new Set())}
-              className="text-lg leading-none text-muted hover:text-[#374151]"
-              aria-label="Bỏ chọn"
+          )}
+          <button
+            type="button"
+            onClick={openAdd}
+            disabled={!canCreate}
+            title={canCreate ? undefined : "Bạn không có quyền thêm"}
+            className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
             >
-              ×
-            </button>
-          </div>
-        ) : null}
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Thêm mới
+          </button>
+        </div>
+      </div>
 
+      <div className="px-6 py-5">
         <div className="overflow-hidden rounded-lg bg-white shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
           <table className="w-full border-collapse text-[13.5px]">
             <thead>
               <tr>
-                <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left">
+                <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] pl-3.5 pr-1 py-2.5 text-left">
                   <TriCheckbox checked={allPageChecked} onChange={toggleAll} />
                 </th>
+                <th className="w-10 border-b border-[#e5e7eb] bg-[#f9fafb] pl-1 pr-3.5 py-2.5" />
                 <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                   Mã vai trò
                 </th>
                 <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                   Tên vai trò
                 </th>
-                <th className="w-12 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
               </tr>
               <tr>
-                <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
+                <th className="border-b border-[#e5e7eb] bg-white pl-3.5 pr-1 py-1.5" />
+                <th className="border-b border-[#e5e7eb] bg-white pl-1 pr-3.5 py-1.5" />
                 <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                   <input
                     className={FILTER_INPUT_CLASS}
                     value={filterMa}
                     onChange={(e) => {
                       setFilterMa(e.target.value);
-                      setCurrentPage(1);
+                      if (e.target.value === "") {
+                        setSearchMa("");
+                        setCurrentPage(1);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setSearchMa(filterMa);
+                        setCurrentPage(1);
+                      }
                     }}
                   />
                 </th>
@@ -360,11 +396,19 @@ export default function RolePage() {
                     value={filterTen}
                     onChange={(e) => {
                       setFilterTen(e.target.value);
-                      setCurrentPage(1);
+                      if (e.target.value === "") {
+                        setSearchTen("");
+                        setCurrentPage(1);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setSearchTen(filterTen);
+                        setCurrentPage(1);
+                      }
                     }}
                   />
                 </th>
-                <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
               </tr>
             </thead>
             <tbody>
@@ -385,7 +429,7 @@ export default function RolePage() {
                       key={r.id}
                       className={`border-b border-[#f3f4f6] ${selected ? "bg-[#eff6ff]" : "hover:bg-[#f9fafb]"}`}
                     >
-                      <td className="px-3.5 py-2.5">
+                      <td className="pl-3.5 pr-1 py-2.5">
                         <TriCheckbox
                           checked={selected}
                           disabled={r.isProtected}
@@ -397,33 +441,7 @@ export default function RolePage() {
                           onChange={(c) => toggleRow(r.id, c)}
                         />
                       </td>
-                      <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
-                      <td className="px-3.5 py-2.5 text-[#374151]">
-                        <span className="inline-flex items-center gap-1.5">
-                          {r.ten}
-                          {r.isProtected ? (
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="#9ca3af"
-                              strokeWidth="2"
-                            >
-                              <title>Vai trò hệ thống</title>
-                              <rect
-                                x="3"
-                                y="11"
-                                width="18"
-                                height="11"
-                                rx="2"
-                              />
-                              <path d="M7 11V7a5 5 0 0110 0v4" />
-                            </svg>
-                          ) : null}
-                        </span>
-                      </td>
-                      <td className="px-3.5 py-2.5 text-center">
+                      <td className="pl-1 pr-3.5 py-2.5">
                         {(() => {
                           const lockedSuper = r.isSuper && !isPrivileged;
                           const editDisabled = !canUpdate || lockedSuper;
@@ -454,6 +472,32 @@ export default function RolePage() {
                             </button>
                           );
                         })()}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">
+                        <span className="inline-flex items-center gap-1.5">
+                          {r.isProtected ? (
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="#9ca3af"
+                              strokeWidth="2"
+                            >
+                              <title>Vai trò hệ thống</title>
+                              <rect
+                                x="3"
+                                y="11"
+                                width="18"
+                                height="11"
+                                rx="2"
+                              />
+                              <path d="M7 11V7a5 5 0 0110 0v4" />
+                            </svg>
+                          ) : null}
+                          {r.ten}
+                        </span>
                       </td>
                     </tr>
                   );
@@ -704,10 +748,104 @@ export default function RolePage() {
             <button
               type="button"
               onClick={saveRole}
-              disabled={saving}
-              className="h-9 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60"
+              disabled={saving || !isFormChanged}
+              className="h-9 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {saving ? "Đang lưu..." : "Lưu"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating bulk-action bar */}
+      {selectedIds.size > 0 ? (
+        <div className="fixed bottom-6 left-1/2 z-[300] -translate-x-1/2">
+          <div className="flex items-center gap-0 overflow-hidden rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.18)]">
+            <div className="flex h-10 min-w-9 items-center justify-center bg-primary px-3 text-sm font-bold text-white">
+              {selectedIds.size}
+            </div>
+            <div className="flex h-10 items-center bg-white px-3 text-[13px] font-medium text-ink">
+              dữ liệu được chọn
+            </div>
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(true)}
+              disabled={!canDelete}
+              title={canDelete ? undefined : "Bạn không có quyền xóa"}
+              className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+              </svg>
+              Xoá
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              aria-label="Bỏ chọn"
+              className="flex h-10 w-10 items-center justify-center bg-white text-muted hover:bg-body hover:text-ink"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Modal xác nhận xóa */}
+      <div
+        className={`fixed inset-0 z-[400] flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
+          deleteConfirmOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div
+          className={`w-100 overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
+            deleteConfirmOpen ? "translate-y-0" : "translate-y-3"
+          }`}
+        >
+          <div className="bg-primary px-5 py-4 text-center">
+            <h3 className="text-base font-semibold text-white">Xác nhận xóa</h3>
+          </div>
+          <div className="px-6 py-5">
+            <p className="text-[13.5px] text-[#374151]">
+              Bạn có chắc muốn xóa <strong>{selectedIds.size}</strong> vai trò
+              đã chọn? Hành động này không thể hoàn tác.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 px-6 pb-5">
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(false)}
+              className="h-[38px] rounded-md px-5 text-sm font-medium text-muted hover:bg-[#f9fafb] hover:text-[#374151]"
+            >
+              Huỷ bỏ
+            </button>
+            <button
+              type="button"
+              onClick={deleteSelected}
+              disabled={isDeleting}
+              className="h-[38px] rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626] disabled:opacity-60"
+            >
+              {isDeleting ? "Đang xóa..." : "Xóa"}
             </button>
           </div>
         </div>

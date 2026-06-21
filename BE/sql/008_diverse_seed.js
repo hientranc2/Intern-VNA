@@ -86,7 +86,7 @@ const BIZ = [
 
 const STATUSES_TNLD = ['Đang báo cáo', 'Đã nộp', 'Đã tiếp nhận'];
 const STATUSES_ATVSLD = ['Chờ báo cáo', 'Nhập liệu', 'Chờ tiếp nhận', 'Từ chối', 'Hoàn thành'];
-const YEARS = [2022, 2023, 2024, 2025];
+const YEARS = [2022, 2023, 2024, 2025, 2026];
 
 function rnd(seed) { return Math.abs(Math.sin(seed) * 10000) % 1; }
 function ri(seed, max) { return Math.floor(rnd(seed) * (max + 1)); }
@@ -160,11 +160,21 @@ async function seedBusinesses(c, hash) {
 async function getConfigByYear(c) {
   const map = {};
   for (const y of YEARS) {
-    const r = await c.query(
+    let r = await c.query(
       `SELECT id FROM report_configs WHERE nam=$1 AND ky='Cả năm' ORDER BY id LIMIT 1`,
       [String(y)],
     );
-    map[y] = r.rowCount > 0 ? r.rows[0].id : null;
+    if (r.rowCount === 0) {
+      const ins = await c.query(
+        `INSERT INTO report_configs (nam, ten, ky, bat_dau, ket_thuc, active)
+         VALUES ($1, 'Báo cáo tai nạn lao động', 'Cả năm', $2, $3, true) RETURNING id`,
+        [String(y), `15/12/${y}`, `10/01/${Number(y) + 1}`]
+      );
+      map[y] = ins.rows[0].id;
+      console.log(`+ Tự động thêm report_config cho năm ${y}`);
+    } else {
+      map[y] = r.rows[0].id;
+    }
   }
   return map;
 }
@@ -242,7 +252,7 @@ async function seedAccidentReports(c, businesses, cfgByYear) {
       n++; seed++;
     }
   }
-  console.log(`✓ accident_reports seed: +${n} báo cáo TNLĐ (DN seed, 2022..2025, đủ trạng thái)`);
+  console.log(`✓ accident_reports seed: +${n} báo cáo TNLĐ (DN seed, 2022..2026, đủ trạng thái)`);
 }
 
 async function seedAtvsldReports(c, businesses) {
@@ -288,7 +298,7 @@ async function seedAtvsldReports(c, businesses) {
       }
     }
   }
-  console.log(`✓ atvsld_reports seed: +${n} báo cáo ATVSLĐ (DN seed, 2022..2025, 6 tháng + Cả năm, đủ trạng thái)`);
+  console.log(`✓ atvsld_reports seed: +${n} báo cáo ATVSLĐ (DN seed, 2022..2026, 6 tháng + Cả năm, đủ trạng thái)`);
 }
 
 // Seed toàn bộ dữ liệu đa dạng trên một client đã kết nối sẵn (tái dùng trong seed.js).

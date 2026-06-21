@@ -28,7 +28,7 @@ export function SearchableSelect({
   options,
   value,
   onChange,
-  placeholder = "Chọn...",
+  placeholder = "",
   emptyText = "Không tìm thấy",
   disabled,
   className,
@@ -175,9 +175,7 @@ export function SearchableSelect({
               }`}
             >
               {label && (
-                <legend
-                  className="ml-2 px-1 text-[0px] text-transparent transition-all"
-                >
+                <legend className="ml-2 px-1 text-[0px] text-transparent transition-all">
                   {label} {required ? " *" : ""}
                 </legend>
               )}

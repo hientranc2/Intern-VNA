@@ -26,7 +26,8 @@ import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 type ViewMode = "list" | "detail";
 
 const FILTER_INPUT =
-  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
+  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
+const FILTER_SELECT = `${FILTER_INPUT} cursor-pointer appearance-none bg-white bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_8px_center] bg-no-repeat pr-6`;
 const YEAR_SELECT =
   "h-[34px] min-w-[100px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none";
 
@@ -50,7 +51,7 @@ export default function SignReportPage() {
   const [viewingReport, setViewingReport] = useState<AtvsldReport | null>(null);
   const [viewValues, setViewValues] =
     useState<DeclarationValues>(EMPTY_DECLARATION);
-  const [year, setYear] = useState("Tất cả");
+  const [year, setYear] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -69,6 +70,29 @@ export default function SignReportPage() {
   const [searchTen, setSearchTen] = useState("");
   const [searchMST, setSearchMST] = useState("");
   const [searchPhuong, setSearchPhuong] = useState("");
+
+  const hasActiveFilters = Boolean(
+    year ||
+      fTen ||
+      searchTen ||
+      fMST ||
+      searchMST ||
+      fPhuong ||
+      searchPhuong ||
+      fStatus
+  );
+
+  const handleClearFilters = () => {
+    setYear("");
+    setFTen("");
+    setSearchTen("");
+    setFMST("");
+    setSearchMST("");
+    setFPhuong("");
+    setSearchPhuong("");
+    setFStatus("");
+    setCurrentPage(1);
+  };
 
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
   const start = (currentPage - 1) * pageSize;
@@ -301,18 +325,44 @@ export default function SignReportPage() {
             <h1 className="text-base font-semibold text-ink">
               Báo cáo định kỳ ATVSLĐ
             </h1>
-            <select
-              className={YEAR_SELECT}
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-            >
-              <option value="">Tất cả</option>
-              <option value="2022">2022</option>
-              <option value="2023">2023</option>
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
-            </select>
+            <div className="flex items-center gap-2.5">
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="flex h-9 items-center gap-1.5 rounded-md border border-[#e5e7eb] bg-white px-4 text-[13px] text-[#6b7280] hover:border-[#f87171] hover:text-[#ef4444] transition-colors"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                  Xóa bộ lọc
+                </button>
+              )}
+              <select
+                className={YEAR_SELECT}
+                value={year}
+                onChange={(e) => {
+                  setYear(e.target.value);
+                  setCurrentPage(1);
+                }}
+                style={{ color: year === "" ? "transparent" : "inherit" }}
+              >
+                <option value="" className="text-ink bg-white">Bỏ chọn</option>
+                <option value="2022" className="text-ink bg-white">2022</option>
+                <option value="2023" className="text-ink bg-white">2023</option>
+                <option value="2024" className="text-ink bg-white">2024</option>
+                <option value="2025" className="text-ink bg-white">2025</option>
+                <option value="2026" className="text-ink bg-white">2026</option>
+              </select>
+            </div>
           </div>
 
           <div className="px-6 py-5">
@@ -329,16 +379,16 @@ export default function SignReportPage() {
                         />
                       </th>
                       {[
-                        "Thao tác",
+                        "",
                         "Tên doanh nghiệp",
                         "Mã số thuế",
                         "Ngày nộp báo cáo",
                         "Phường/xã",
                         "Lý do từ chối",
                         "Trạng thái",
-                      ].map((h) => (
+                      ].map((h, i) => (
                         <th
-                          key={h}
+                          key={h || i}
                           className="whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]"
                         >
                           {h}
@@ -352,10 +402,17 @@ export default function SignReportPage() {
                         <input
                           className={FILTER_INPUT}
                           value={fTen}
-                          onChange={(e) => setFTen(e.target.value)}
+                          onChange={(e) => {
+                            setFTen(e.target.value);
+                            if (e.target.value === "") {
+                              setSearchTen("");
+                              setCurrentPage(1);
+                            }
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
                               setSearchTen(fTen);
+                              setCurrentPage(1);
                             }
                           }}
                         />
@@ -364,10 +421,17 @@ export default function SignReportPage() {
                         <input
                           className={FILTER_INPUT}
                           value={fMST}
-                          onChange={(e) => setFMST(e.target.value)}
+                          onChange={(e) => {
+                            setFMST(e.target.value);
+                            if (e.target.value === "") {
+                              setSearchMST("");
+                              setCurrentPage(1);
+                            }
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
                               setSearchMST(fMST);
+                              setCurrentPage(1);
                             }
                           }}
                         />
@@ -377,10 +441,17 @@ export default function SignReportPage() {
                         <input
                           className={FILTER_INPUT}
                           value={fPhuong}
-                          onChange={(e) => setFPhuong(e.target.value)}
+                          onChange={(e) => {
+                            setFPhuong(e.target.value);
+                            if (e.target.value === "") {
+                              setSearchPhuong("");
+                              setCurrentPage(1);
+                            }
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
                               setSearchPhuong(fPhuong);
+                              setCurrentPage(1);
                             }
                           }}
                         />
@@ -388,13 +459,17 @@ export default function SignReportPage() {
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <select
-                          className={`${FILTER_INPUT} cursor-pointer bg-white`}
+                          className={FILTER_SELECT}
                           value={fStatus}
-                          onChange={(e) => setFStatus(e.target.value)}
+                          onChange={(e) => {
+                            setFStatus(e.target.value);
+                            setCurrentPage(1);
+                          }}
+                          style={{ color: fStatus === "" ? "transparent" : "inherit" }}
                         >
-                          <option value="">Tất cả</option>
+                          <option value="" className="text-ink bg-white">Bỏ chọn</option>
                           {STATUS_OPTIONS.map((s) => (
-                            <option key={s}>{s}</option>
+                            <option key={s} className="text-ink bg-white">{s}</option>
                           ))}
                         </select>
                       </th>

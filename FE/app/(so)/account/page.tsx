@@ -267,6 +267,14 @@ export default function AccountPage() {
     }
   };
 
+  const handleCancel = () => {
+    setForm(originalForm);
+    setEmail(originalEmail);
+    setAvatarFile(null);
+    setAvatarPreview(originalAvatarUrl);
+    setFormErrors({});
+  };
+
   const savePassword = async () => {
     const errors: typeof pwdFieldErrors = {};
     if (!oldPwd) errors.oldPwd = "Vui lòng nhập mật khẩu cũ";
@@ -363,14 +371,16 @@ export default function AccountPage() {
           <div className="flex gap-2.5">
             <button
               type="button"
-              className="h-9 rounded-md border border-line bg-white px-[18px] text-[13px] font-medium text-[#374151] hover:bg-[#f9fafb]"
+              onClick={handleCancel}
+              disabled={saving || loading || !hasChanges()}
+              className="h-9 rounded-md border border-line bg-white px-[18px] text-[13px] font-medium text-[#374151] hover:bg-[#f9fafb] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
             >
               Hủy bỏ
             </button>
             <button
               type="button"
               onClick={saveProfile}
-              disabled={saving || loading}
+              disabled={saving || loading || !hasChanges()}
               className="h-9 rounded-md bg-primary px-[18px] text-[13px] font-medium text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? "Đang lưu..." : "Lưu"}

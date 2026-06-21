@@ -57,7 +57,8 @@ const VIEW_FILE_ROWS = ["Giấy phép kinh doanh", "Giấy tờ khác"] as const
 type WizardMode = "add" | "edit";
 
 const FILTER_INPUT_CLASS =
-  "h-7 w-full rounded-[5px] border border-line px-1.5 text-xs text-ink outline-none focus:border-[#3b82f6]";
+  "h-7 w-full rounded-[5px] border border-line px-1.5 text-xs font-normal text-ink outline-none focus:border-[#3b82f6]";
+const FILTER_SELECT_CLASS = `${FILTER_INPUT_CLASS} cursor-pointer appearance-none bg-white bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_8px_center] bg-no-repeat pr-6`;
 
 const FILE_NAMES = ["Giấy phép kinh doanh", "Giấy tờ khác"] as const;
 
@@ -72,6 +73,20 @@ function formatLicenseDate(iso?: string): string {
   } catch {
     return "";
   }
+}
+
+function normalizeIndustry(industryStr: string, options: string[]): string {
+  if (!industryStr) return "";
+  const trimmed = industryStr.trim();
+  if (/^\d{4}\s*[-–]\s*/.test(trimmed)) {
+    return trimmed;
+  }
+  const cleanName = trimmed.replace(/^[-–]\s*/, "").toLowerCase().trim();
+  const found = options.find(
+    (opt) =>
+      opt.replace(/^\d{4}\s*[-–]\s*/, "").toLowerCase().trim() === cleanName
+  );
+  return found ?? trimmed.replace(/^[-–]\s*/, "");
 }
 
 export default function EnterprisePage() {
@@ -129,6 +144,29 @@ export default function EnterprisePage() {
   const [searchTaxCode, setSearchTaxCode] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const hasActiveFilters = Boolean(
+    fBusinessName ||
+      searchBusinessName ||
+      fTaxCode ||
+      searchTaxCode ||
+      fBusinessType ||
+      fMainIndustry ||
+      fWard ||
+      fStatus
+  );
+
+  const handleClearFilters = () => {
+    setFBusinessName("");
+    setSearchBusinessName("");
+    setFTaxCode("");
+    setSearchTaxCode("");
+    setFBusinessType("");
+    setFMainIndustry("");
+    setFWard("");
+    setFStatus("");
+    setCurrentPage(1);
+  };
 
   const hasTextFilter = Boolean(searchBusinessName || fMainIndustry);
   const filteredByText = useMemo(() => {
@@ -577,7 +615,7 @@ export default function EnterprisePage() {
           businessName: detail.businessName ?? "",
           taxCode: detail.taxCode ?? "",
           businessType: detail.businessType ?? "",
-          mainIndustry: detail.mainIndustry ?? "",
+          mainIndustry: normalizeIndustry(detail.mainIndustry ?? "", nganhCap4Options),
           licenseDate: formatLicenseDate(detail.licenseDate),
           registeredProvince: detail.registeredProvince ?? "",
           registeredWard: detail.registeredWard ?? "",
@@ -840,6 +878,26 @@ export default function EnterprisePage() {
             Danh sách doanh nghiệp
           </h1>
           <div className="flex gap-2.5">
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="flex h-9 items-center gap-1.5 rounded-md border border-[#e5e7eb] bg-white px-4 text-[13px] text-[#6b7280] hover:border-[#f87171] hover:text-[#ef4444] transition-colors"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                Xóa bộ lọc
+              </button>
+            )}
             <input
               ref={importRef}
               type="file"
@@ -907,7 +965,7 @@ export default function EnterprisePage() {
                         onChange={toggleAll}
                       />
                     </th>
-                    <th className={`${thBase} w-24`}>Thao tác</th>
+                    <th className={`${thBase} w-24`} />
                     <th className={thBase}>Tên doanh nghiệp</th>
                     <th className={thBase}>Mã số thuế</th>
                     <th className={thBase}>Loại hình kinh doanh</th>
@@ -924,6 +982,10 @@ export default function EnterprisePage() {
                         value={fBusinessName}
                         onChange={(e) => {
                           setFBusinessName(e.target.value);
+                          if (e.target.value === "") {
+                            setSearchBusinessName("");
+                            setCurrentPage(1);
+                          }
                         }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
@@ -939,6 +1001,10 @@ export default function EnterprisePage() {
                         value={fTaxCode}
                         onChange={(e) => {
                           setFTaxCode(e.target.value);
+                          if (e.target.value === "") {
+                            setSearchTaxCode("");
+                            setCurrentPage(1);
+                          }
                         }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
@@ -986,16 +1052,17 @@ export default function EnterprisePage() {
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2 py-1.5">
                       <select
-                        className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                        className={FILTER_SELECT_CLASS}
                         value={fStatus}
                         onChange={(e) => {
                           setFStatus(e.target.value);
                           setCurrentPage(1);
                         }}
+                        style={{ color: fStatus === "" ? "transparent" : "inherit" }}
                       >
-                        <option value="">Tất cả</option>
-                        <option value="1">Hoạt động</option>
-                        <option value="0">Ngừng</option>
+                        <option value="" className="text-ink bg-white">Bỏ chọn</option>
+                        <option value="1" className="text-ink bg-white">Hoạt động</option>
+                        <option value="0" className="text-ink bg-white">Ngừng</option>
                       </select>
                     </th>
                   </tr>
@@ -1118,7 +1185,7 @@ export default function EnterprisePage() {
                             {b.businessType}
                           </td>
                           <td className="px-3 py-2.5 text-[#374151]">
-                            {b.mainIndustry}
+                            {normalizeIndustry(b.mainIndustry ?? "", nganhCap4Options) || "—"}
                           </td>
                           <td className="px-3 py-2.5 text-[#374151]">
                             {b.registeredWard}

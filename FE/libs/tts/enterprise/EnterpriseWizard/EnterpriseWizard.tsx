@@ -159,12 +159,26 @@ function mapServerErrorToStep1Field(
   return null;
 }
 
-function detailToForm(d: BusinessDetail): BusinessFormData {
+function normalizeIndustry(industryStr: string, options: string[]): string {
+  if (!industryStr) return "";
+  const trimmed = industryStr.trim();
+  if (/^\d{4}\s*[-–]\s*/.test(trimmed)) {
+    return trimmed;
+  }
+  const cleanName = trimmed.replace(/^[-–]\s*/, "").toLowerCase().trim();
+  const found = options.find(
+    (opt) =>
+      opt.replace(/^\d{4}\s*[-–]\s*/, "").toLowerCase().trim() === cleanName
+  );
+  return found ?? trimmed.replace(/^[-–]\s*/, "");
+}
+
+function detailToForm(d: BusinessDetail, options: string[]): BusinessFormData {
   return {
     businessName: d.businessName ?? "",
     taxCode: d.taxCode ?? "",
     businessType: d.businessType ?? "",
-    mainIndustry: d.mainIndustry ?? "",
+    mainIndustry: normalizeIndustry(d.mainIndustry ?? "", options),
     licenseDate: formatLicenseDate(d.licenseDate),
     registeredProvince: d.registeredProvince ?? "",
     registeredWard: d.registeredWard ?? "",
@@ -194,7 +208,7 @@ export function EnterpriseWizard({
 }: EnterpriseWizardProps) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<BusinessFormData>(
-    (mode === "edit" || mode === "view") && detail ? detailToForm(detail) : EMPTY_BUSINESS_FORM,
+    (mode === "edit" || mode === "view") && detail ? detailToForm(detail, nganhCap4Options) : EMPTY_BUSINESS_FORM,
   );
   const [fieldErrors, setFieldErrors] = useState<WizardFieldErrors>({});
   const [attachments, setAttachments] = useState<AttachedFile[]>(

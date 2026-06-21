@@ -13,11 +13,13 @@ import { getAccidentReportList } from "@/libs/tts/accident-report/accidentReport
 import { exportTonghopDocx } from "@/libs/tts/accident-report/exportTonghopDocx";
 import { exportDetailDocx } from "@/libs/tts/accident-report/exportDetailDocx";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
+import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 
 type ViewMode = "list" | "detail" | "tonghop";
 
 const FILTER_INPUT_CLASS =
-  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
+  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
+const FILTER_SELECT_CLASS = `${FILTER_INPUT_CLASS} cursor-pointer appearance-none bg-white bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_8px_center] bg-no-repeat pr-6`;
 const SELECT_TOP_CLASS =
   "h-9 min-w-[200px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none";
 
@@ -49,7 +51,17 @@ const formatTime = (dStr?: string | null): string => {
 export default function AccidentReportPage() {
   const [view, setView] = useState<ViewMode>("list");
   const [reports, setReports] = useState<AccidentReport[]>([]);
-  const [year, setYear] = useState("");
+  const [year, setYear] = useState(() => String(new Date().getFullYear()));
+
+  const yearsList = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const startYear = 2022;
+    const years = [];
+    for (let y = startYear; y <= currentYear; y++) {
+      years.push(String(y));
+    }
+    return years;
+  }, []);
 
   useEffect(() => {
     getAccidentReportList({ page: 1, pageSize: 1000, nam: year || undefined })
@@ -59,7 +71,9 @@ export default function AccidentReportPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [fTen, setFTen] = useState("");
+  const [searchTen, setSearchTen] = useState("");
   const [fMST, setFMST] = useState("");
+  const [searchMST, setSearchMST] = useState("");
   const [fKy, setFKy] = useState("");
   const [fTT, setFTT] = useState("");
   const [selectedProvince, setSelectedProvince] = useState("");
@@ -79,14 +93,14 @@ export default function AccidentReportPage() {
   const filtered = useMemo(() => {
     return reports.filter(
       (r) =>
-        r.ten.toLowerCase().includes(fTen.toLowerCase()) &&
-        r.mst.toLowerCase().includes(fMST.toLowerCase()) &&
+        r.ten.toLowerCase().includes(searchTen.toLowerCase()) &&
+        r.mst.toLowerCase().includes(searchMST.toLowerCase()) &&
         (!fKy || r.ky === fKy) &&
         (!fTT || r.tt === fTT) &&
         (!selectedProvince || r.province === selectedProvince) &&
         (!selectedWard || r.ward === selectedWard),
     );
-  }, [reports, fTen, fMST, fKy, fTT, selectedProvince, selectedWard]);
+  }, [reports, searchTen, searchMST, fKy, fTT, selectedProvince, selectedWard]);
 
   const tonghopStats = useMemo(() => {
     const sum = (reps: AccidentReport[], key: keyof AccidentReport) =>
@@ -174,13 +188,14 @@ export default function AccidentReportPage() {
                   setYear(e.target.value);
                   setCurrentPage(1);
                 }}
+                style={{ color: year === "" ? "transparent" : "inherit" }}
               >
-                <option value="">Tất cả</option>
-                <option value="2022">2022</option>
-                <option value="2023">2023</option>
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
+                <option value="" className="text-ink bg-white">Bỏ chọn</option>
+                {yearsList.map((y) => (
+                  <option key={y} value={y} className="text-ink bg-white">
+                    {y}
+                  </option>
+                ))}
               </select>
               <button
                 type="button"
@@ -192,35 +207,25 @@ export default function AccidentReportPage() {
             </div>
           </div>
 
-          <div className="flex gap-3 border-b border-[#e5e7eb] bg-white px-6 py-3">
-            <select
-              className={SELECT_TOP_CLASS}
+          <div className="grid grid-cols-2 gap-3 border-b border-[#e5e7eb] bg-white px-6 pt-5 pb-3">
+            <SearchableSelect
+              options={PROVINCES}
               value={selectedProvince}
-              onChange={(e) => {
-                setSelectedProvince(e.target.value);
+              onChange={(value) => {
+                setSelectedProvince(value);
                 setSelectedWard("");
               }}
-            >
-              <option value="">Tất cả</option>
-              {PROVINCES.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <select
-              className={SELECT_TOP_CLASS}
+              label="Tỉnh/ thành phố"
+              className="w-full"
+            />
+            <SearchableSelect
+              options={WARDS_BY_PROVINCE[selectedProvince] ?? []}
               value={selectedWard}
-              onChange={(e) => setSelectedWard(e.target.value)}
+              onChange={(value) => setSelectedWard(value)}
               disabled={!selectedProvince}
-            >
-              <option value="">Tất cả</option>
-              {(WARDS_BY_PROVINCE[selectedProvince] ?? []).map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </select>
+              label="Phường/ xã"
+              className="w-full"
+            />
           </div>
 
           <div className="px-6 py-5">
@@ -235,9 +240,7 @@ export default function AccidentReportPage() {
                         onChange={toggleSelectAll}
                       />
                     </th>
-                    <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
-                      Thao tác
-                    </th>
+                    <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]" />
                     <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Tên doanh nghiệp
                     </th>
@@ -269,7 +272,16 @@ export default function AccidentReportPage() {
                         value={fTen}
                         onChange={(e) => {
                           setFTen(e.target.value);
-                          setCurrentPage(1);
+                          if (e.target.value === "") {
+                            setSearchTen("");
+                            setCurrentPage(1);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            setSearchTen(fTen);
+                            setCurrentPage(1);
+                          }
                         }}
                       />
                     </th>
@@ -279,22 +291,32 @@ export default function AccidentReportPage() {
                         value={fMST}
                         onChange={(e) => {
                           setFMST(e.target.value);
-                          setCurrentPage(1);
+                          if (e.target.value === "") {
+                            setSearchMST("");
+                            setCurrentPage(1);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            setSearchMST(fMST);
+                            setCurrentPage(1);
+                          }
                         }}
                       />
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                       <select
-                        className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                        className={FILTER_SELECT_CLASS}
                         value={fKy}
                         onChange={(e) => {
                           setFKy(e.target.value);
                           setCurrentPage(1);
                         }}
+                        style={{ color: fKy === "" ? "transparent" : "inherit" }}
                       >
-                        <option value="">Tất cả</option>
-                        <option>6 tháng</option>
-                        <option>Cả năm</option>
+                        <option value="" className="text-ink bg-white">Bỏ chọn</option>
+                        <option className="text-ink bg-white">6 tháng</option>
+                        <option className="text-ink bg-white">Cả năm</option>
                       </select>
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
@@ -302,17 +324,18 @@ export default function AccidentReportPage() {
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                       <select
-                        className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                        className={FILTER_SELECT_CLASS}
                         value={fTT}
                         onChange={(e) => {
                           setFTT(e.target.value);
                           setCurrentPage(1);
                         }}
+                        style={{ color: fTT === "" ? "transparent" : "inherit" }}
                       >
-                        <option value="">Tất cả</option>
-                        <option>Đang báo cáo</option>
-                        <option>Đã nộp</option>
-                        <option>Đã tiếp nhận</option>
+                        <option value="" className="text-ink bg-white">Bỏ chọn</option>
+                        <option className="text-ink bg-white">Đang báo cáo</option>
+                        <option className="text-ink bg-white">Đã nộp</option>
+                        <option className="text-ink bg-white">Đã tiếp nhận</option>
                       </select>
                     </th>
                   </tr>

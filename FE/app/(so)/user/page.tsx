@@ -88,7 +88,8 @@ const EMPTY_FORM: UserForm = {
 };
 
 const FILTER_INPUT_CLASS =
-  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
+  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
+const FILTER_SELECT_CLASS = `${FILTER_INPUT_CLASS} cursor-pointer appearance-none bg-white bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_8px_center] bg-no-repeat pr-6`;
 const FORM_CONTROL_CLASS =
   "h-10 rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition-colors focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f3f4f6] disabled:text-muted disabled:cursor-not-allowed";
 const SELECT_CLASS = `${FORM_CONTROL_CLASS} cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
@@ -164,6 +165,35 @@ export default function UserPage() {
   const [searchUsername, setSearchUsername] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
   const [searchJobTitle, setSearchJobTitle] = useState("");
+
+  const hasActiveFilters = Boolean(
+    fFullName ||
+      searchFullName ||
+      fUsername ||
+      searchUsername ||
+      fEmail ||
+      searchEmail ||
+      fRoleId ||
+      fJobTitle ||
+      searchJobTitle ||
+      fActive ||
+      fProvince
+  );
+
+  const handleClearFilters = () => {
+    setFFullName("");
+    setSearchFullName("");
+    setFUsername("");
+    setSearchUsername("");
+    setFEmail("");
+    setSearchEmail("");
+    setFRoleId("");
+    setFJobTitle("");
+    setSearchJobTitle("");
+    setFActive("");
+    setFProvince("");
+    setCurrentPage(1);
+  };
 
   // Detail form
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -815,6 +845,26 @@ export default function UserPage() {
               Danh sách người dùng
             </h1>
             <div className="flex gap-2.5">
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="flex h-9 items-center gap-1.5 rounded-md border border-[#e5e7eb] bg-white px-4 text-[13px] text-[#6b7280] hover:border-[#f87171] hover:text-[#ef4444] transition-colors"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                  Xóa bộ lọc
+                </button>
+              )}
               <input
                 ref={importRef}
                 type="file"
@@ -881,9 +931,7 @@ export default function UserPage() {
                           onChange={toggleAll}
                         />
                       </th>
-                      <th className="w-20 whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
-                        Thao tác
-                      </th>
+                      <th className="w-20 whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]" />
                       <th className="whitespace-nowrap border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                         Họ và tên
                       </th>
@@ -915,6 +963,10 @@ export default function UserPage() {
                           value={fFullName}
                           onChange={(e) => {
                             setFFullName(e.target.value);
+                            if (e.target.value === "") {
+                              setSearchFullName("");
+                              setCurrentPage(1);
+                            }
                           }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -930,6 +982,10 @@ export default function UserPage() {
                           value={fUsername}
                           onChange={(e) => {
                             setFUsername(e.target.value);
+                            if (e.target.value === "") {
+                              setSearchUsername("");
+                              setCurrentPage(1);
+                            }
                           }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -945,6 +1001,10 @@ export default function UserPage() {
                           value={fEmail}
                           onChange={(e) => {
                             setFEmail(e.target.value);
+                            if (e.target.value === "") {
+                              setSearchEmail("");
+                              setCurrentPage(1);
+                            }
                           }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -956,16 +1016,17 @@ export default function UserPage() {
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <select
-                          className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                          className={FILTER_SELECT_CLASS}
                           value={fRoleId}
                           onChange={(e) => {
                             setFRoleId(e.target.value);
                             setCurrentPage(1);
                           }}
+                          style={{ color: fRoleId === "" ? "transparent" : "inherit" }}
                         >
-                          <option value="">Tất cả</option>
+                          <option value="" className="text-ink bg-white">Bỏ chọn</option>
                           {roles.map((r) => (
-                            <option key={r.id} value={r.id}>
+                            <option key={r.id} value={r.id} className="text-ink bg-white">
                               {r.ten}
                             </option>
                           ))}
@@ -977,6 +1038,10 @@ export default function UserPage() {
                           value={fJobTitle}
                           onChange={(e) => {
                             setFJobTitle(e.target.value);
+                            if (e.target.value === "") {
+                              setSearchJobTitle("");
+                              setCurrentPage(1);
+                            }
                           }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -1000,16 +1065,17 @@ export default function UserPage() {
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <select
-                          className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                          className={FILTER_SELECT_CLASS}
                           value={fActive}
                           onChange={(e) => {
                             setFActive(e.target.value);
                             setCurrentPage(1);
                           }}
+                          style={{ color: fActive === "" ? "transparent" : "inherit" }}
                         >
-                          <option value="">Tất cả</option>
-                          <option value="1">Kích hoạt</option>
-                          <option value="0">Ngừng</option>
+                          <option value="" className="text-ink bg-white">Bỏ chọn</option>
+                          <option value="1" className="text-ink bg-white">Kích hoạt</option>
+                          <option value="0" className="text-ink bg-white">Ngừng</option>
                         </select>
                       </th>
                     </tr>

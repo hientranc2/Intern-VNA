@@ -20,7 +20,8 @@ import {
 import { useCan } from "@/libs/tts/auth/abilityContext";
 
 const FILTER_INPUT_CLASS =
-  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
+  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
+const FILTER_SELECT_CLASS = `${FILTER_INPUT_CLASS} cursor-pointer appearance-none bg-white bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_8px_center] bg-no-repeat pr-6`;
 
 export default function ReportConfigPage() {
   const canCreate = useCan("create", "REPORT_CONFIG");
@@ -200,7 +201,7 @@ export default function ReportConfigPage() {
             <table className="w-full border-collapse text-[13.5px]">
               <thead>
                 <tr>
-                  <th className={`${thBase} w-12`}>Thao tác</th>
+                  <th className={`${thBase} w-12`} />
                   <th className={`${thBase} w-28`}>Năm báo cáo</th>
                   <th className={thBase}>Tên báo cáo</th>
                   <th className={`${thBase} w-32`}>Kỳ báo cáo</th>
@@ -222,16 +223,17 @@ export default function ReportConfigPage() {
                   </th>
                   <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                     <select
-                      className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                      className={FILTER_SELECT_CLASS}
                       value={fTen}
                       onChange={(e) => {
                         setFTen(e.target.value);
                         setCurrentPage(1);
                       }}
+                      style={{ color: fTen === "" ? "transparent" : "inherit" }}
                     >
-                      <option value="">Tất cả</option>
+                      <option value="" className="text-ink bg-white">Bỏ chọn</option>
                       {REPORT_NAME_OPTIONS.map((o) => (
-                        <option key={o} value={o}>
+                        <option key={o} value={o} className="text-ink bg-white">
                           {o}
                         </option>
                       ))}
@@ -239,16 +241,17 @@ export default function ReportConfigPage() {
                   </th>
                   <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                     <select
-                      className={`${FILTER_INPUT_CLASS} cursor-pointer bg-white`}
+                      className={FILTER_SELECT_CLASS}
                       value={fKy}
                       onChange={(e) => {
                         setFKy(e.target.value);
                         setCurrentPage(1);
                       }}
+                      style={{ color: fKy === "" ? "transparent" : "inherit" }}
                     >
-                      <option value="">Tất cả</option>
+                      <option value="" className="text-ink bg-white">Bỏ chọn</option>
                       {KY_OPTIONS.map((o) => (
-                        <option key={o} value={o}>
+                        <option key={o} value={o} className="text-ink bg-white">
                           {o}
                         </option>
                       ))}
