@@ -1325,11 +1325,7 @@ export default function EnterprisePage() {
           <div className="flex items-center justify-center gap-0 pb-4 pt-6">
             <div className="flex items-center gap-2">
               <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[13px] font-bold ${
-                  wizardStep === 1
-                    ? "border-primary bg-white text-primary"
-                    : "border-primary bg-primary text-white"
-                }`}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[12px] font-bold text-white"
               >
                 {wizardStep === 1 ? (
                   "1"
@@ -1347,30 +1343,31 @@ export default function EnterprisePage() {
                 )}
               </div>
               <span
-                className={`text-[13px] ${wizardStep >= 1 ? "font-medium text-ink" : "text-[#9ca3af]"}`}
+                className="text-[13px] font-semibold text-ink"
               >
                 Thông tin doanh nghiệp
               </span>
             </div>
-            <div
-              className={`mx-2 h-0.5 w-[60px] ${wizardStep === 2 ? "bg-primary" : "bg-[#e5e7eb]"}`}
-            />
+            <div className="mx-2 h-0.5 w-[60px] bg-[#e5e7eb]" />
             <div className="flex items-center gap-2">
               <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[13px] font-bold ${
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold ${
                   wizardStep === 2
-                    ? "border-primary bg-white text-primary"
-                    : "border-[#d1d5db] bg-white text-[#9ca3af]"
+                    ? "bg-primary text-white"
+                    : "bg-[#9ca3af] text-white"
                 }`}
               >
                 2
               </div>
               <span
-                className={`text-[13px] ${wizardStep === 2 ? "font-medium text-ink" : "text-[#9ca3af]"}`}
+                className={`text-[13px] ${
+                  wizardStep === 2 ? "font-semibold text-ink" : "font-medium text-[#9ca3af]"
+                }`}
               >
                 Xác nhận đăng ký
               </span>
             </div>
+            <div className="mx-2 h-0.5 w-[60px] bg-[#e5e7eb]" />
           </div>
 
           {isWizardLoading ? (

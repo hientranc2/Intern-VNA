@@ -98,7 +98,7 @@ function Stepper({ step }: { step: number }) {
     <div className="flex items-center justify-center gap-0 border-b border-[#e5e7eb] bg-white py-4">
       <div className="flex items-center gap-2">
         <div
-          className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[12px] font-bold ${step >= 1 ? "border-primary bg-primary text-white" : "border-[#d1d5db] bg-white text-[#9ca3af]"}`}
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[12px] font-bold text-white"
         >
           {step > 1 ? (
             <svg
@@ -116,22 +116,26 @@ function Stepper({ step }: { step: number }) {
           )}
         </div>
         <span
-          className={`text-[13px] ${step >= 1 ? "font-medium text-ink" : "text-[#9ca3af]"}`}
+          className={`text-[13px] ${step >= 1 ? "font-semibold text-ink" : "font-medium text-[#9ca3af]"}`}
         >
           Thông tin doanh nghiệp
         </span>
       </div>
-      <div
-        className={`mx-2 h-0.5 w-[60px] ${step >= 2 ? "bg-primary" : "bg-[#e5e7eb]"}`}
-      />
+      <div className="mx-3 h-[1px] w-[60px] bg-[#e5e7eb]" />
       <div className="flex items-center gap-2">
         <div
-          className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[12px] font-bold ${step >= 2 ? "border-primary bg-white text-primary" : "border-[#d1d5db] bg-white text-[#9ca3af]"}`}
+          className={`flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold ${
+            step >= 2
+              ? "bg-primary text-white"
+              : "bg-[#9ca3af] text-white"
+          }`}
         >
           2
         </div>
         <span
-          className={`text-[13px] ${step >= 2 ? "font-medium text-ink" : "text-[#9ca3af]"}`}
+          className={`text-[13px] ${
+            step >= 2 ? "font-semibold text-ink" : "font-medium text-[#9ca3af]"
+          }`}
         >
           Xác nhận chỉnh sửa
         </span>
@@ -322,6 +326,8 @@ export default function EnterpriseInfoPage() {
   const [otpStep, setOtpStep] = useState(1);
   const [otp, setOtp] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [origLicenseUrl, setOrigLicenseUrl] = useState<string | undefined>();
+  const [origOtherUrl, setOrigOtherUrl] = useState<string | undefined>();
 
   const [attachments, setAttachments] =
     useState<AttachedFile[]>(makeAttachments());
@@ -344,6 +350,8 @@ export default function EnterpriseInfoPage() {
         setInfo(parsed);
         setEditForm(parsed);
         setAttachments(makeAttachments(detail.licenseFile, detail.otherFile));
+        setOrigLicenseUrl(detail.licenseFile ?? undefined);
+        setOrigOtherUrl(detail.otherFile ?? undefined);
       })
       .catch((err) => {
         const msg =
@@ -361,6 +369,18 @@ export default function EnterpriseInfoPage() {
     () => WARDS_BY_PROVINCE[editForm.tinh] ?? [],
     [editForm.tinh],
   );
+
+  const hasChanges = useMemo(() => {
+    const textFieldsChanged = (Object.keys(info) as Array<keyof BusinessFormState>).some(
+      (key) => info[key] !== editForm[key]
+    );
+    if (textFieldsChanged) return true;
+
+    const licenseChanged = !!attachments[0].file || (attachments[0].url !== origLicenseUrl);
+    const otherChanged = !!attachments[1].file || (attachments[1].url !== origOtherUrl);
+
+    return licenseChanged || otherChanged;
+  }, [info, editForm, attachments, origLicenseUrl, origOtherUrl]);
 
   const handleFileSelect = (
     idx: number,
@@ -454,22 +474,7 @@ export default function EnterpriseInfoPage() {
   const doSave = async () => {
     if (!businessId.current) return;
 
-    const isFormChanged = () => {
-      const textFieldsChanged = (Object.keys(info) as Array<keyof BusinessFormState>).some(
-        (key) => info[key] !== editForm[key]
-      );
-      if (textFieldsChanged) return true;
-
-      const originalLicenseUrl = detailRef.current?.licenseFile ?? undefined;
-      const licenseChanged = !!attachments[0].file || (attachments[0].url !== originalLicenseUrl);
-
-      const originalOtherUrl = detailRef.current?.otherFile ?? undefined;
-      const otherChanged = !!attachments[1].file || (attachments[1].url !== originalOtherUrl);
-
-      return licenseChanged || otherChanged;
-    };
-
-    if (!isFormChanged()) {
+    if (!hasChanges) {
       showToast("Không có thay đổi nào cần cập nhật");
       setMode("edit1");
       return;
@@ -511,6 +516,8 @@ export default function EnterpriseInfoPage() {
       setInfo(parsed);
       setEditForm(parsed);
       setAttachments(makeAttachments(updated.licenseFile, updated.otherFile));
+      setOrigLicenseUrl(updated.licenseFile ?? undefined);
+      setOrigOtherUrl(updated.otherFile ?? undefined);
       setMode("edit1");
       showToast("Cập nhật thành công");
     } catch (err) {
@@ -621,7 +628,7 @@ export default function EnterpriseInfoPage() {
     ["Ngành nghề kinh doanh:", editForm.nganh],
     [
       "Địa chỉ đăng ký GPKD:",
-      `${editForm.diaChi}, ${editForm.phuong}, ${editForm.tinh}`,
+      [editForm.diaChi, editForm.phuong, editForm.tinh].filter(Boolean).join(", "),
     ],
     ["Địa điểm kinh doanh:", editForm.diaDiem],
     ["Người đứng đầu doanh nghiệp:", editForm.nguoiDD],
@@ -697,7 +704,7 @@ export default function EnterpriseInfoPage() {
                 <ReviewRow label="Ngành nghề kinh doanh:" value={info.nganh} />
                 <ReviewRow
                   label="Địa chỉ đăng ký GPKD:"
-                  value={`${info.diaChi}, ${info.phuong}, ${info.tinh}`}
+                  value={[info.diaChi, info.phuong, info.tinh].filter(Boolean).join(", ")}
                 />
                 <ReviewRow label="Địa điểm kinh doanh:" value={info.diaDiem} />
                 <ReviewRow
@@ -1116,7 +1123,7 @@ export default function EnterpriseInfoPage() {
                 <button
                   type="button"
                   onClick={confirmEdit2}
-                  disabled={saving}
+                  disabled={saving || !hasChanges}
                   className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving ? (
