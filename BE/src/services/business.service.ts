@@ -363,14 +363,10 @@ export class BusinessService {
       const row = rows[i];
       const rowNum = excelRowNumber(i);
 
-      const businessName = pickCell(row, [
-        ...BUSINESS_HEADER_MAP.businessName,
-      ]);
+      const businessName = pickCell(row, [...BUSINESS_HEADER_MAP.businessName]);
       const taxCode = pickCell(row, [...BUSINESS_HEADER_MAP.taxCode]);
       const businessType = pickCell(row, [...BUSINESS_HEADER_MAP.businessType]);
-      const mainIndustry = pickCell(row, [
-        ...BUSINESS_HEADER_MAP.mainIndustry,
-      ]);
+      const mainIndustry = pickCell(row, [...BUSINESS_HEADER_MAP.mainIndustry]);
       const licenseDate = pickCell(row, [...BUSINESS_HEADER_MAP.licenseDate]);
       const registeredProvince = pickCell(row, [
         ...BUSINESS_HEADER_MAP.registeredProvince,
@@ -379,13 +375,9 @@ export class BusinessService {
         ...BUSINESS_HEADER_MAP.registeredWard,
       ]);
       const address = pickCell(row, [...BUSINESS_HEADER_MAP.address]);
-      const foreignName = pickCell(row, [
-        ...BUSINESS_HEADER_MAP.foreignName,
-      ]);
+      const foreignName = pickCell(row, [...BUSINESS_HEADER_MAP.foreignName]);
       const email = pickCell(row, [...BUSINESS_HEADER_MAP.email]).toLowerCase();
-      const officePhone = pickCell(row, [
-        ...BUSINESS_HEADER_MAP.officePhone,
-      ]);
+      const officePhone = pickCell(row, [...BUSINESS_HEADER_MAP.officePhone]);
       const operatingProvince = pickCell(row, [
         ...BUSINESS_HEADER_MAP.operatingProvince,
       ]);
@@ -503,10 +495,14 @@ export class BusinessService {
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         if (takenTaxCodes.has(r.taxCode)) {
-          errors.push(`Dòng ${i + 1}: "Mã số thuế" "${r.taxCode}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Mã số thuế" "${r.taxCode}" đã tồn tại trong hệ thống`,
+          );
         }
         if (takenEmails.has(r.email)) {
-          errors.push(`Dòng ${i + 1}: "Email" "${r.email}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Email" "${r.email}" đã tồn tại trong hệ thống`,
+          );
         }
       }
     }

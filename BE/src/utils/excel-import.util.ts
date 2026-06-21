@@ -28,10 +28,7 @@ export function parseExcelToRows(buffer: Buffer): ImportRow[] {
 
 // Lấy giá trị chuỗi của một ô theo nhiều tên header có thể có (không phân biệt hoa thường,
 // bỏ khoảng trắng 2 đầu). Trả về chuỗi đã trim hoặc chuỗi rỗng.
-export function pickCell(
-  row: ImportRow,
-  headerCandidates: string[],
-): string {
+export function pickCell(row: ImportRow, headerCandidates: string[]): string {
   for (const key of Object.keys(row)) {
     const normalized = key.trim().toLowerCase();
     if (headerCandidates.some((h) => h.trim().toLowerCase() === normalized)) {

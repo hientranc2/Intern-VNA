@@ -137,7 +137,9 @@ export class EnterpriseTypeService {
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         if (r.ma && takenMas.has(r.ma)) {
-          errors.push(`Dòng ${i + 1}: "Mã loại hình" "${r.ma}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Mã loại hình" "${r.ma}" đã tồn tại trong hệ thống`,
+          );
         }
       }
     }
@@ -147,11 +149,15 @@ export class EnterpriseTypeService {
       select: { ten: true },
     });
     if (existingNames.length > 0) {
-      const takenTens = new Set(existingNames.map((e) => e.ten.toLowerCase().trim()));
+      const takenTens = new Set(
+        existingNames.map((e) => e.ten.toLowerCase().trim()),
+      );
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         if (r.ten && takenTens.has(r.ten.toLowerCase().trim())) {
-          errors.push(`Dòng ${i + 1}: "Tên loại hình" "${r.ten}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Tên loại hình" "${r.ten}" đã tồn tại trong hệ thống`,
+          );
         }
       }
     }

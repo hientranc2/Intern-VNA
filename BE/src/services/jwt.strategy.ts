@@ -69,7 +69,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return;
     }
     const user = await this.userRepo.findOne({ where: { id: payload.sub } });
-    if (!user || !user.isActive) throw new UnauthorizedException(LOCKED_MESSAGE);
+    if (!user || !user.isActive)
+      throw new UnauthorizedException(LOCKED_MESSAGE);
   }
 
   private async getPasswordChangedAt(

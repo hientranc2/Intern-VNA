@@ -321,9 +321,7 @@ export default function EnterpriseInfoPage() {
   const [otpOpen, setOtpOpen] = useState(false);
   const [otpStep, setOtpStep] = useState(1);
   const [otp, setOtp] = useState("");
-  const [otpError, setOtpError] = useState<string | null>(null);
   const [newEmail, setNewEmail] = useState("");
-  const [newEmailError, setNewEmailError] = useState<string | null>(null);
 
   const [attachments, setAttachments] =
     useState<AttachedFile[]>(makeAttachments());
@@ -529,9 +527,7 @@ export default function EnterpriseInfoPage() {
 
   const handleOpenChangeEmailModal = async () => {
     setOtp("");
-    setOtpError(null);
     setNewEmail("");
-    setNewEmailError(null);
     setOtpStep(1);
     setSaving(true);
     try {
@@ -549,31 +545,31 @@ export default function EnterpriseInfoPage() {
   };
 
   const handleResendOtp = async () => {
-    setOtpError(null);
     try {
       await requestChangeEmailOtp();
       countdown.start();
       showToast("Đã gửi lại mã OTP thành công");
     } catch (err) {
-      setOtpError(
+      showToast(
         err instanceof ApiError ? err.message : "Không thể gửi lại mã OTP",
+        "error",
       );
     }
   };
 
   const handleVerifyOtp = async () => {
     if (!otp.trim()) {
-      setOtpError("Vui lòng nhập mã OTP");
+      showToast("Vui lòng nhập mã OTP", "error");
       return;
     }
     setSaving(true);
-    setOtpError(null);
     try {
       await verifyChangeEmailOtp(otp);
       setOtpStep(2);
     } catch (err) {
-      setOtpError(
+      showToast(
         err instanceof ApiError ? err.message : "Mã OTP không chính xác",
+        "error",
       );
     } finally {
       setSaving(false);
@@ -582,19 +578,18 @@ export default function EnterpriseInfoPage() {
 
   const handleSaveNewEmail = async () => {
     if (!newEmail.trim()) {
-      setNewEmailError("Vui lòng nhập email mới");
+      showToast("Vui lòng nhập email mới", "error");
       return;
     }
     if (!isValidEmail(newEmail)) {
-      setNewEmailError("Email không đúng định dạng");
+      showToast("Email không đúng định dạng", "error");
       return;
     }
     if (newEmail === info.email) {
-      setNewEmailError("Email mới phải khác email hiện tại");
+      showToast("Email mới phải khác email hiện tại", "error");
       return;
     }
     setSaving(true);
-    setNewEmailError(null);
     try {
       await changeEmail({ otpCode: otp, newEmail });
       setEditForm((prev) => ({ ...prev, email: newEmail }));
@@ -603,8 +598,9 @@ export default function EnterpriseInfoPage() {
       countdown.stop();
       showToast("Thay đổi Email thành công!");
     } catch (err) {
-      setNewEmailError(
+      showToast(
         err instanceof ApiError ? err.message : "Không thể lưu email mới",
+        "error",
       );
     } finally {
       setSaving(false);
@@ -1193,7 +1189,7 @@ export default function EnterpriseInfoPage() {
                 Bạn vui lòng kiểm tra và điền mã xác thực
               </p>
 
-              {otpError ? <Alert variant="error" message={otpError} /> : null}
+
 
               <div className="mb-4 text-left">
                 <label className="mb-1.5 block text-[12.5px] font-medium text-[#374151]">
@@ -1214,7 +1210,8 @@ export default function EnterpriseInfoPage() {
                 <button
                   type="button"
                   onClick={handleResendOtp}
-                  className="text-primary hover:underline font-medium"
+                  disabled={countdown.seconds > 0}
+                  className="text-primary hover:underline font-medium disabled:cursor-not-allowed disabled:text-[#9ca3af] disabled:no-underline"
                 >
                   Gửi lại
                 </button>
@@ -1235,9 +1232,7 @@ export default function EnterpriseInfoPage() {
                 Vui lòng nhập email mới
               </p>
 
-              {newEmailError ? (
-                <Alert variant="error" message={newEmailError} />
-              ) : null}
+
 
               <div className="mb-5 text-left">
                 <label className="mb-1.5 block text-[12.5px] font-medium text-[#374151]">

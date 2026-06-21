@@ -121,7 +121,9 @@ export class BusinessSectorService {
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         if (r.ma && takenMas.has(r.ma)) {
-          errors.push(`Dòng ${i + 1}: "Mã ngành" "${r.ma}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Mã ngành" "${r.ma}" đã tồn tại trong hệ thống`,
+          );
         }
       }
     }

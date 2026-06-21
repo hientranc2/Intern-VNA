@@ -49,7 +49,8 @@ export class BusinessCreateDto {
   @IsString()
   @IsNotEmpty({ message: 'Mã số thuế không được để trống' })
   @Matches(/^\d{10}(-\d{1,5})?$/, {
-    message: 'Mã số thuế gồm 10 chữ số, hoặc 10 chữ số + dấu gạch + tối đa 5 số',
+    message:
+      'Mã số thuế gồm 10 chữ số, hoặc 10 chữ số + dấu gạch + tối đa 5 số',
   })
   taxCode: string;
 

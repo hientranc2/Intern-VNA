@@ -61,7 +61,9 @@ export class AccidentReportService {
     const namByConfig = new Map(configs.map((c) => [c.id, c.nam]));
 
     return {
-      data: data.map((r) => this.toListItem(r, namByConfig.get(r.configId) ?? null)),
+      data: data.map((r) =>
+        this.toListItem(r, namByConfig.get(r.configId) ?? null),
+      ),
       total,
       page,
       pageSize,
@@ -179,8 +181,12 @@ export class AccidentReportService {
         where: { nam: dto.nam, ky: dto.ky },
       });
       if (!config) {
-        const batDau = dto.ky === '6 tháng' ? `01/07/${dto.nam}` : `15/12/${dto.nam}`;
-        const ketThuc = dto.ky === '6 tháng' ? `05/07/${dto.nam}` : `10/01/${Number(dto.nam) + 1}`;
+        const batDau =
+          dto.ky === '6 tháng' ? `01/07/${dto.nam}` : `15/12/${dto.nam}`;
+        const ketThuc =
+          dto.ky === '6 tháng'
+            ? `05/07/${dto.nam}`
+            : `10/01/${Number(dto.nam) + 1}`;
         config = this.configRepo.create({
           nam: dto.nam,
           ky: dto.ky,

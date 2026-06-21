@@ -198,27 +198,22 @@ export class UsersService {
   }
 
   // 5. XÓA NGƯỜI DÙNG
-  async deleteUser(
-    id: string,
-    requester?: { userId: string; role: string },
-  ) {
+  async deleteUser(id: string, requester?: { userId: string; role: string }) {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
 
     // Tài khoản Super Admin (vai trò SUPER_ADMIN) — bất khả xâm phạm, không ai được xóa.
     if (await this.isSuperAdminUser(user)) {
-      throw new ForbiddenException(
-        'Không thể xóa tài khoản Super Admin',
-      );
+      throw new ForbiddenException('Không thể xóa tài khoản Super Admin');
     }
 
     // Người dùng cấp cao (isSuper) — chỉ Super Admin mới xóa được, admin cùng cấp không được.
     if (await this.isHighRoleUser(user)) {
       const callerIsSuperAdmin = requester
         ? await this.isSuperAdminUser(
-            (await this.userRepository.findOne({
+            await this.userRepository.findOne({
               where: { id: requester.userId },
-            }))!,
+            }),
           )
         : false;
       if (!callerIsSuperAdmin) {
@@ -353,10 +348,14 @@ export class UsersService {
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         if (r.username && takenUsernames.has(r.username)) {
-          errors.push(`Dòng ${i + 1}: "Tên đăng nhập" "${r.username}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Tên đăng nhập" "${r.username}" đã tồn tại trong hệ thống`,
+          );
         }
         if (r.email && takenEmails.has(r.email)) {
-          errors.push(`Dòng ${i + 1}: "Email" "${r.email}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Email" "${r.email}" đã tồn tại trong hệ thống`,
+          );
         }
       }
     }

@@ -16,7 +16,10 @@ import {
   BadRequestException,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 
 import { BusinessService } from '../services/business.service';
@@ -142,12 +145,18 @@ export class BusinessController {
   }
 
   @Patch(':id/status')
-  toggleStatus(@Param('id', ParseUUIDPipe) id: string, @Body() dto: BusinessToggleStatusDto) {
+  toggleStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: BusinessToggleStatusDto,
+  ) {
     return this.businessService.toggleStatus(id, dto);
   }
 
   @Patch(':id/reset-password')
-  resetPassword(@Param('id', ParseUUIDPipe) id: string, @Body() dto: { newPassword: string }) {
+  resetPassword(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: { newPassword: string },
+  ) {
     if (!dto?.newPassword || dto.newPassword.length < 6)
       throw new BadRequestException('Mật khẩu mới phải từ 6 ký tự');
     return this.businessService.resetAccountPassword(id, dto.newPassword);

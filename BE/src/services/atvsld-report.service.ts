@@ -89,7 +89,11 @@ export class AtvsldReportService {
     return { message: 'Đã duyệt báo cáo' };
   }
 
-  async reject(userId: string, id: number, lyDoTuChoi: string): Promise<{ message: string }> {
+  async reject(
+    userId: string,
+    id: number,
+    lyDoTuChoi: string,
+  ): Promise<{ message: string }> {
     const report = await this.repo.findOne({ where: { id } });
     if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
 
@@ -114,7 +118,10 @@ export class AtvsldReportService {
     return { message: 'Đã từ chối báo cáo' };
   }
 
-  async approveMany(userId: string, ids: number[]): Promise<{ message: string }> {
+  async approveMany(
+    userId: string,
+    ids: number[],
+  ): Promise<{ message: string }> {
     if (ids.length === 0) throw new BadRequestException('Danh sách trống');
     const user = await this.userRepo.findOne({ where: { id: userId } });
     const actorName = user ? user.fullName : 'Cán bộ Sở';
@@ -284,8 +291,6 @@ export class AtvsldReportService {
       throw new ForbiddenException('Không có quyền thao tác báo cáo này');
     return report;
   }
-
-
 
   private formatDate(d: Date): string {
     const dd = String(d.getDate()).padStart(2, '0');

@@ -118,12 +118,16 @@ export class CategoryService {
       if (newCha) {
         let currentCha = newCha;
         while (currentCha) {
-          const parentNode = await this.injuryTypeRepo.findOne({ where: { ma: currentCha } });
+          const parentNode = await this.injuryTypeRepo.findOne({
+            where: { ma: currentCha },
+          });
           if (!parentNode) {
             throw new NotFoundException('Không tìm thấy loại chấn thương cha');
           }
           if (parentNode.ma === item.ma) {
-            throw new ConflictException('Mục cha không thể là mục con cháu của mục hiện tại');
+            throw new ConflictException(
+              'Mục cha không thể là mục con cháu của mục hiện tại',
+            );
           }
           currentCha = parentNode.cha;
         }
@@ -132,7 +136,9 @@ export class CategoryService {
       const oldCha = item.cha;
       if (oldCha !== newCha) {
         item.cha = newCha;
-        const parentNode = newCha ? await this.injuryTypeRepo.findOne({ where: { ma: newCha } }) : null;
+        const parentNode = newCha
+          ? await this.injuryTypeRepo.findOne({ where: { ma: newCha } })
+          : null;
         const newCap = parentNode ? Math.min(parentNode.cap + 1, 4) : 1;
         const diffCap = newCap - item.cap;
         item.cap = newCap;
@@ -146,8 +152,13 @@ export class CategoryService {
     return this.injuryTypeRepo.save(item);
   }
 
-  private async updateInjuryTypeDescendants(parentMa: string, diffCap: number): Promise<void> {
-    const children = await this.injuryTypeRepo.find({ where: { cha: parentMa } });
+  private async updateInjuryTypeDescendants(
+    parentMa: string,
+    diffCap: number,
+  ): Promise<void> {
+    const children = await this.injuryTypeRepo.find({
+      where: { cha: parentMa },
+    });
     for (const child of children) {
       child.cap = Math.min(Math.max(child.cap + diffCap, 1), 4);
       await this.injuryTypeRepo.save(child);
@@ -198,12 +209,16 @@ export class CategoryService {
       if (newCha) {
         let currentCha = newCha;
         while (currentCha) {
-          const parentNode = await this.occupationRepo.findOne({ where: { ma: currentCha } });
+          const parentNode = await this.occupationRepo.findOne({
+            where: { ma: currentCha },
+          });
           if (!parentNode) {
             throw new NotFoundException('Không tìm thấy nghề nghiệp cha');
           }
           if (parentNode.ma === item.ma) {
-            throw new ConflictException('Mục cha không thể là mục con cháu của mục hiện tại');
+            throw new ConflictException(
+              'Mục cha không thể là mục con cháu của mục hiện tại',
+            );
           }
           currentCha = parentNode.cha;
         }
@@ -212,7 +227,9 @@ export class CategoryService {
       const oldCha = item.cha;
       if (oldCha !== newCha) {
         item.cha = newCha;
-        const parentNode = newCha ? await this.occupationRepo.findOne({ where: { ma: newCha } }) : null;
+        const parentNode = newCha
+          ? await this.occupationRepo.findOne({ where: { ma: newCha } })
+          : null;
         const newCap = parentNode ? Math.min(parentNode.cap + 1, 4) : 1;
         const diffCap = newCap - item.cap;
         item.cap = newCap;
@@ -226,8 +243,13 @@ export class CategoryService {
     return this.occupationRepo.save(item);
   }
 
-  private async updateOccupationDescendants(parentMa: string, diffCap: number): Promise<void> {
-    const children = await this.occupationRepo.find({ where: { cha: parentMa } });
+  private async updateOccupationDescendants(
+    parentMa: string,
+    diffCap: number,
+  ): Promise<void> {
+    const children = await this.occupationRepo.find({
+      where: { cha: parentMa },
+    });
     for (const child of children) {
       child.cap = Math.min(Math.max(child.cap + diffCap, 1), 4);
       await this.occupationRepo.save(child);
@@ -251,7 +273,12 @@ export class CategoryService {
 
     const FACTOR_HEADER_MAP = {
       ma: ['Mã yếu tố', 'Mã'],
-      ten: ['Tên yếu tố gây chấn thương', 'Tên yếu tố chấn thương', 'Tên yếu tố', 'Tên'],
+      ten: [
+        'Tên yếu tố gây chấn thương',
+        'Tên yếu tố chấn thương',
+        'Tên yếu tố',
+        'Tên',
+      ],
       active: ['Trạng thái', 'Kích hoạt', 'Active'],
     } as const;
 
@@ -271,7 +298,9 @@ export class CategoryService {
         throw new BadRequestException(`Dòng ${rowNum}: thiếu "Mã yếu tố"`);
       }
       if (!ten) {
-        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Tên yếu tố gây chấn thương"`);
+        throw new BadRequestException(
+          `Dòng ${rowNum}: thiếu "Tên yếu tố gây chấn thương"`,
+        );
       }
       if (seenMas.has(ma)) {
         throw new BadRequestException(
@@ -316,7 +345,9 @@ export class CategoryService {
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         if (r.ma && takenMas.has(r.ma)) {
-          errors.push(`Dòng ${i + 1}: "Mã yếu tố" "${r.ma}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Mã yếu tố" "${r.ma}" đã tồn tại trong hệ thống`,
+          );
         }
       }
     }
@@ -326,11 +357,15 @@ export class CategoryService {
       select: { ten: true },
     });
     if (existingNames.length > 0) {
-      const takenTens = new Set(existingNames.map((e) => e.ten.toLowerCase().trim()));
+      const takenTens = new Set(
+        existingNames.map((e) => e.ten.toLowerCase().trim()),
+      );
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         if (r.ten && takenTens.has(r.ten.toLowerCase().trim())) {
-          errors.push(`Dòng ${i + 1}: "Tên yếu tố gây chấn thương" "${r.ten}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Tên yếu tố gây chấn thương" "${r.ten}" đã tồn tại trong hệ thống`,
+          );
         }
       }
     }
@@ -339,7 +374,8 @@ export class CategoryService {
       throw new ConflictException(errors.join('\n'));
     }
 
-    const queryRunner = this.injuryFactorRepo.manager.connection.createQueryRunner();
+    const queryRunner =
+      this.injuryFactorRepo.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
@@ -370,7 +406,12 @@ export class CategoryService {
 
     const TYPE_HEADER_MAP = {
       ma: ['Mã số', 'Mã'],
-      ten: ['Tên loại chấn thương', 'Tên loại chấn thương gây chấn thương', 'Tên loại', 'Tên'],
+      ten: [
+        'Tên loại chấn thương',
+        'Tên loại chấn thương gây chấn thương',
+        'Tên loại',
+        'Tên',
+      ],
       cap: ['Cấp', 'Cấp độ'],
       cha: ['Mã cha', 'Cha'],
     } as const;
@@ -391,7 +432,9 @@ export class CategoryService {
         throw new BadRequestException(`Dòng ${rowNum}: thiếu "Mã số"`);
       }
       if (!ten) {
-        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Tên loại chấn thương"`);
+        throw new BadRequestException(
+          `Dòng ${rowNum}: thiếu "Tên loại chấn thương"`,
+        );
       }
       if (!capStr) {
         throw new BadRequestException(`Dòng ${rowNum}: thiếu "Cấp"`);
@@ -425,7 +468,9 @@ export class CategoryService {
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         if (r.ma && takenMas.has(r.ma)) {
-          errors.push(`Dòng ${i + 1}: "Mã số" "${r.ma}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Mã số" "${r.ma}" đã tồn tại trong hệ thống`,
+          );
         }
       }
     }
@@ -434,7 +479,8 @@ export class CategoryService {
       throw new ConflictException(errors.join('\n'));
     }
 
-    const queryRunner = this.injuryTypeRepo.manager.connection.createQueryRunner();
+    const queryRunner =
+      this.injuryTypeRepo.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
@@ -486,7 +532,9 @@ export class CategoryService {
         throw new BadRequestException(`Dòng ${rowNum}: thiếu "Mã nghề"`);
       }
       if (!ten) {
-        throw new BadRequestException(`Dòng ${rowNum}: thiếu "Tên nghề nghiệp"`);
+        throw new BadRequestException(
+          `Dòng ${rowNum}: thiếu "Tên nghề nghiệp"`,
+        );
       }
       if (!capStr) {
         throw new BadRequestException(`Dòng ${rowNum}: thiếu "Cấp"`);
@@ -520,7 +568,9 @@ export class CategoryService {
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         if (r.ma && takenMas.has(r.ma)) {
-          errors.push(`Dòng ${i + 1}: "Mã nghề" "${r.ma}" đã tồn tại trong hệ thống`);
+          errors.push(
+            `Dòng ${i + 1}: "Mã nghề" "${r.ma}" đã tồn tại trong hệ thống`,
+          );
         }
       }
     }
@@ -529,7 +579,8 @@ export class CategoryService {
       throw new ConflictException(errors.join('\n'));
     }
 
-    const queryRunner = this.occupationRepo.manager.connection.createQueryRunner();
+    const queryRunner =
+      this.occupationRepo.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {

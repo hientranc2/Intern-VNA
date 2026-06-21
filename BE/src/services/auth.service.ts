@@ -320,7 +320,9 @@ export class AuthService {
   // --- Quên mật khẩu cho tài khoản doanh nghiệp (email ở Business, mật khẩu ở Account) ---
 
   private async sendBusinessForgotOtp(email: string) {
-    const business = await this.businessRepository.findOne({ where: { email } });
+    const business = await this.businessRepository.findOne({
+      where: { email },
+    });
     if (!business)
       throw new NotFoundException('Không tìm thấy tài khoản với email này');
 
@@ -371,7 +373,9 @@ export class AuthService {
       throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
     if (new Date() > stored.expiresAt) {
       this.businessForgotOtpStore.delete(dto.email);
-      throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng yêu cầu gửi lại');
+      throw new BadRequestException(
+        'Mã OTP đã hết hạn. Vui lòng yêu cầu gửi lại',
+      );
     }
     if (stored.code !== dto.otpCode)
       throw new BadRequestException('Mã OTP không chính xác');
@@ -503,7 +507,9 @@ export class AuthService {
           html: htmlTemplate,
         });
       } catch (error) {
-        console.log('Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.');
+        console.log(
+          'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
+        );
       }
       return { message: 'Đã gửi mã OTP đến email HIỆN TẠI của bạn' };
     }
@@ -524,7 +530,9 @@ export class AuthService {
 
     this.businessChangeEmailOtpStore.set(business.id, { code: otp, expiresAt });
 
-    console.log(`[MÃ OTP ĐỂ ĐỔI EMAIL CỦA DOANH NGHIỆP ${business.businessName} LÀ]: ${otp}`);
+    console.log(
+      `[MÃ OTP ĐỂ ĐỔI EMAIL CỦA DOANH NGHIỆP ${business.businessName} LÀ]: ${otp}`,
+    );
 
     const htmlTemplate = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
@@ -553,7 +561,9 @@ export class AuthService {
         html: htmlTemplate,
       });
     } catch (error) {
-      console.log('Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.');
+      console.log(
+        'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
+      );
     }
     return { message: 'Đã gửi mã OTP đến email HIỆN TẠI của bạn' };
   }
@@ -605,7 +615,9 @@ export class AuthService {
         where: { email: dto.newEmail },
       });
       if (emailExist)
-        throw new ConflictException('Email mới này đã được sử dụng bởi người khác!');
+        throw new ConflictException(
+          'Email mới này đã được sử dụng bởi người khác!',
+        );
 
       user.email = dto.newEmail;
       user.otpCode = null;
@@ -639,7 +651,9 @@ export class AuthService {
       where: { email: dto.newEmail },
     });
     if (emailExist && emailExist.id !== business.id)
-      throw new ConflictException('Email mới này đã được sử dụng bởi doanh nghiệp khác!');
+      throw new ConflictException(
+        'Email mới này đã được sử dụng bởi doanh nghiệp khác!',
+      );
 
     business.email = dto.newEmail;
     await this.businessRepository.save(business);
