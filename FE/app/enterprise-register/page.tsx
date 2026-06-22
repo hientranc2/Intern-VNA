@@ -28,6 +28,7 @@ type OutlinedTextFieldProps = {
   label: string;
   value: string;
   onChange?: (val: string) => void;
+  onChangeEvent?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   disabled?: boolean;
   required?: boolean;
   error?: boolean;
@@ -41,6 +42,7 @@ function OutlinedTextField({
   label,
   value,
   onChange,
+  onChangeEvent,
   disabled,
   required,
   error,
@@ -59,7 +61,13 @@ function OutlinedTextField({
           type={type}
           disabled={disabled}
           value={value}
-          onChange={(e) => onChange?.(e.target.value)}
+          onChange={(e) => {
+            if (onChangeEvent) {
+              onChangeEvent(e);
+            } else {
+              onChange?.(e.target.value);
+            }
+          }}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           maxLength={maxLength}
@@ -111,6 +119,39 @@ function OutlinedTextField({
       )}
     </div>
   );
+}
+
+// Tự động chèn dấu "-" sau 10 số đầu khi người dùng gõ tiếp số thứ 11.
+function formatTaxCodeInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 15); // tối đa 10 + 5 số
+  return digits.length > 10
+    ? `${digits.slice(0, 10)}-${digits.slice(10)}`
+    : digits;
+}
+
+// Đếm số chữ số tính từ đầu chuỗi đến vị trí caret (trước khi format)
+function countDigitsBeforeCaret(value: string, caret: number): number {
+  let count = 0;
+  for (let i = 0; i < caret && i < value.length; i++) {
+    if (/\d/.test(value[i])) count++;
+  }
+  return count;
+}
+
+// Tìm vị trí trong chuỗi đã format ứng với đúng số lượng chữ số đó
+function caretPositionForDigitCount(
+  formatted: string,
+  digitCount: number,
+): number {
+  if (digitCount <= 0) return 0;
+  let seen = 0;
+  for (let i = 0; i < formatted.length; i++) {
+    if (/\d/.test(formatted[i])) {
+      seen++;
+      if (seen === digitCount) return i + 1;
+    }
+  }
+  return formatted.length;
 }
 
 // Map thông điệp lỗi BE về field thuộc bước 1 → quay về bước 1 + bôi đỏ inline tại field.
@@ -421,9 +462,26 @@ export default function EnterpriseRegisterPage() {
                     label="Mã số thuế"
                     value={form.mst}
                     maxLength={16}
-                    onChange={(val) => {
-                      setField("mst", val);
-                      if (wizardFieldErrors.mst) setWizardFieldErrors((p) => ({ ...p, mst: undefined }));
+                    onChangeEvent={(e) => {
+                      const input = e.target;
+                      const caret = input.selectionStart ?? input.value.length;
+                      const digitsBeforeCaret = countDigitsBeforeCaret(
+                        input.value,
+                        caret,
+                      );
+                      const formatted = formatTaxCodeInput(input.value);
+
+                      setField("mst", formatted);
+                      if (wizardFieldErrors.mst)
+                        setWizardFieldErrors((p) => ({ ...p, mst: undefined }));
+
+                      requestAnimationFrame(() => {
+                        const pos = caretPositionForDigitCount(
+                          formatted,
+                          digitsBeforeCaret,
+                        );
+                        input.setSelectionRange(pos, pos);
+                      });
                     }}
                     error={!!wizardFieldErrors.mst}
                     helperText={wizardFieldErrors.mst}
@@ -522,7 +580,8 @@ export default function EnterpriseRegisterPage() {
                     label="Số điện thoại cơ quan"
                     value={form.sdt}
                     onChange={(val) => {
-                      setField("sdt", val);
+                      const cleaned = val.replace(/[^\d+]/g, "");
+                      setField("sdt", cleaned);
                       if (wizardFieldErrors.sdt) setWizardFieldErrors((p) => ({ ...p, sdt: undefined }));
                     }}
                     error={!!wizardFieldErrors.sdt}
@@ -539,7 +598,8 @@ export default function EnterpriseRegisterPage() {
                     label="SĐT liên hệ người đứng đầu"
                     value={form.sdtDD}
                     onChange={(val) => {
-                      setField("sdtDD", val);
+                      const cleaned = val.replace(/[^\d+]/g, "");
+                      setField("sdtDD", cleaned);
                       if (wizardFieldErrors.sdtDD) setWizardFieldErrors((p) => ({ ...p, sdtDD: undefined }));
                     }}
                     error={!!wizardFieldErrors.sdtDD}

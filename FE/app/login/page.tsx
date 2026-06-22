@@ -133,6 +133,7 @@ export default function LoginPage() {
             fullWidth
             size="small"
             required
+            slotProps={{ inputLabel: { shrink: true } }}
           />
         </div>
 
@@ -155,6 +156,7 @@ export default function LoginPage() {
             size="small"
             required
             slotProps={{
+              inputLabel: { shrink: true },
               input: {
                 endAdornment: (
                   <InputAdornment position="end">

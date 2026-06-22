@@ -55,7 +55,7 @@ function emptyForm(): BusinessFormState {
     ngayCap: "",
     loai: "",
     nganh: "",
-    tinh: "",
+    tinh: "Thành phố Hồ Chí Minh",
     phuong: "",
     diaChi: "",
     diaDiem: "",
@@ -962,7 +962,8 @@ export default function EnterpriseInfoPage() {
                     error={!!editErrors.sdt}
                     helperText={editErrors.sdt}
                     onChange={(v) => {
-                      setField("sdt", v);
+                      const cleaned = v.replace(/[^\d+]/g, "");
+                      setField("sdt", cleaned);
                       if (editErrors.sdt)
                         setEditErrors((p) => ({ ...p, sdt: undefined }));
                     }}
@@ -985,7 +986,8 @@ export default function EnterpriseInfoPage() {
                     error={!!editErrors.sdtDD}
                     helperText={editErrors.sdtDD}
                     onChange={(v) => {
-                      setField("sdtDD", v);
+                      const cleaned = v.replace(/[^\d+]/g, "");
+                      setField("sdtDD", cleaned);
                       if (editErrors.sdtDD)
                         setEditErrors((p) => ({ ...p, sdtDD: undefined }));
                     }}

@@ -21,6 +21,7 @@ import {
   defineAbilityFor,
   SUBJECT_BY_PATH,
   type AppAbility,
+  type AppSubject,
 } from "@/libs/tts/auth/ability";
 
 function getInitials(fullName: string): string {
@@ -40,8 +41,11 @@ import { PasswordField } from "@/libs/shared/core/components/PasswordField/Passw
 const PATH_ACTIVE: Record<string, string> = {
   "/permission": "Phân quyền",
   "/role": "Vai trò",
-  "/user": "Quản lý người dùng",
+  "/user": "Tài khoản",
   "/enterprise-type": "Loại hình doanh nghiệp",
+  "/enterprise%20type": "Loại hình doanh nghiệp",
+  "/enterprise type": "Loại hình doanh nghiệp",
+  "/enterprise_type": "Loại hình doanh nghiệp",
   "/business-sector": "Ngành nghề kinh doanh",
   "/enterprise": "Quản lý doanh nghiệp",
   "/enterprise/create": "Quản lý doanh nghiệp",
@@ -50,6 +54,41 @@ const PATH_ACTIVE: Record<string, string> = {
   "/category": "Danh mục chung",
   "/accident-report": "TNLĐ theo HĐLĐ",
 };
+
+function normalizePathname(path: string): string {
+  try {
+    path = decodeURIComponent(path);
+  } catch (e) {}
+  return path.toLowerCase().trim().replace(/\/$/, "").replace(/[_\s]+/g, "-");
+}
+
+function getActiveLabel(path: string): string {
+  const normPath = normalizePathname(path);
+  for (const [key, val] of Object.entries(PATH_ACTIVE)) {
+    if (normalizePathname(key) === normPath) return val;
+  }
+  const sortedKeys = Object.keys(PATH_ACTIVE).sort((a, b) => b.length - a.length);
+  for (const key of sortedKeys) {
+    if (key !== "/" && normPath.startsWith(normalizePathname(key))) {
+      return PATH_ACTIVE[key];
+    }
+  }
+  return "";
+}
+
+function getSubjectForPath(path: string): AppSubject | undefined {
+  const normPath = normalizePathname(path);
+  for (const [key, val] of Object.entries(SUBJECT_BY_PATH)) {
+    if (normalizePathname(key) === normPath) return val;
+  }
+  const sortedKeys = Object.keys(SUBJECT_BY_PATH).sort((a, b) => b.length - a.length);
+  for (const key of sortedKeys) {
+    if (key !== "/" && normPath.startsWith(normalizePathname(key))) {
+      return SUBJECT_BY_PATH[key];
+    }
+  }
+  return undefined;
+}
 
 export default function SoLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -109,7 +148,7 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
   // Chặn truy cập trực tiếp bằng URL khi không có quyền "view" trang đó.
   useEffect(() => {
     if (!permsReady) return;
-    const subject = SUBJECT_BY_PATH[pathname];
+    const subject = getSubjectForPath(pathname);
     if (subject && !ability.can("view", subject)) router.replace("/account");
   }, [permsReady, ability, pathname, router]);
 
@@ -171,7 +210,7 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
       >
         <div className="min-h-screen bg-body text-ink">
           <AppSidebar
-            active={PATH_ACTIVE[pathname]}
+            active={getActiveLabel(pathname)}
             collapsed={!sidebarOpen}
             onToggle={toggle}
             onChangePassword={openChangePwd}

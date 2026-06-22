@@ -26,7 +26,7 @@ export function TriCheckbox({ checked, indeterminate = false, onChange, classNam
       disabled={disabled}
       title={title}
       onChange={(e) => onChange(e.target.checked)}
-      className={className ?? "h-[15px] w-[15px] cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-40"}
+      className={className ?? "h-[15px] w-[15px] cursor-pointer accent-primary disabled:cursor-not-allowed"}
     />
   );
 }

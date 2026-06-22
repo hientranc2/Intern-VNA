@@ -3,7 +3,6 @@
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Autocomplete,
   FormHelperText,
   MenuItem,
   TextField,
@@ -29,6 +28,7 @@ import {
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
+import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 
 const EMPTY_PROFILE = {
   username: "",
@@ -37,7 +37,7 @@ const EMPTY_PROFILE = {
   gender: "",
   jobTitle: "",
   role: "",
-  province: "",
+  province: "Thành phố Hồ Chí Minh",
   ward: "",
   address: "",
 };
@@ -495,21 +495,18 @@ export default function AccountPage() {
                   fullWidth
                   required
                 />
-                <div className="flex flex-col gap-1.5">
-                  <DateInput
-                    value={form.dob}
-                    onChange={(v) => {
-                      setField("dob", v);
-                      if (formErrors.dob)
-                        setFormErrors((p) => ({ ...p, dob: undefined }));
-                    }}
-                    max={localISODate(new Date())}
-                    error={!!formErrors.dob}
-                  />
-                  {formErrors.dob && (
-                    <p className="text-[11px] text-danger">{formErrors.dob}</p>
-                  )}
-                </div>
+                <DateInput
+                  label="Ngày tháng năm sinh"
+                  value={form.dob}
+                  onChange={(v) => {
+                    setField("dob", v);
+                    if (formErrors.dob)
+                      setFormErrors((p) => ({ ...p, dob: undefined }));
+                  }}
+                  max={localISODate(new Date())}
+                  error={!!formErrors.dob}
+                  helperText={formErrors.dob}
+                />
                 <TextField
                   label="Giới tính"
                   select
@@ -565,50 +562,24 @@ export default function AccountPage() {
                 Thông tin liên hệ
               </div>
               <div className="grid grid-cols-2 gap-x-5 gap-y-6">
-                <Autocomplete
+                <SearchableSelect
                   options={PROVINCES}
-                  value={form.province || null}
-                  onChange={(_, v) => {
-                    setField("province", v ?? "");
+                  value={form.province}
+                  onChange={(v) => {
+                    setField("province", v);
                     setField("ward", "");
                   }}
-                  slotProps={{
-                    popper: {
-                      modifiers: [
-                        { name: "offset", options: { offset: [0, 8] } },
-                      ],
-                    },
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Tỉnh/ thành phố"
-                      size="small"
-                      fullWidth
-                    />
-                  )}
+                  label="Tỉnh/ thành phố"
+                  dropUp
                 />
 
-                <Autocomplete
+                <SearchableSelect
                   options={WARDS_BY_PROVINCE[form.province] ?? []}
-                  value={form.ward || null}
+                  value={form.ward}
                   disabled={!form.province}
-                  onChange={(_, v) => setField("ward", v ?? "")}
-                  slotProps={{
-                    popper: {
-                      modifiers: [
-                        { name: "offset", options: { offset: [0, 8] } },
-                      ],
-                    },
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Phường / Xã"
-                      size="small"
-                      fullWidth
-                    />
-                  )}
+                  onChange={(v) => setField("ward", v)}
+                  label="Phường / Xã"
+                  dropUp
                 />
 
                 <div className="col-span-2">

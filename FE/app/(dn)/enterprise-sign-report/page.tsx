@@ -31,7 +31,7 @@ type PageView = "list" | "form";
 type FormStep = "khaibao" | "xembaocao";
 
 const FILTER_INPUT =
-  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] text-ink outline-none focus:border-[#3b82f6]";
+  "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
 const FIELD =
   "h-[38px] w-full rounded-md border border-line px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
 const SELECT_FIELD =
@@ -75,23 +75,37 @@ function MiniDateFilter({
   onChange: (v: string) => void;
   disabled?: boolean;
 }) {
-  const formatted = value ? ymdToDmy(value) : "dd/mm/yyyy";
+  const formatted = value ? ymdToDmy(value) : "";
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const openPicker = () => {
+    if (disabled) return;
+    try {
+      inputRef.current?.showPicker?.();
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div
-      className={`relative flex items-center justify-between h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] select-none ${disabled ? "bg-[#f3f4f6] cursor-not-allowed opacity-60" : "bg-white cursor-pointer"}`}
+      onClick={openPicker}
+      className={`relative flex items-center justify-between h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal select-none ${disabled ? "bg-[#f3f4f6] cursor-not-allowed opacity-60" : "bg-white cursor-pointer"}`}
     >
       <span
-        className={
+        className={`pointer-events-none ${
           disabled ? "text-[#9ca3af]" : value ? "text-ink" : "text-muted"
-        }
+        }`}
       >
         {formatted}
       </span>
       {value && !disabled ? (
         <button
           type="button"
-          onClick={() => onChange("")}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChange("");
+          }}
           className="clear-btn p-0.5 text-muted hover:text-ink z-10 relative"
         >
           <svg
@@ -101,6 +115,7 @@ function MiniDateFilter({
             fill="none"
             stroke="currentColor"
             strokeWidth="3"
+            className="pointer-events-none"
           >
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
@@ -108,7 +123,7 @@ function MiniDateFilter({
         </button>
       ) : (
         <svg
-          className="text-muted"
+          className="text-muted pointer-events-none"
           width="10"
           height="10"
           viewBox="0 0 24 24"
@@ -123,11 +138,12 @@ function MiniDateFilter({
         </svg>
       )}
       <input
+        ref={inputRef}
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-0 disabled:cursor-not-allowed"
+        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-0 disabled:cursor-not-allowed pointer-events-none"
       />
     </div>
   );
@@ -176,7 +192,7 @@ function DeclarationField({
         <input
           type={field.type === "number" || !field.type ? "number" : "text"}
           min={0}
-          className={`${FIELD} ${field.unit ? "pr-24" : ""}${invalid ? " border-danger" : ""}${disabled ? " bg-[#f3f4f6] cursor-not-allowed text-[#9ca3af] border-[#e5e7eb]" : ""}`}
+          className={`${FIELD} ${field.unit ? "pr-24" : ""}${invalid ? " border-danger border-2" : ""}${disabled ? " bg-[#f9fafb] cursor-not-allowed text-ink opacity-100 border-[#e5e7eb]" : ""}`}
           value={value}
           placeholder={field.type === "month" ? "MM/YYYY" : undefined}
           onChange={(e) => onChange(e.target.value)}
@@ -188,6 +204,11 @@ function DeclarationField({
           </span>
         ) : null}
       </div>
+      {invalid && (
+        <span className="text-[11px] text-danger mt-0.5">
+          Vui lòng nhập {field.label.toLowerCase()}
+        </span>
+      )}
     </div>
   );
 }
@@ -429,7 +450,6 @@ export default function EnterpriseSignReportPage() {
     );
     if (missing.length > 0) {
       setTriedSubmit(true);
-      setToast(`Vui lòng nhập: ${missing.map((f) => f.label).join(", ")}`);
       setStep("khaibao");
       return false;
     }
@@ -502,15 +522,16 @@ export default function EnterpriseSignReportPage() {
             <div className="flex items-center gap-3">
               <select
                 className={YEAR_SELECT}
+                style={{ color: (year === "" || year === "Tất cả") ? "#9ca3af" : "inherit" }}
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
               >
-                <option value="">Tất cả</option>
-                <option value="2022">2022</option>
-                <option value="2023">2023</option>
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
+                <option value="" className="text-ink bg-white">Tất cả</option>
+                <option value="2022" className="text-ink bg-white">2022</option>
+                <option value="2023" className="text-ink bg-white">2023</option>
+                <option value="2024" className="text-ink bg-white">2024</option>
+                <option value="2025" className="text-ink bg-white">2025</option>
+                <option value="2026" className="text-ink bg-white">2026</option>
               </select>
               <button
                 type="button"
@@ -545,7 +566,7 @@ export default function EnterpriseSignReportPage() {
                         { name: "Tên doanh nghiệp", width: "" },
                         { name: "Ngày bắt đầu", width: "w-[110px]" },
                         { name: "Ngày cập nhật", width: "w-[125px]" },
-                        { name: "Năm", width: "w-[80px]" },
+                        { name: "Năm", width: "w-[95px]" },
                         { name: "Kỳ báo cáo", width: "w-[110px]" },
                         { name: "Ngày kết thúc", width: "w-[125px]" },
                         {
@@ -566,12 +587,13 @@ export default function EnterpriseSignReportPage() {
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <select
                           className={`${FILTER_INPUT} cursor-pointer bg-white`}
+                          style={{ color: fStatus === "" ? "#9ca3af" : "inherit" }}
                           value={fStatus}
                           onChange={(e) => setFStatus(e.target.value)}
                         >
-                          <option value="">Tất cả</option>
+                          <option value="" className="text-ink bg-white">Tất cả</option>
                           {STATUS_OPTIONS.map((s) => (
-                            <option key={s}>{s}</option>
+                            <option key={s} className="text-ink bg-white">{s}</option>
                           ))}
                         </select>
                       </th>
@@ -595,21 +617,37 @@ export default function EnterpriseSignReportPage() {
                         />
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                        <input
-                          className={FILTER_INPUT}
+                        <select
+                          className={`${FILTER_INPUT} cursor-pointer bg-white`}
+                          style={{ color: fNam === "" ? "#9ca3af" : "inherit" }}
                           value={fNam}
                           onChange={(e) => setFNam(e.target.value)}
-                        />
+                        >
+                          <option value="" className="text-ink bg-white">Tất cả</option>
+                          {(() => {
+                            const maxYear = new Date().getFullYear();
+                            const years = [];
+                            for (let y = maxYear; y >= 2022; y--) {
+                              years.push(y);
+                            }
+                            return years.map((y) => (
+                              <option key={y} value={String(y)} className="text-ink bg-white">
+                                {y}
+                              </option>
+                            ));
+                          })()}
+                        </select>
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                         <select
                           className={`${FILTER_INPUT} cursor-pointer bg-white`}
+                          style={{ color: fKy === "" ? "#9ca3af" : "inherit" }}
                           value={fKy}
                           onChange={(e) => setFKy(e.target.value)}
                         >
-                          <option value="">Tất cả</option>
-                          <option>6 tháng</option>
-                          <option>Cả năm</option>
+                          <option value="" className="text-ink bg-white">Tất cả</option>
+                          <option className="text-ink bg-white">6 tháng</option>
+                          <option className="text-ink bg-white">Cả năm</option>
                         </select>
                       </th>
                       <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
@@ -777,7 +815,7 @@ export default function EnterpriseSignReportPage() {
               <button
                 type="button"
                 onClick={() => setView("list")}
-                className="text-[13.5px] font-medium text-[#374151] hover:text-ink"
+                className="flex h-9 items-center justify-center rounded-md border border-line px-4 text-[13.5px] font-medium text-[#374151] hover:bg-[#f9fafb] hover:text-ink"
               >
                 Huỷ bỏ
               </button>
@@ -1017,7 +1055,7 @@ export default function EnterpriseSignReportPage() {
               onChange={(e) => setCreateYear(e.target.value)}
             >
               {(() => {
-                const maxYear = new Date().getFullYear() + 2;
+                const maxYear = new Date().getFullYear();
                 const years = [];
                 for (let y = maxYear; y >= 2022; y--) {
                   years.push(String(y));

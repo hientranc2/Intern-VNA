@@ -212,14 +212,29 @@ export default function ReportConfigPage() {
                 <tr>
                   <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                   <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
-                    <input
-                      className={FILTER_INPUT_CLASS}
+                    <select
+                      className={`${FILTER_SELECT_CLASS} cursor-pointer bg-white`}
+                      style={{ color: fNam === "" ? "#9ca3af" : "inherit" }}
                       value={fNam}
                       onChange={(e) => {
                         setFNam(e.target.value);
                         setCurrentPage(1);
                       }}
-                    />
+                    >
+                      <option value="" className="text-ink bg-white">Tất cả</option>
+                      {(() => {
+                        const maxYear = new Date().getFullYear();
+                        const years = [];
+                        for (let y = maxYear; y >= 2022; y--) {
+                          years.push(y);
+                        }
+                        return years.map((y) => (
+                          <option key={y} value={String(y)} className="text-ink bg-white">
+                            {y}
+                          </option>
+                        ));
+                      })()}
+                    </select>
                   </th>
                   <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                     <select

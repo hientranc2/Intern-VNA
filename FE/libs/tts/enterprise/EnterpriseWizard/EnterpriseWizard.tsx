@@ -616,7 +616,8 @@ export function EnterpriseWizard({
                   value={form.officePhone}
                   disabled={mode === "view"}
                   onChange={(e) => {
-                    setField("officePhone", e.target.value);
+                    const cleaned = e.target.value.replace(/[^\d+]/g, "");
+                    setField("officePhone", cleaned);
                     if (fieldErrors.officePhone)
                       setFieldErrors((p) => ({
                         ...p,
@@ -671,7 +672,8 @@ export function EnterpriseWizard({
                   value={form.representativePhone}
                   disabled={mode === "view"}
                   onChange={(e) => {
-                    setField("representativePhone", e.target.value);
+                    const cleaned = e.target.value.replace(/[^\d+]/g, "");
+                    setField("representativePhone", cleaned);
                     if (fieldErrors.representativePhone)
                       setFieldErrors((p) => ({
                         ...p,

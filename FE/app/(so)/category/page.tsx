@@ -1425,7 +1425,12 @@ export default function CategoryPage() {
                                 min={1}
                                 max={4}
                                 value={row["Cấp"] || ""}
-                                onChange={(e) => handleCellChange(idx, "Cấp", e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (["-", "+", "e", "E", "."].includes(e.key)) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onChange={(e) => handleCellChange(idx, "Cấp", e.target.value.replace(/\D/g, ""))}
                                 className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
                                   hasCapError
                                     ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"

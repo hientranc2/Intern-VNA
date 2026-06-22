@@ -10,7 +10,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Autocomplete, FormHelperText, MenuItem } from "@mui/material";
+import { FormHelperText, MenuItem } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
@@ -20,10 +20,6 @@ import { type Role } from "@/libs/tts/role/roleData";
 import { getRoleList } from "@/libs/tts/role/roleApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { TextField } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import dayjs from "dayjs";
 import {
   getUserList,
   createUser,
@@ -82,7 +78,7 @@ const EMPTY_FORM: UserForm = {
   isActive: true,
   dob: "",
   gender: "",
-  province: "",
+  province: "Thành phố Hồ Chí Minh",
   ward: "",
   address: "",
 };
@@ -159,7 +155,7 @@ export default function UserPage() {
   const [fRoleId, setFRoleId] = useState("");
   const [fJobTitle, setFJobTitle] = useState("");
   const [fActive, setFActive] = useState("");
-  const [fProvince, setFProvince] = useState("");
+  const [fProvince, setFProvince] = useState("Thành phố Hồ Chí Minh");
 
   const [searchFullName, setSearchFullName] = useState("");
   const [searchUsername, setSearchUsername] = useState("");
@@ -191,7 +187,7 @@ export default function UserPage() {
     setFJobTitle("");
     setSearchJobTitle("");
     setFActive("");
-    setFProvince("");
+    setFProvince("Thành phố Hồ Chí Minh");
     setCurrentPage(1);
   };
 
@@ -1121,7 +1117,7 @@ export default function UserPage() {
                                         ? "Tài khoản Super Admin không thể xóa"
                                         : "Chỉ Super Admin mới được xóa người dùng cấp cao"
                                   }
-                                  className="h-[15px] w-[15px] cursor-not-allowed opacity-30 accent-primary"
+                                  className="h-[15px] w-[15px] cursor-not-allowed accent-primary"
                                 />
                               ) : (
                                 <TriCheckbox
@@ -1492,26 +1488,17 @@ export default function UserPage() {
                     required
                   />
 
-                  <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <DatePicker
-                      label="Ngày tháng năm sinh"
-                      value={form.dob ? dayjs(form.dob) : null}
-                      onChange={(val) => {
-                        setField("dob", val ? val.format("YYYY-MM-DD") : "");
-                        clearFieldError("dob");
-                      }}
-                      maxDate={dayjs(localISODate(new Date()))}
-                      format="DD/MM/YYYY"
-                      slotProps={{
-                        textField: {
-                          size: "small",
-                          fullWidth: true,
-                          error: !!fieldErrors.dob,
-                          helperText: fieldErrors.dob,
-                        },
-                      }}
-                    />
-                  </LocalizationProvider>
+                  <DateInput
+                    label="Ngày tháng năm sinh"
+                    value={form.dob}
+                    onChange={(v) => {
+                      setField("dob", v);
+                      clearFieldError("dob");
+                    }}
+                    max={localISODate(new Date())}
+                    error={!!fieldErrors.dob}
+                    helperText={fieldErrors.dob}
+                  />
 
                   <TextField
                     label={!editingId ? "Giới tính *" : "Giới tính"}
@@ -1613,50 +1600,24 @@ export default function UserPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-x-5 gap-y-6">
-                  <Autocomplete
+                  <SearchableSelect
                     options={PROVINCES}
-                    value={form.province || null}
-                    onChange={(_, v) => {
-                      setField("province", v ?? "");
+                    value={form.province}
+                    onChange={(v) => {
+                      setField("province", v);
                       setField("ward", "");
                     }}
-                    slotProps={{
-                      popper: {
-                        modifiers: [
-                          { name: "offset", options: { offset: [0, 8] } },
-                        ],
-                      },
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Tỉnh/ thành phố"
-                        size="small"
-                        fullWidth
-                      />
-                    )}
+                    label="Tỉnh/ thành phố"
+                    dropUp
                   />
 
-                  <Autocomplete
+                  <SearchableSelect
                     options={WARDS_BY_PROVINCE[form.province] ?? []}
-                    value={form.ward || null}
+                    value={form.ward}
                     disabled={!form.province}
-                    onChange={(_, v) => setField("ward", v ?? "")}
-                    slotProps={{
-                      popper: {
-                        modifiers: [
-                          { name: "offset", options: { offset: [0, 8] } },
-                        ],
-                      },
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Phường / Xã"
-                        size="small"
-                        fullWidth
-                      />
-                    )}
+                    onChange={(v) => setField("ward", v)}
+                    label="Phường / Xã"
+                    dropUp
                   />
 
                   <div className="col-span-2">

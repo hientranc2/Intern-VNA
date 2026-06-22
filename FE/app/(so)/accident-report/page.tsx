@@ -76,7 +76,7 @@ export default function AccidentReportPage() {
   const [searchMST, setSearchMST] = useState("");
   const [fKy, setFKy] = useState("");
   const [fTT, setFTT] = useState("");
-  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("Thành phố Hồ Chí Minh");
   const [selectedWard, setSelectedWard] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -476,7 +476,7 @@ export default function AccidentReportPage() {
               <button
                 type="button"
                 onClick={() => setView("list")}
-                className="text-[13.5px] font-medium text-[#374151]"
+                className="flex h-9 items-center justify-center rounded-md border border-line px-4 text-[13.5px] font-medium text-[#374151] hover:bg-[#f9fafb] hover:text-ink"
               >
                 Huỷ bỏ
               </button>
@@ -686,7 +686,7 @@ export default function AccidentReportPage() {
               <button
                 type="button"
                 onClick={() => setView("list")}
-                className="text-[13.5px] font-medium text-[#374151]"
+                className="flex h-9 items-center justify-center rounded-md border border-line px-4 text-[13.5px] font-medium text-[#374151] hover:bg-[#f9fafb] hover:text-ink"
               >
                 Huỷ bỏ
               </button>

@@ -34,3 +34,14 @@ body {
 button {
   cursor: pointer;
 }
+
+/* Đồng bộ màu đỏ cho tất cả dấu sao (*) bắt buộc của MUI */
+.MuiFormLabel-asterisk,
+.MuiInputLabel-asterisk,
+.Mui-required .MuiFormLabel-asterisk,
+.Mui-required .MuiInputLabel-asterisk,
+label .MuiFormLabel-asterisk,
+label .MuiInputLabel-asterisk,
+span.MuiFormLabel-asterisk {
+  color: #ef4444 !important;
+}

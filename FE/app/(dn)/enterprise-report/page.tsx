@@ -159,7 +159,9 @@ const InputField = ({
   onChange,
   disabled = false,
   required = false,
-  suffix = ""
+  suffix = "",
+  invalid = false,
+  errorMsg = ""
 }: {
   label: string;
   value: string;
@@ -167,6 +169,8 @@ const InputField = ({
   disabled?: boolean;
   required?: boolean;
   suffix?: string;
+  invalid?: boolean;
+  errorMsg?: string;
 }) => {
   return (
     <div className="relative flex flex-col mt-2">
@@ -177,7 +181,7 @@ const InputField = ({
         <input
           type={suffix ? "text" : "number"}
           min={suffix ? undefined : 0}
-          className={`${FC} w-full h-[40px] pt-1 pr-16`}
+          className={`${FC} w-full h-[40px] pt-1 ${suffix ? "pr-16" : ""} ${invalid ? "border-danger border-2" : ""}`}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
@@ -188,13 +192,35 @@ const InputField = ({
           </span>
         )}
       </div>
+      {invalid && errorMsg && (
+        <span className="text-[11px] text-danger mt-1">
+          {errorMsg}
+        </span>
+      )}
     </div>
   );
 };
 
 const FC =
-  "h-[38px] rounded-md border border-line bg-white px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-muted";
+  "h-[38px] rounded-md border border-line bg-white px-3 text-[13.5px] text-ink outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] disabled:bg-[#f9fafb] disabled:text-ink disabled:opacity-100";
 const SC = `${FC} w-full cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
+
+const isInvalidValue = (triedSubmit: boolean, val: string, req: boolean) => {
+  if (!triedSubmit) return false;
+  if (req && !val.trim()) return true;
+  const clean = val.trim().replace(/\./g, "").replace(/,/g, ".");
+  const parsed = parseFloat(clean);
+  return !isNaN(parsed) && parsed < 0;
+};
+
+const getErrorMsg = (triedSubmit: boolean, val: string, label: string, req: boolean) => {
+  if (!triedSubmit) return "";
+  if (req && !val.trim()) return `Vui lòng nhập ${label.replace(" *", "").toLowerCase()}`;
+  const clean = val.trim().replace(/\./g, "").replace(/,/g, ".");
+  const parsed = parseFloat(clean);
+  if (!isNaN(parsed) && parsed < 0) return `${label.replace(" *", "")} không được là số âm`;
+  return "";
+};
 const SELECT_TOP_CLASS = `${FC} min-w-[280px] cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
 
 const CT_TH =
@@ -381,6 +407,7 @@ export default function EnterpriseReportPage() {
   const [saving, setSaving] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Record<number, boolean>>({});
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [triedSubmit, setTriedSubmit] = useState(false);
   const originalReportRef = useRef<{
     tongHop: any;
     phanLoai: any;
@@ -596,10 +623,11 @@ export default function EnterpriseReportPage() {
   };
 
   const setPhanLoaiCell = (ma: string, col: number, val: string) => {
+    const cleanVal = val.replace(/\D/g, "");
     setPhanLoai((prev) => {
       const next = {
         ...prev,
-        [ma]: prev[ma].map((c, i) => (i === col ? val : c)),
+        [ma]: prev[ma].map((c, i) => (i === col ? cleanVal : c)),
       };
 
       const maNum = Number(ma);
@@ -679,6 +707,7 @@ export default function EnterpriseReportPage() {
 
   const openReport = (r: ReportRecord, readOnly: boolean = false) => {
     setIsReadOnly(readOnly);
+    setTriedSubmit(false);
     setEditingId(r.id);
     setActiveReport(r);
     setSection(readOnly ? "tongquan" : "ttct");
@@ -790,12 +819,127 @@ export default function EnterpriseReportPage() {
     );
 
   const nextSection = () => {
+    if (section === "ttct") {
+      const ttctFields: [string, string][] = [
+        ["Tổng số lao động của cơ sở", totalLao],
+        ["Tổng số lao động nữ", totalNu],
+        ["Tổng quỹ lương", tongLuong],
+      ];
+      const empty = ttctFields.find(([, v]) => !v.trim());
+      const negative = ttctFields.find(([, v]) => {
+        const clean = v.trim().replace(/\./g, "").replace(/,/g, ".");
+        const parsed = parseFloat(clean);
+        return !isNaN(parsed) && parsed < 0;
+      });
+      if (empty || negative) {
+        setTriedSubmit(true);
+        return;
+      }
+    } else if (section === "tnld") {
+      const tnldFields: [string, string][] = [
+        ["Tổng số vụ", tongVu],
+        ["Số vụ có người chết", vuChet],
+        ["Số vụ ≥ 2 người bị nạn", vuNhieu],
+        ["Tổng số người bị nạn", tongNan],
+        ["Tổng số lao động nữ bị nạn", tongNanNu],
+        ["Tổng số người bị chết", tongChetNN],
+        ["Tổng số người bị thương nặng", tongThuongNang],
+        ["Số người bị nạn không QL", nanKhongQL],
+        ["Lao động nữ bị nạn không QL", nuKhongQL],
+        ["Số người chết không QL", chetKhongQL],
+        ["Người bị thương nặng không QL", thuongKhongQL],
+        ["Chi phí y tế", chiPhiYTe],
+        ["Chi phí trả lương trong thời gian điều trị", chiPhiLuong],
+        ["Chi phí bồi thường trợ cấp", chiPhiBTTC],
+        ["Tổng số tiền chi phí", tongChiPhi],
+        ["Tổng số ngày nghỉ vì TNLĐ", soNgayNghi],
+      ];
+      const empty = tnldFields.find(([, v]) => !v.trim());
+      const negative = tnldFields.find(([, v]) => {
+        const clean = v.trim().replace(/\./g, "").replace(/,/g, ".");
+        const parsed = parseFloat(clean);
+        return !isNaN(parsed) && parsed < 0;
+      });
+      if (empty || negative) {
+        setTriedSubmit(true);
+        setSubTab("tongSo");
+        return;
+      }
+
+      for (let i = 0; i < accidentDetails.length; i++) {
+        const d = accidentDetails[i];
+        const requiredFields: { key: keyof AccidentDetail; label: string }[] = [
+          { key: "soVuCoNguoiChet", label: "Tổng số vụ có người chết" },
+          { key: "soVuCo2NguoiBiNan", label: "Tổng số vụ có 2 người bị nạn trở lên" },
+          { key: "soNguoiBiNan", label: "Tổng số người bị nạn" },
+          { key: "soLDNu", label: "Tổng số lao động nữ bị nạn" },
+          { key: "soNguoiBiChet", label: "Tổng số người bị chết" },
+          { key: "soNguoiBiThuongNang", label: "Tổng số người bị thương nặng" },
+          { key: "nanKhongQL", label: "Số người bị nạn không QL" },
+          { key: "nuKhongQL", label: "Lao động nữ bị nạn không QL" },
+          { key: "chetKhongQL", label: "Số người chết không QL" },
+          { key: "thuongKhongQL", label: "Người bị thương nặng không QL" },
+          { key: "chiPhiYTe", label: "Chi phí y tế" },
+          { key: "chiPhiLuong", label: "Chi phí trả lương trong thời gian điều trị" },
+          { key: "chiPhiBTTC", label: "Chi phí bồi thường trợ cấp" },
+          { key: "tongSoTien", label: "Tổng số tiền chi phí" },
+          { key: "soNgayNghi", label: "Tổng số ngày nghỉ vì TNLĐ" },
+          { key: "thiethaiTaiSan", label: "Thiệt hại tài sản" },
+        ];
+        const emptyDetailField = requiredFields.find((f) => !String(d[f.key] ?? "").trim());
+        const negativeDetailField = requiredFields.find((f) => {
+          const v = String(d[f.key] ?? "");
+          const clean = v.trim().replace(/\./g, "").replace(/,/g, ".");
+          const parsed = parseFloat(clean);
+          return !isNaN(parsed) && parsed < 0;
+        });
+        if (emptyDetailField || negativeDetailField) {
+          setTriedSubmit(true);
+          setSubTab("chiTiet");
+          setExpandedIds((prev) => ({ ...prev, [d.id]: true }));
+          return;
+        }
+      }
+    } else if (section === "tnld_tc") {
+      const tcFields: [string, string][] = [
+        ["Tổng số vụ", tcTongVu],
+        ["Số vụ có người chết", tcVuChet],
+        ["Số vụ ≥ 2 người bị nạn", tcVuNhieu],
+        ["Tổng số người bị nạn", tcTongNan],
+        ["Tổng số lao động nữ bị nạn", tcTongNanNu],
+        ["Tổng số người bị chết", tcTongChetNN],
+        ["Tổng số người bị thương nặng", tcTongThuongNang],
+        ["Số người bị nạn không QL", tcNanKhongQL],
+        ["Lao động nữ bị nạn không QL", tcNuKhongQL],
+        ["Số người chết không QL", tcChetKhongQL],
+        ["Người bị thương nặng không QL", tcThuongKhongQL],
+        ["Chi phí y tế", tcChiPhiYTe],
+        ["Chi phí trả lương trong thời gian điều trị", tcChiPhiLuong],
+        ["Chi phí bồi thường trợ cấp", tcChiPhiBTTC],
+        ["Tổng số tiền chi phí", tcTongChiPhi],
+        ["Tổng số ngày nghỉ vì TNLĐ", tcSoNgayNghi],
+      ];
+      const empty = tcFields.find(([, v]) => !v.trim());
+      const negative = tcFields.find(([, v]) => {
+        const clean = v.trim().replace(/\./g, "").replace(/,/g, ".");
+        const parsed = parseFloat(clean);
+        return !isNaN(parsed) && parsed < 0;
+      });
+      if (empty || negative) {
+        setTriedSubmit(true);
+        return;
+      }
+    }
+
     const idx = SECTION_OPTIONS.findIndex((o) => o.value === section);
-    if (idx < SECTION_OPTIONS.length - 1)
+    if (idx < SECTION_OPTIONS.length - 1) {
       setSection(SECTION_OPTIONS[idx + 1].value);
+      setTriedSubmit(false);
+    }
   };
 
   const validateReport = (): boolean => {
+    setTriedSubmit(true);
     const ttctFields: [string, string][] = [
       ["Tổng số lao động của cơ sở", totalLao],
       ["Tổng số lao động nữ", totalNu],
@@ -819,25 +963,103 @@ export default function EnterpriseReportPage() {
       ["Tổng số tiền chi phí", tongChiPhi],
       ["Tổng số ngày nghỉ vì TNLĐ", soNgayNghi],
     ];
+    const tcFields: [string, string][] = [
+      ["Tổng số vụ", tcTongVu],
+      ["Số vụ có người chết", tcVuChet],
+      ["Số vụ ≥ 2 người bị nạn", tcVuNhieu],
+      ["Tổng số người bị nạn", tcTongNan],
+      ["Tổng số lao động nữ bị nạn", tcTongNanNu],
+      ["Tổng số người bị chết", tcTongChetNN],
+      ["Tổng số người bị thương nặng", tcTongThuongNang],
+      ["Số người bị nạn không QL", tcNanKhongQL],
+      ["Lao động nữ bị nạn không QL", tcNuKhongQL],
+      ["Số người chết không QL", tcChetKhongQL],
+      ["Người bị thương nặng không QL", tcThuongKhongQL],
+      ["Chi phí y tế", tcChiPhiYTe],
+      ["Chi phí trả lương trong thời gian điều trị", tcChiPhiLuong],
+      ["Chi phí bồi thường trợ cấp", tcChiPhiBTTC],
+      ["Tổng số tiền chi phí", tcTongChiPhi],
+      ["Tổng số ngày nghỉ vì TNLĐ", tcSoNgayNghi],
+    ];
 
     const emptyTtct = ttctFields.find(([, v]) => !v.trim());
     if (emptyTtct) {
       setSection("ttct");
-      setToast(`Vui lòng nhập: ${emptyTtct[0]}`);
       return false;
     }
     const emptyTnld = tnldFields.find(([, v]) => !v.trim());
     if (emptyTnld) {
       setSection("tnld");
       setSubTab("tongSo");
-      setToast(`Vui lòng nhập: ${emptyTnld[0]}`);
       return false;
     }
-    const negative = [...ttctFields, ...tnldFields].find(([, v]) =>
-      v.trim().startsWith("-"),
-    );
+    const emptyTc = tcFields.find(([, v]) => !v.trim());
+    if (emptyTc) {
+      setSection("tnld_tc");
+      return false;
+    }
+
+    for (let i = 0; i < accidentDetails.length; i++) {
+      const d = accidentDetails[i];
+      const requiredFields: { key: keyof AccidentDetail; label: string }[] = [
+        { key: "soVuCoNguoiChet", label: "Tổng số vụ có người chết" },
+        { key: "soVuCo2NguoiBiNan", label: "Tổng số vụ có 2 người bị nạn trở lên" },
+        { key: "soNguoiBiNan", label: "Tổng số người bị nạn" },
+        { key: "soLDNu", label: "Tổng số lao động nữ bị nạn" },
+        { key: "soNguoiBiChet", label: "Tổng số người bị chết" },
+        { key: "soNguoiBiThuongNang", label: "Tổng số người bị thương nặng" },
+        { key: "nanKhongQL", label: "Số người bị nạn không QL" },
+        { key: "nuKhongQL", label: "Lao động nữ bị nạn không QL" },
+        { key: "chetKhongQL", label: "Số người chết không QL" },
+        { key: "thuongKhongQL", label: "Người bị thương nặng không QL" },
+        { key: "chiPhiYTe", label: "Chi phí y tế" },
+        { key: "chiPhiLuong", label: "Chi phí trả lương trong thời gian điều trị" },
+        { key: "chiPhiBTTC", label: "Chi phí bồi thường trợ cấp" },
+        { key: "tongSoTien", label: "Tổng số tiền chi phí" },
+        { key: "soNgayNghi", label: "Tổng số ngày nghỉ vì TNLĐ" },
+        { key: "thiethaiTaiSan", label: "Thiệt hại tài sản" },
+      ];
+
+      const emptyDetailField = requiredFields.find((f) => !String(d[f.key] ?? "").trim());
+      if (emptyDetailField) {
+        setSection("tnld");
+        setSubTab("chiTiet");
+        setExpandedIds((prev) => ({ ...prev, [d.id]: true }));
+        return false;
+      }
+
+      const negativeDetailField = requiredFields.find((f) => {
+        const v = String(d[f.key] ?? "");
+        const clean = v.trim().replace(/\./g, "").replace(/,/g, ".");
+        const parsed = parseFloat(clean);
+        return !isNaN(parsed) && parsed < 0;
+      });
+      if (negativeDetailField) {
+        setSection("tnld");
+        setSubTab("chiTiet");
+        setExpandedIds((prev) => ({ ...prev, [d.id]: true }));
+        return false;
+      }
+    }
+
+    const negative = [...ttctFields, ...tnldFields, ...tcFields].find(([, v]) => {
+      const clean = v.trim().replace(/\./g, "").replace(/,/g, ".");
+      const parsed = parseFloat(clean);
+      return !isNaN(parsed) && parsed < 0;
+    });
     if (negative) {
-      setToast(`${negative[0]} không được là số âm`);
+      const inTtct = ttctFields.some(([lbl]) => lbl === negative[0]);
+      if (inTtct) {
+        setSection("ttct");
+      } else {
+        const inTnld = tnldFields.some(([lbl]) => lbl === negative[0]);
+        if (inTnld) {
+          setSection("tnld");
+          setSubTab("tongSo");
+        } else {
+          setSection("tnld_tc");
+        }
+      }
       return false;
     }
     return true;
@@ -1421,7 +1643,7 @@ export default function EnterpriseReportPage() {
                     setView("list");
                     setActiveReport(null);
                   }}
-                  className="mr-1 text-[13px] font-medium text-[#374151] hover:text-ink"
+                  className="flex h-9 items-center justify-center rounded-md border border-line px-4 text-[13px] font-medium text-[#374151] hover:bg-[#f9fafb] hover:text-ink"
                 >
                   Huỷ bỏ
                 </button>
@@ -1562,45 +1784,32 @@ export default function EnterpriseReportPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3.5">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">
-                      Tổng số lao động của cơ sở{" "}
-                      <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      className={FC}
-                      value={totalLao}
-                      onChange={(e) => setTotalLao(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">
-                      Tổng số lao động nữ <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      className={FC}
-                      value={totalNu}
-                      onChange={(e) => setTotalNu(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">
-                      Tổng quỹ lương <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      className={FC}
-                      value={tongLuong}
-                      onChange={(e) => setTongLuong(e.target.value)}
-                    />
-                    <span className="text-xs text-muted">(1.000đ)</span>
-                  </div>
+                <div className="grid grid-cols-3 gap-3.5 mt-4">
+                  <InputField
+                    label="Tổng số lao động của cơ sở"
+                    value={totalLao}
+                    onChange={setTotalLao}
+                    required
+                    invalid={isInvalidValue(triedSubmit, totalLao, true)}
+                    errorMsg={getErrorMsg(triedSubmit, totalLao, "Tổng số lao động của cơ sở", true)}
+                  />
+                  <InputField
+                    label="Tổng số lao động nữ"
+                    value={totalNu}
+                    onChange={setTotalNu}
+                    required
+                    invalid={isInvalidValue(triedSubmit, totalNu, true)}
+                    errorMsg={getErrorMsg(triedSubmit, totalNu, "Tổng số lao động nữ", true)}
+                  />
+                  <InputField
+                    label="Tổng quỹ lương"
+                    value={tongLuong}
+                    onChange={setTongLuong}
+                    required
+                    suffix="(1.000đ)"
+                    invalid={isInvalidValue(triedSubmit, tongLuong, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tongLuong, "Tổng quỹ lương", true)}
+                  />
                 </div>
               </div>
             ) : section === "tnld" ? (
@@ -1640,121 +1849,102 @@ export default function EnterpriseReportPage() {
                       1. Tổng số vụ tai nạn lao động & số nạn nhân tai nạn lao
                       động
                     </div>
-
-                    <div className="mb-3 grid grid-cols-4 gap-3">
-                      {(
-                        [
-                          ["Tổng số vụ *", tongVu, setTongVu, 0],
-                          ["Số vụ có người chết *", vuChet, setVuChet, 1],
-                          ["Số vụ ≥ 2 người bị nạn *", vuNhieu, setVuNhieu, 2],
-                          [null, null, null, null],
-                        ] as [
-                          string | null,
-                          string | null,
-                          ((v: string) => void) | null,
-                          number | null,
-                        ][]
-                      ).map(([label, val, setter, col], i) =>
-                        label ? (
-                          <div key={i} className="flex flex-col gap-1.5">
-                            <label className="text-[12.5px] font-medium text-[#374151]">
-                              {label}
-                            </label>
-                            <input
-                              type="number"
-                              min={0}
-                              className={FC}
-                              value={val ?? ""}
-                              onChange={(e) => {
-                                if (setter && col !== null) {
-                                  updateFieldAndPhanLoai(setter, col, e.target.value);
-                                }
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <div key={i} />
-                        ),
-                      )}
+                         <div className="mb-3 grid grid-cols-4 gap-3">
+                      <InputField
+                        label="Tổng số vụ"
+                        value={tongVu}
+                        onChange={(v) => updateFieldAndPhanLoai(setTongVu, 0, v)}
+                        required
+                        invalid={isInvalidValue(triedSubmit, tongVu, true)}
+                        errorMsg={getErrorMsg(triedSubmit, tongVu, "Tổng số vụ", true)}
+                      />
+                      <InputField
+                        label="Số vụ có người chết"
+                        value={vuChet}
+                        onChange={(v) => updateFieldAndPhanLoai(setVuChet, 1, v)}
+                        required
+                        invalid={isInvalidValue(triedSubmit, vuChet, true)}
+                        errorMsg={getErrorMsg(triedSubmit, vuChet, "Số vụ có người chết", true)}
+                      />
+                      <InputField
+                        label="Số vụ ≥ 2 người bị nạn"
+                        value={vuNhieu}
+                        onChange={(v) => updateFieldAndPhanLoai(setVuNhieu, 2, v)}
+                        required
+                        invalid={isInvalidValue(triedSubmit, vuNhieu, true)}
+                        errorMsg={getErrorMsg(triedSubmit, vuNhieu, "Số vụ ≥ 2 người bị nạn", true)}
+                      />
+                      <div />
                     </div>
 
                     <div className="mb-3 grid grid-cols-4 gap-3">
-                      {(
-                        [
-                          ["Tổng số người bị nạn *", tongNan, setTongNan, 3],
-                          [
-                            "Tổng số lao động nữ bị nạn *",
-                            tongNanNu,
-                            setTongNanNu,
-                            4,
-                          ],
-                          [
-                            "Tổng số người bị chết *",
-                            tongChetNN,
-                            setTongChetNN,
-                            5,
-                          ],
-                          [
-                            "Tổng số người bị thương nặng *",
-                            tongThuongNang,
-                            setTongThuongNang,
-                            6,
-                          ],
-                        ] as [string, string, (v: string) => void, number][]
-                      ).map(([label, val, setter, col]) => (
-                        <div key={label} className="flex flex-col gap-1.5">
-                          <label className="text-[12.5px] font-medium text-[#374151]">
-                            {label}
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            className={FC}
-                            value={val}
-                            onChange={(e) => updateFieldAndPhanLoai(setter, col, e.target.value)}
-                          />
-                        </div>
-                      ))}
+                      <InputField
+                        label="Tổng số người bị nạn"
+                        value={tongNan}
+                        onChange={(v) => updateFieldAndPhanLoai(setTongNan, 3, v)}
+                        required
+                        invalid={isInvalidValue(triedSubmit, tongNan, true)}
+                        errorMsg={getErrorMsg(triedSubmit, tongNan, "Tổng số người bị nạn", true)}
+                      />
+                      <InputField
+                        label="Tổng số lao động nữ bị nạn"
+                        value={tongNanNu}
+                        onChange={(v) => updateFieldAndPhanLoai(setTongNanNu, 4, v)}
+                        required
+                        invalid={isInvalidValue(triedSubmit, tongNanNu, true)}
+                        errorMsg={getErrorMsg(triedSubmit, tongNanNu, "Tổng số lao động nữ bị nạn", true)}
+                      />
+                      <InputField
+                        label="Tổng số người bị chết"
+                        value={tongChetNN}
+                        onChange={(v) => updateFieldAndPhanLoai(setTongChetNN, 5, v)}
+                        required
+                        invalid={isInvalidValue(triedSubmit, tongChetNN, true)}
+                        errorMsg={getErrorMsg(triedSubmit, tongChetNN, "Tổng số người bị chết", true)}
+                      />
+                      <InputField
+                        label="Tổng số người bị thương nặng"
+                        value={tongThuongNang}
+                        onChange={(v) => updateFieldAndPhanLoai(setTongThuongNang, 6, v)}
+                        required
+                        invalid={isInvalidValue(triedSubmit, tongThuongNang, true)}
+                        errorMsg={getErrorMsg(triedSubmit, tongThuongNang, "Tổng số người bị thương nặng", true)}
+                      />
                     </div>
 
                     <div className="mb-5 grid grid-cols-4 gap-3">
-                      {(
-                        [
-                          [
-                            "Số người bị nạn không QL *",
-                            nanKhongQL,
-                            setNanKhongQL,
-                          ],
-                          [
-                            "Lao động nữ bị nạn không QL *",
-                            nuKhongQL,
-                            setNuKhongQL,
-                          ],
-                          [
-                            "Số người chết không QL *",
-                            chetKhongQL,
-                            setChetKhongQL,
-                          ],
-                          [
-                            "Người bị thương nặng không QL *",
-                            thuongKhongQL,
-                            setThuongKhongQL,
-                          ],
-                        ] as [string, string, (v: string) => void][]
-                      ).map(([label, val, setter]) => (
-                        <div key={label} className="flex flex-col gap-1.5">
-                          <label className="text-[12.5px] font-medium text-[#374151]">
-                            {label}
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            className={FC}
-                            value={val}
-                            onChange={(e) => setter(e.target.value)}
-                          />
-                        </div>
-                      ))}
+                      <InputField
+                        label="Số người bị nạn không QL"
+                        value={nanKhongQL}
+                        onChange={setNanKhongQL}
+                        required
+                        invalid={isInvalidValue(triedSubmit, nanKhongQL, true)}
+                        errorMsg={getErrorMsg(triedSubmit, nanKhongQL, "Số người bị nạn không QL", true)}
+                      />
+                      <InputField
+                        label="Lao động nữ bị nạn không QL"
+                        value={nuKhongQL}
+                        onChange={setNuKhongQL}
+                        required
+                        invalid={isInvalidValue(triedSubmit, nuKhongQL, true)}
+                        errorMsg={getErrorMsg(triedSubmit, nuKhongQL, "Lao động nữ bị nạn không QL", true)}
+                      />
+                      <InputField
+                        label="Số người chết không QL"
+                        value={chetKhongQL}
+                        onChange={setChetKhongQL}
+                        required
+                        invalid={isInvalidValue(triedSubmit, chetKhongQL, true)}
+                        errorMsg={getErrorMsg(triedSubmit, chetKhongQL, "Số người chết không QL", true)}
+                      />
+                      <InputField
+                        label="Người bị thương nặng không QL"
+                        value={thuongKhongQL}
+                        onChange={setThuongKhongQL}
+                        required
+                        invalid={isInvalidValue(triedSubmit, thuongKhongQL, true)}
+                        errorMsg={getErrorMsg(triedSubmit, thuongKhongQL, "Người bị thương nặng không QL", true)}
+                      />
                     </div>
 
                     <div className="mb-2 text-[14px] font-semibold text-ink">
@@ -1762,62 +1952,61 @@ export default function EnterpriseReportPage() {
                     </div>
 
                     <div className="mb-3 grid grid-cols-4 gap-3">
-                      {(
-                        [
-                          ["Chi phí y tế *", chiPhiYTe, setChiPhiYTe, 9],
-                          [
-                            "Chi phí trả lương trong thời gian điều trị *",
-                            chiPhiLuong,
-                            setChiPhiLuong,
-                            10,
-                          ],
-                          [
-                            "Chi phí bồi thường trợ cấp *",
-                            chiPhiBTTC,
-                            setChiPhiBTTC,
-                            11,
-                          ],
-                          ["Tổng số tiền chi phí *", tongChiPhi, setTongChiPhi, 8],
-                        ] as [string, string, (v: string) => void, number][]
-                      ).map(([label, val, setter, col]) => (
-                        <div key={label} className="flex flex-col gap-1.5">
-                          <label className="text-[12.5px] font-medium text-[#374151]">
-                            {label}
-                          </label>
-                          <input
-                            className={FC}
-                            value={val}
-                            onChange={(e) => updateFieldAndPhanLoai(setter, col, e.target.value)}
-                          />
-                          <span className="text-xs text-muted">(1.000đ)</span>
-                        </div>
-                      ))}
+                      <InputField
+                        label="Chi phí y tế"
+                        value={chiPhiYTe}
+                        onChange={(v) => updateFieldAndPhanLoai(setChiPhiYTe, 9, formatNumberString(v))}
+                        required
+                        suffix="(1.000đ)"
+                        invalid={isInvalidValue(triedSubmit, chiPhiYTe, true)}
+                        errorMsg={getErrorMsg(triedSubmit, chiPhiYTe, "Chi phí y tế", true)}
+                      />
+                      <InputField
+                        label="Chi phí trả lương trong thời gian điều trị"
+                        value={chiPhiLuong}
+                        onChange={(v) => updateFieldAndPhanLoai(setChiPhiLuong, 10, formatNumberString(v))}
+                        required
+                        suffix="(1.000đ)"
+                        invalid={isInvalidValue(triedSubmit, chiPhiLuong, true)}
+                        errorMsg={getErrorMsg(triedSubmit, chiPhiLuong, "Chi phí trả lương trong thời gian điều trị", true)}
+                      />
+                      <InputField
+                        label="Chi phí bồi thường trợ cấp"
+                        value={chiPhiBTTC}
+                        onChange={(v) => updateFieldAndPhanLoai(setChiPhiBTTC, 11, formatNumberString(v))}
+                        required
+                        suffix="(1.000đ)"
+                        invalid={isInvalidValue(triedSubmit, chiPhiBTTC, true)}
+                        errorMsg={getErrorMsg(triedSubmit, chiPhiBTTC, "Chi phí bồi thường trợ cấp", true)}
+                      />
+                      <InputField
+                        label="Tổng số tiền chi phí"
+                        value={tongChiPhi}
+                        onChange={(v) => updateFieldAndPhanLoai(setTongChiPhi, 8, formatNumberString(v))}
+                        required
+                        suffix="(1.000đ)"
+                        invalid={isInvalidValue(triedSubmit, tongChiPhi, true)}
+                        errorMsg={getErrorMsg(triedSubmit, tongChiPhi, "Tổng số tiền chi phí", true)}
+                      />
                     </div>
 
                     <div className="grid grid-cols-4 gap-3">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[12.5px] font-medium text-[#374151]">
-                          Tổng số ngày nghỉ vì TNLĐ *
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          className={FC}
-                          value={soNgayNghi}
-                          onChange={(e) => updateFieldAndPhanLoai(setSoNgayNghi, 7, e.target.value)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[12.5px] font-medium text-[#374151]">
-                          Thiệt hại tài sản
-                        </label>
-                        <input
-                          className={FC}
-                          value={thiHaiTaiSan}
-                          onChange={(e) => updateFieldAndPhanLoai(setThiHaiTaiSan, 12, e.target.value)}
-                        />
-                        <span className="text-xs text-muted">(1.000đ)</span>
-                      </div>
+                      <InputField
+                        label="Tổng số ngày nghỉ vì TNLĐ"
+                        value={soNgayNghi}
+                        onChange={(v) => updateFieldAndPhanLoai(setSoNgayNghi, 7, v)}
+                        required
+                        invalid={isInvalidValue(triedSubmit, soNgayNghi, true)}
+                        errorMsg={getErrorMsg(triedSubmit, soNgayNghi, "Tổng số ngày nghỉ vì TNLĐ", true)}
+                      />
+                      <InputField
+                        label="Thiệt hại tài sản"
+                        value={thiHaiTaiSan}
+                        onChange={(v) => updateFieldAndPhanLoai(setThiHaiTaiSan, 12, formatNumberString(v))}
+                        suffix="(1.000đ)"
+                        invalid={isInvalidValue(triedSubmit, thiHaiTaiSan, false)}
+                        errorMsg={getErrorMsg(triedSubmit, thiHaiTaiSan, "Thiệt hại tài sản", false)}
+                      />
                     </div>
                   </>
                 ) : (
@@ -1981,18 +2170,24 @@ export default function EnterpriseReportPage() {
                                         label="Tổng số vụ"
                                         value={d.soVu}
                                         onChange={(v) => updateDetail(d.id, "soVu", v)}
+                                        invalid={isInvalidValue(triedSubmit, d.soVu, false)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.soVu, "Tổng số vụ", false)}
                                       />
                                       <InputField
                                         label="Tổng số vụ có người chết"
                                         value={d.soVuCoNguoiChet}
                                         onChange={(v) => updateDetail(d.id, "soVuCoNguoiChet", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.soVuCoNguoiChet, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.soVuCoNguoiChet, "Tổng số vụ có người chết", true)}
                                       />
                                       <InputField
                                         label="Tổng số vụ có 2 người bị nạn trở lên"
                                         value={d.soVuCo2NguoiBiNan}
                                         onChange={(v) => updateDetail(d.id, "soVuCo2NguoiBiNan", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.soVuCo2NguoiBiNan, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.soVuCo2NguoiBiNan, "Tổng số vụ có 2 người bị nạn trở lên", true)}
                                       />
                                       <div />
 
@@ -2001,24 +2196,32 @@ export default function EnterpriseReportPage() {
                                         value={d.soNguoiBiNan}
                                         onChange={(v) => updateDetail(d.id, "soNguoiBiNan", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.soNguoiBiNan, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.soNguoiBiNan, "Tổng số người bị nạn", true)}
                                       />
                                       <InputField
                                         label="Tổng số lao động nữ bị nạn"
                                         value={d.soLDNu}
                                         onChange={(v) => updateDetail(d.id, "soLDNu", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.soLDNu, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.soLDNu, "Tổng số lao động nữ bị nạn", true)}
                                       />
                                       <InputField
                                         label="Tổng số người chết"
                                         value={d.soNguoiBiChet}
                                         onChange={(v) => updateDetail(d.id, "soNguoiBiChet", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.soNguoiBiChet, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.soNguoiBiChet, "Tổng số người chết", true)}
                                       />
                                       <InputField
                                         label="Tổng số người bị thương nặng"
                                         value={d.soNguoiBiThuongNang}
                                         onChange={(v) => updateDetail(d.id, "soNguoiBiThuongNang", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.soNguoiBiThuongNang, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.soNguoiBiThuongNang, "Tổng số người bị thương nặng", true)}
                                       />
 
                                       <InputField
@@ -2026,24 +2229,32 @@ export default function EnterpriseReportPage() {
                                         value={d.nanKhongQL}
                                         onChange={(v) => updateDetail(d.id, "nanKhongQL", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.nanKhongQL, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.nanKhongQL, "Số người bị nạn không QL", true)}
                                       />
                                       <InputField
                                         label="Lao động nữ bị nạn không QL"
                                         value={d.nuKhongQL}
                                         onChange={(v) => updateDetail(d.id, "nuKhongQL", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.nuKhongQL, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.nuKhongQL, "Lao động nữ bị nạn không QL", true)}
                                       />
                                       <InputField
                                         label="Số người chết không QL"
                                         value={d.chetKhongQL}
                                         onChange={(v) => updateDetail(d.id, "chetKhongQL", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.chetKhongQL, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.chetKhongQL, "Số người chết không QL", true)}
                                       />
                                       <InputField
                                         label="Người bị thương nặng không QL"
                                         value={d.thuongKhongQL}
                                         onChange={(v) => updateDetail(d.id, "thuongKhongQL", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.thuongKhongQL, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.thuongKhongQL, "Người bị thương nặng không QL", true)}
                                       />
                                     </div>
                                   </div>
@@ -2059,6 +2270,8 @@ export default function EnterpriseReportPage() {
                                         onChange={(v) => updateDetail(d.id, "chiPhiYTe", formatNumberString(v))}
                                         required
                                         suffix="(1.000đ)"
+                                        invalid={isInvalidValue(triedSubmit, d.chiPhiYTe, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.chiPhiYTe, "Chi phí y tế", true)}
                                       />
                                       <InputField
                                         label="Chi phí trả lương trong thời gian điều trị"
@@ -2066,6 +2279,8 @@ export default function EnterpriseReportPage() {
                                         onChange={(v) => updateDetail(d.id, "chiPhiLuong", formatNumberString(v))}
                                         required
                                         suffix="(1.000đ)"
+                                        invalid={isInvalidValue(triedSubmit, d.chiPhiLuong, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.chiPhiLuong, "Chi phí trả lương trong thời gian điều trị", true)}
                                       />
                                       <InputField
                                         label="Chi phí bồi thường trợ cấp"
@@ -2073,6 +2288,8 @@ export default function EnterpriseReportPage() {
                                         onChange={(v) => updateDetail(d.id, "chiPhiBTTC", formatNumberString(v))}
                                         required
                                         suffix="(1.000đ)"
+                                        invalid={isInvalidValue(triedSubmit, d.chiPhiBTTC, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.chiPhiBTTC, "Chi phí bồi thường trợ cấp", true)}
                                       />
                                       <InputField
                                         label="Tổng số tiền chi phí"
@@ -2080,6 +2297,8 @@ export default function EnterpriseReportPage() {
                                         onChange={(v) => updateDetail(d.id, "tongSoTien", formatNumberString(v))}
                                         required
                                         suffix="(1.000đ)"
+                                        invalid={isInvalidValue(triedSubmit, d.tongSoTien, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.tongSoTien, "Tổng số tiền chi phí", true)}
                                       />
 
                                       <InputField
@@ -2087,6 +2306,8 @@ export default function EnterpriseReportPage() {
                                         value={d.soNgayNghi}
                                         onChange={(v) => updateDetail(d.id, "soNgayNghi", v)}
                                         required
+                                        invalid={isInvalidValue(triedSubmit, d.soNgayNghi, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.soNgayNghi, "Tổng số ngày nghỉ vì TNLĐ", true)}
                                       />
                                       <InputField
                                         label="Thiệt hại tài sản"
@@ -2094,6 +2315,8 @@ export default function EnterpriseReportPage() {
                                         onChange={(v) => updateDetail(d.id, "thiethaiTaiSan", formatNumberString(v))}
                                         required
                                         suffix="(1.000đ)"
+                                        invalid={isInvalidValue(triedSubmit, d.thiethaiTaiSan, true)}
+                                        errorMsg={getErrorMsg(triedSubmit, d.thiethaiTaiSan, "Thiệt hại tài sản", true)}
                                       />
                                       <div />
                                       <div />
@@ -2133,103 +2356,101 @@ export default function EnterpriseReportPage() {
                   1. Tổng số vụ tai nạn lao động & số nạn nhân tai nạn lao động
                 </div>
                 <div className="mb-3 grid grid-cols-4 gap-3">
-                  {(
-                    [
-                      ["Tổng số vụ *", tcTongVu, setTcTongVu],
-                      ["Số vụ có người chết *", tcVuChet, setTcVuChet],
-                      ["Số vụ ≥ 2 người bị nạn *", tcVuNhieu, setTcVuNhieu],
-                      [null, null, null],
-                    ] as [
-                      string | null,
-                      string | null,
-                      ((v: string) => void) | null,
-                    ][]
-                  ).map(([label, val, setter], i) =>
-                    label && setter ? (
-                      <div key={i} className="flex flex-col gap-1.5">
-                        <label className="text-[12.5px] font-medium text-[#374151]">
-                          {label}
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          className={FC}
-                          value={val ?? ""}
-                          onChange={(e) => setter(e.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      <div key={i} />
-                    ),
-                  )}
+                  <InputField
+                    label="Tổng số vụ"
+                    value={tcTongVu}
+                    onChange={setTcTongVu}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcTongVu, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcTongVu, "Tổng số vụ", true)}
+                  />
+                  <InputField
+                    label="Số vụ có người chết"
+                    value={tcVuChet}
+                    onChange={setTcVuChet}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcVuChet, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcVuChet, "Số vụ có người chết", true)}
+                  />
+                  <InputField
+                    label="Số vụ ≥ 2 người bị nạn"
+                    value={tcVuNhieu}
+                    onChange={setTcVuNhieu}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcVuNhieu, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcVuNhieu, "Số vụ ≥ 2 người bị nạn", true)}
+                  />
+                  <div />
                 </div>
 
                 <div className="mb-3 grid grid-cols-4 gap-3">
-                  {(
-                    [
-                      ["Tổng số người bị nạn *", tcTongNan, setTcTongNan],
-                      ["Tổng số lao động nữ bị nạn *", tcTongNanNu, setTcTongNanNu],
-                      ["Tổng số người bị chết *", tcTongChetNN, setTcTongChetNN],
-                      [
-                        "Tổng số người bị thương nặng *",
-                        tcTongThuongNang,
-                        setTcTongThuongNang,
-                      ],
-                    ] as [string, string, (v: string) => void][]
-                  ).map(([label, val, setter]) => (
-                    <div key={label} className="flex flex-col gap-1.5">
-                      <label className="text-[12.5px] font-medium text-[#374151]">
-                        {label}
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        className={FC}
-                        value={val}
-                        onChange={(e) => setter(e.target.value)}
-                      />
-                    </div>
-                  ))}
+                  <InputField
+                    label="Tổng số người bị nạn"
+                    value={tcTongNan}
+                    onChange={setTcTongNan}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcTongNan, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcTongNan, "Tổng số người bị nạn", true)}
+                  />
+                  <InputField
+                    label="Tổng số lao động nữ bị nạn"
+                    value={tcTongNanNu}
+                    onChange={setTcTongNanNu}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcTongNanNu, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcTongNanNu, "Tổng số lao động nữ bị nạn", true)}
+                  />
+                  <InputField
+                    label="Tổng số người bị chết"
+                    value={tcTongChetNN}
+                    onChange={setTcTongChetNN}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcTongChetNN, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcTongChetNN, "Tổng số người bị chết", true)}
+                  />
+                  <InputField
+                    label="Tổng số người bị thương nặng"
+                    value={tcTongThuongNang}
+                    onChange={setTcTongThuongNang}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcTongThuongNang, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcTongThuongNang, "Tổng số người bị thương nặng", true)}
+                  />
                 </div>
 
                 <div className="mb-5 grid grid-cols-4 gap-3">
-                  {(
-                    [
-                      [
-                        "Số người bị nạn không QL *",
-                        tcNanKhongQL,
-                        setTcNanKhongQL,
-                      ],
-                      [
-                        "Lao động nữ bị nạn không QL *",
-                        tcNuKhongQL,
-                        setTcNuKhongQL,
-                      ],
-                      [
-                        "Số người chết không QL *",
-                        tcChetKhongQL,
-                        setTcChetKhongQL,
-                      ],
-                      [
-                        "Người bị thương nặng không QL *",
-                        tcThuongKhongQL,
-                        setTcThuongKhongQL,
-                      ],
-                    ] as [string, string, (v: string) => void][]
-                  ).map(([label, val, setter]) => (
-                    <div key={label} className="flex flex-col gap-1.5">
-                      <label className="text-[12.5px] font-medium text-[#374151]">
-                        {label}
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        className={FC}
-                        value={val}
-                        onChange={(e) => setter(e.target.value)}
-                      />
-                    </div>
-                  ))}
+                  <InputField
+                    label="Số người bị nạn không QL"
+                    value={tcNanKhongQL}
+                    onChange={setTcNanKhongQL}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcNanKhongQL, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcNanKhongQL, "Số người bị nạn không QL", true)}
+                  />
+                  <InputField
+                    label="Lao động nữ bị nạn không QL"
+                    value={tcNuKhongQL}
+                    onChange={setTcNuKhongQL}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcNuKhongQL, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcNuKhongQL, "Lao động nữ bị nạn không QL", true)}
+                  />
+                  <InputField
+                    label="Số người chết không QL"
+                    value={tcChetKhongQL}
+                    onChange={setTcChetKhongQL}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcChetKhongQL, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcChetKhongQL, "Số người chết không QL", true)}
+                  />
+                  <InputField
+                    label="Người bị thương nặng không QL"
+                    value={tcThuongKhongQL}
+                    onChange={setTcThuongKhongQL}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcThuongKhongQL, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcThuongKhongQL, "Người bị thương nặng không QL", true)}
+                  />
                 </div>
 
                 <div className="mb-2 text-[14px] font-semibold text-ink">
@@ -2237,60 +2458,61 @@ export default function EnterpriseReportPage() {
                 </div>
 
                 <div className="mb-3 grid grid-cols-4 gap-3">
-                  {(
-                    [
-                      ["Chi phí y tế *", tcChiPhiYTe, setTcChiPhiYTe],
-                      [
-                        "Chi phí trả lương trong thời gian điều trị *",
-                        tcChiPhiLuong,
-                        setTcChiPhiLuong,
-                      ],
-                      [
-                        "Chi phí bồi thường trợ cấp *",
-                        tcChiPhiBTTC,
-                        setTcChiPhiBTTC,
-                      ],
-                      ["Tổng số tiền chi phí *", tcTongChiPhi, setTcTongChiPhi],
-                    ] as [string, string, (v: string) => void][]
-                  ).map(([label, val, setter]) => (
-                    <div key={label} className="flex flex-col gap-1.5">
-                      <label className="text-[12.5px] font-medium text-[#374151]">
-                        {label}
-                      </label>
-                      <input
-                        className={FC}
-                        value={val}
-                        onChange={(e) => setter(e.target.value)}
-                      />
-                      <span className="text-xs text-muted">(1.000đ)</span>
-                    </div>
-                  ))}
+                  <InputField
+                    label="Chi phí y tế"
+                    value={tcChiPhiYTe}
+                    onChange={(v) => setTcChiPhiYTe(formatNumberString(v))}
+                    required
+                    suffix="(1.000đ)"
+                    invalid={isInvalidValue(triedSubmit, tcChiPhiYTe, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcChiPhiYTe, "Chi phí y tế", true)}
+                  />
+                  <InputField
+                    label="Chi phí trả lương trong thời gian điều trị"
+                    value={tcChiPhiLuong}
+                    onChange={(v) => setTcChiPhiLuong(formatNumberString(v))}
+                    required
+                    suffix="(1.000đ)"
+                    invalid={isInvalidValue(triedSubmit, tcChiPhiLuong, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcChiPhiLuong, "Chi phí trả lương trong thời gian điều trị", true)}
+                  />
+                  <InputField
+                    label="Chi phí bồi thường trợ cấp"
+                    value={tcChiPhiBTTC}
+                    onChange={(v) => setTcChiPhiBTTC(formatNumberString(v))}
+                    required
+                    suffix="(1.000đ)"
+                    invalid={isInvalidValue(triedSubmit, tcChiPhiBTTC, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcChiPhiBTTC, "Chi phí bồi thường trợ cấp", true)}
+                  />
+                  <InputField
+                    label="Tổng số tiền chi phí"
+                    value={tcTongChiPhi}
+                    onChange={(v) => setTcTongChiPhi(formatNumberString(v))}
+                    required
+                    suffix="(1.000đ)"
+                    invalid={isInvalidValue(triedSubmit, tcTongChiPhi, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcTongChiPhi, "Tổng số tiền chi phí", true)}
+                  />
                 </div>
 
                 <div className="grid grid-cols-4 gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">
-                      Tổng số ngày nghỉ vì TNLĐ *
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      className={FC}
-                      value={tcSoNgayNghi}
-                      onChange={(e) => setTcSoNgayNghi(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[12.5px] font-medium text-[#374151]">
-                      Thiệt hại tài sản
-                    </label>
-                    <input
-                      className={FC}
-                      value={tcThiHaiTaiSan}
-                      onChange={(e) => setTcThiHaiTaiSan(e.target.value)}
-                    />
-                    <span className="text-xs text-muted">(1.000đ)</span>
-                  </div>
+                  <InputField
+                    label="Tổng số ngày nghỉ vì TNLĐ"
+                    value={tcSoNgayNghi}
+                    onChange={setTcSoNgayNghi}
+                    required
+                    invalid={isInvalidValue(triedSubmit, tcSoNgayNghi, true)}
+                    errorMsg={getErrorMsg(triedSubmit, tcSoNgayNghi, "Tổng số ngày nghỉ vì TNLĐ", true)}
+                  />
+                  <InputField
+                    label="Thiệt hại tài sản"
+                    value={tcThiHaiTaiSan}
+                    onChange={(v) => setTcThiHaiTaiSan(formatNumberString(v))}
+                    suffix="(1.000đ)"
+                    invalid={isInvalidValue(triedSubmit, tcThiHaiTaiSan, false)}
+                    errorMsg={getErrorMsg(triedSubmit, tcThiHaiTaiSan, "Thiệt hại tài sản", false)}
+                  />
                 </div>
               </div>
             ) : section === "phanloai" ? (
@@ -2345,6 +2567,11 @@ export default function EnterpriseReportPage() {
                                     type="number"
                                     min={0}
                                     value={phanLoai[item.ma]?.[col] ?? "0"}
+                                    onKeyDown={(e) => {
+                                      if (["-", "+", "e", "E", "."].includes(e.key)) {
+                                        e.preventDefault();
+                                      }
+                                    }}
                                     onChange={(e) =>
                                       setPhanLoaiCell(
                                         item.ma,
@@ -2588,7 +2815,7 @@ export default function EnterpriseReportPage() {
               onChange={(e) => setCreateYear(e.target.value)}
             >
               {(() => {
-                const maxYear = new Date().getFullYear() + 2;
+                const maxYear = new Date().getFullYear();
                 const years = [];
                 for (let y = maxYear; y >= 2022; y--) {
                   years.push(String(y));
