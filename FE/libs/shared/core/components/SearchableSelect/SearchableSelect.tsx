@@ -183,7 +183,7 @@ export function SearchableSelect({
 
             {label && (
               <label
-                className={`absolute left-3 transition-all pointer-events-none px-1 ${
+                className={`absolute left-3 transition-all pointer-events-none px-1 font-sans ${
                   open || value
                     ? "-top-2 text-[11px] z-10 bg-white " +
                       (error
@@ -212,7 +212,7 @@ export function SearchableSelect({
           type="button"
           disabled={disabled}
           onClick={toggle}
-          className={`w-full h-full p-0 outline-none transition-colors disabled:cursor-not-allowed disabled:text-[#9ca3af] bg-white ${
+          className={`w-full h-full p-0 outline-none transition-colors disabled:cursor-not-allowed disabled:text-[#9ca3af] bg-white font-sans ${
             compact
               ? "rounded-[5px] border border-line text-xs"
               : "rounded-md text-sm"
@@ -224,7 +224,7 @@ export function SearchableSelect({
             }`}
           >
             <span
-              className={`truncate ${
+              className={`truncate font-sans ${
                 value
                   ? disabled
                     ? "text-[#9ca3af]"

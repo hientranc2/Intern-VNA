@@ -45,3 +45,47 @@ label .MuiInputLabel-asterisk,
 span.MuiFormLabel-asterisk {
   color: #ef4444 !important;
 }
+
+/* Đồng bộ font-family cho tất cả các input, select, button, textarea và thành phần MUI */
+.MuiTypography-root,
+.MuiInputBase-root,
+.MuiFormLabel-root,
+.MuiInputLabel-root,
+.MuiFormHelperText-root,
+.MuiMenuItem-root,
+.MuiButton-root,
+input,
+select,
+button,
+textarea,
+label {
+  font-family: var(--font-base) !important;
+}
+
+/* Đồng bộ font-size cho giá trị hiển thị / văn bản nhập */
+.MuiInputBase-input,
+.MuiOutlinedInput-input,
+.MuiSelect-select,
+.MuiMenuItem-root,
+input,
+select,
+textarea,
+.SearchableSelect button span,
+.SearchableSelect button,
+.DateInput span {
+  font-size: 14px !important;
+}
+
+/* Đồng bộ font-size cho nhãn (labels) khi nghỉ (resting) */
+.MuiInputLabel-root:not(.MuiInputLabel-shrink),
+label:not(.-top-2) {
+  font-size: 14px !important;
+}
+
+/* Đồng bộ font-size cho nhãn (labels) khi nổi (floated) */
+.MuiInputLabel-shrink,
+label.-top-2 {
+  font-size: 12px !important;
+}
+
+

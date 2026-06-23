@@ -1501,8 +1501,9 @@ export default function UserPage() {
                   />
 
                   <TextField
-                    label={!editingId ? "Giới tính *" : "Giới tính"}
+                    label="Giới tính"
                     select
+                    required={!editingId}
                     value={form.gender}
                     onChange={(e) => {
                       setField("gender", e.target.value);
@@ -1530,8 +1531,9 @@ export default function UserPage() {
                   />
 
                   <TextField
-                    label="Vai trò *"
+                    label="Vai trò"
                     select
+                    required
                     value={form.roleId}
                     disabled={lockRoleAndEmail}
                     onChange={(e) => {

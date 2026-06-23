@@ -85,7 +85,7 @@ export function DateInput({
 
         {label && (
           <label
-            className={`absolute left-3 transition-all pointer-events-none px-1 ${
+            className={`absolute left-3 transition-all pointer-events-none px-1 font-sans ${
               isFloated
                 ? "-top-2 text-[11px] z-10 bg-white " +
                   (error ? "text-danger" : focused ? "text-[#1976d2]" : disabled || readOnly ? "text-[#9ca3af]" : "text-muted")
@@ -97,7 +97,7 @@ export function DateInput({
         )}
 
         <span
-          className={`flex-1 select-none truncate ${
+          className={`flex-1 select-none truncate font-sans ${
             value
               ? disabled || readOnly
                 ? "text-[#9ca3af]"
