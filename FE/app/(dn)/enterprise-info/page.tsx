@@ -286,6 +286,7 @@ export default function EnterpriseInfoPage() {
     ten?: string;
     mst?: string;
     email?: string;
+    loai?: string;
     nganh?: string;
     tinh?: string;
     phuong?: string;
@@ -457,6 +458,7 @@ export default function EnterpriseInfoPage() {
     else if (!isValidEmail(editForm.email.trim()))
       errors.email = "Email không đúng định dạng";
     if (!editForm.nganh) errors.nganh = "Vui lòng chọn ngành nghề kinh doanh";
+    if (!editForm.loai) errors.loai = "Vui lòng chọn loại hình kinh doanh";
     if (!editForm.tinh) errors.tinh = "Vui lòng chọn tỉnh/thành phố ĐKKD";
     if (!editForm.phuong) errors.phuong = "Vui lòng chọn phường/xã ĐKKD";
     if (editForm.sdt.trim() && !isValidPhone(editForm.sdt))
@@ -852,7 +854,13 @@ export default function EnterpriseInfoPage() {
                     required
                     options={loaiHinhOptions}
                     value={editForm.loai}
-                    onChange={(v) => setField("loai", v)}
+                    error={!!editErrors.loai}
+                    helperText={editErrors.loai}
+                    onChange={(v) => {
+                      setField("loai", v);
+                      if (editErrors.loai)
+                        setEditErrors((p) => ({ ...p, loai: undefined }))
+                    }}
                   />
                 </div>
                 <div className="mb-6 grid grid-cols-3 gap-3.5 pt-2">
