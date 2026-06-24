@@ -72,8 +72,15 @@ export default function EnterpriseCreatePage() {
           nganhCap4Options={nganhCap4Options}
           cancelLabel="Trở về"
           onCancel={backToList}
-          onCreated={setAccount}
+          onCreated={(acc) => {
+            setAccount(acc);
+            setToast({
+              message: "Tạo tài khoản doanh nghiệp thành công",
+              variant: "success",
+            });
+          }}
           onError={(message) => setToast({ message, variant: "error" })}
+
         />
       </div>
 

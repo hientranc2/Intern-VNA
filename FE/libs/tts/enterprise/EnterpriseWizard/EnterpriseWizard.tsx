@@ -960,17 +960,18 @@ export function EnterpriseWizard({
       <input
         ref={fileRef0}
         type="file"
-        accept="application/pdf,.pdf"
+        accept=".pdf,.jpg,.jpeg,.png"
         className="hidden"
         onChange={(e) => handleFileSelect(0, e)}
       />
       <input
         ref={fileRef1}
         type="file"
-        accept="application/pdf,.pdf"
+        accept=".pdf,.jpg,.jpeg,.png"
         className="hidden"
         onChange={(e) => handleFileSelect(1, e)}
       />
+
 
       <LoadingOverlay
         open={isSubmitting}

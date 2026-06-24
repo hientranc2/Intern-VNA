@@ -48,7 +48,14 @@ export function approveAccidentReport(id: number) {
   });
 }
 
+export function deleteAccidentReport(id: number) {
+  return request<{ message: string }>(`/accident-reports/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export type SummaryResponse = {
+
   rows: Record<string, number[]>;
   phanLoai: Record<string, number[]>;
 };

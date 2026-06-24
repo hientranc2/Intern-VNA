@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Param,
   Query,
   ParseIntPipe,
@@ -41,4 +42,10 @@ export class AccidentReportController {
   approve(@Param('id', ParseIntPipe) id: number) {
     return this.service.approve(id);
   }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.remove(id);
+  }
 }
+

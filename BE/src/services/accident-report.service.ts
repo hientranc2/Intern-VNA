@@ -93,6 +93,14 @@ export class AccidentReportService {
     return { message: 'Đã tiếp nhận báo cáo' };
   }
 
+  async remove(id: number): Promise<{ message: string }> {
+    const report = await this.repo.findOne({ where: { id } });
+    if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
+    await this.repo.remove(report);
+    return { message: 'Xóa thành công' };
+  }
+
+
   async getSummary(query: SummaryQueryDto): Promise<{
     rows: Record<string, number[]>;
     phanLoai: Record<string, number[]>;

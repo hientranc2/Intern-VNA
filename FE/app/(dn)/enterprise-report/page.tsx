@@ -818,8 +818,8 @@ export default function EnterpriseReportPage() {
       PHAN_LOAI_MAS.map((ma) => [ma, phanLoai[ma].map(parseNum)]),
     );
 
-  const nextSection = () => {
-    if (section === "ttct") {
+  const validateSection = (sec: FormSection): boolean => {
+    if (sec === "ttct") {
       const ttctFields: [string, string][] = [
         ["Tổng số lao động của cơ sở", totalLao],
         ["Tổng số lao động nữ", totalNu],
@@ -832,10 +832,9 @@ export default function EnterpriseReportPage() {
         return !isNaN(parsed) && parsed < 0;
       });
       if (empty || negative) {
-        setTriedSubmit(true);
-        return;
+        return false;
       }
-    } else if (section === "tnld") {
+    } else if (sec === "tnld") {
       const tnldFields: [string, string][] = [
         ["Tổng số vụ", tongVu],
         ["Số vụ có người chết", vuChet],
@@ -861,9 +860,8 @@ export default function EnterpriseReportPage() {
         return !isNaN(parsed) && parsed < 0;
       });
       if (empty || negative) {
-        setTriedSubmit(true);
         setSubTab("tongSo");
-        return;
+        return false;
       }
 
       for (let i = 0; i < accidentDetails.length; i++) {
@@ -894,13 +892,12 @@ export default function EnterpriseReportPage() {
           return !isNaN(parsed) && parsed < 0;
         });
         if (emptyDetailField || negativeDetailField) {
-          setTriedSubmit(true);
           setSubTab("chiTiet");
           setExpandedIds((prev) => ({ ...prev, [d.id]: true }));
-          return;
+          return false;
         }
       }
-    } else if (section === "tnld_tc") {
+    } else if (sec === "tnld_tc") {
       const tcFields: [string, string][] = [
         ["Tổng số vụ", tcTongVu],
         ["Số vụ có người chết", tcVuChet],
@@ -926,9 +923,16 @@ export default function EnterpriseReportPage() {
         return !isNaN(parsed) && parsed < 0;
       });
       if (empty || negative) {
-        setTriedSubmit(true);
-        return;
+        return false;
       }
+    }
+    return true;
+  };
+
+  const nextSection = () => {
+    if (!validateSection(section)) {
+      setTriedSubmit(true);
+      return;
     }
 
     const idx = SECTION_OPTIONS.findIndex((o) => o.value === section);
@@ -937,6 +941,7 @@ export default function EnterpriseReportPage() {
       setTriedSubmit(false);
     }
   };
+
 
   const validateReport = (): boolean => {
     setTriedSubmit(true);
@@ -1732,13 +1737,30 @@ export default function EnterpriseReportPage() {
                 <select
                   className={SELECT_TOP_CLASS}
                   value={section}
-                  onChange={(e) => setSection(e.target.value as FormSection)}
+                  onChange={(e) => {
+                    const nextSec = e.target.value as FormSection;
+                    const currIdx = SECTION_OPTIONS.findIndex((o) => o.value === section);
+                    const targetIdx = SECTION_OPTIONS.findIndex((o) => o.value === nextSec);
+                    if (targetIdx > currIdx) {
+                      for (let i = currIdx; i < targetIdx; i++) {
+                        const secToValidate = SECTION_OPTIONS[i].value;
+                        if (!validateSection(secToValidate)) {
+                          setSection(secToValidate);
+                          setTriedSubmit(true);
+                          return;
+                        }
+                      }
+                    }
+                    setSection(nextSec);
+                    setTriedSubmit(false);
+                  }}
                 >
                   {SECTION_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
                   ))}
+
                 </select>
               </div>
             )}
