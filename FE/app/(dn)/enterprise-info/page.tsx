@@ -389,11 +389,16 @@ export default function EnterpriseInfoPage() {
   ) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
-    const isPdf =
+    const isAllowed =
       file.type === "application/pdf" ||
-      file.name.toLowerCase().endsWith(".pdf");
-    if (!isPdf) {
-      showToast("Chỉ cho phép tải lên file PDF", "error");
+      file.type.startsWith("image/") ||
+      /\.(pdf|jpg|jpeg|png)$/i.test(file.name);
+
+    if (!isAllowed) {
+      showToast(
+        "Chỉ cho phép tải lên file PDF, JPG, JPEG hoặc PNG",
+        "error",
+      );
       e.target.value = "";
       return;
     }
