@@ -21,8 +21,22 @@ export function validateLogin(
 }
 
 export function isValidEmail(email: string): boolean {
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return regex.test(email);
+  // Regex tiêu chuẩn: yêu cầu định dạng username@domain.tld (tld tối thiểu 2 ký tự)
+  const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!regex.test(email)) return false;
+
+  // Loại bỏ các trường hợp gõ thiếu domain phổ biến (ví dụ: g.com, y.com, m.co)
+  // bằng cách yêu cầu phần tên miền đầu tiên sau ký tự @ phải có ít nhất 2 ký tự.
+  const parts = email.split("@");
+  if (parts.length === 2) {
+    const domain = parts[1];
+    const domainParts = domain.split(".");
+    if (domainParts[0] && domainParts[0].length < 2) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // SĐT Việt Nam: 10–11 chữ số bắt đầu bằng 0, hoặc +84... (bỏ qua dấu cách/chấm/gạch).

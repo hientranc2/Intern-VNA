@@ -139,10 +139,27 @@ export default function AccidentReportPage() {
       }
     }
 
+    const matchLoaiHinh = (reportLoaiHinh: string, categoryName: string): boolean => {
+      if (!reportLoaiHinh) return false;
+      const normReport = reportLoaiHinh.trim().toLowerCase();
+      const normCategory = categoryName.trim().toLowerCase();
+      if (normReport === normCategory) return true;
+      if (normCategory === "công ty trách nhiệm hữu hạn") {
+        return normReport === "công ty tnhh" || normReport === "công ty trách nhiệm hữu hạn";
+      }
+      if (normCategory === "đơn vị kinh tế tập thể") {
+        return normReport === "hợp tác xã" || normReport === "đơn vị kinh tế tập thể";
+      }
+      if (normCategory === "đơn vị kinh tế cá thể") {
+        return normReport === "hộ kinh doanh cá thể" || normReport === "hộ kinh doanh" || normReport === "đơn vị kinh tế cá thể";
+      }
+      return false;
+    };
+
     return {
       total: toRow(filtered),
       byLoaiHinh: TONGHOP_I_ROWS.map((name) =>
-        toRow(filtered.filter((r) => r.loaiHinh === name)),
+        toRow(filtered.filter((r) => matchLoaiHinh(r.loaiHinh, name))),
       ),
       phanLoai,
     };
@@ -983,14 +1000,16 @@ export default function AccidentReportPage() {
                               {item.label}
                             </td>
                             <td className={CT_TD}>{item.ma}</td>
-                            {(
-                              tonghopStats.phanLoai[item.ma] ??
-                              Array.from({ length: 13 }, () => 0)
-                            ).map((v, i) => (
-                              <td key={i} className={CT_TD}>
-                                {v || ""}
-                              </td>
-                            ))}
+                            {(() => {
+                              const rowVals = tonghopStats.phanLoai[item.ma];
+                              const hasData = !!rowVals;
+                              const displayVals = rowVals ?? Array.from({ length: 13 }, () => 0);
+                              return displayVals.map((v, i) => (
+                                <td key={i} className={CT_TD}>
+                                  {hasData ? v : (v || "")}
+                                </td>
+                              ));
+                            })()}
                           </tr>
                         ))}
                       </Fragment>

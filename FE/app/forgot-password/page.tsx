@@ -18,8 +18,6 @@ import {
 type Step = 1 | 2;
 type ToastState = { variant: "success" | "error"; message: string } | null;
 
-
-
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const countdown = useCountdown(300);
@@ -161,7 +159,10 @@ export default function ForgotPasswordPage() {
 
             <p className="text-center text-[13px] text-muted">
               Bạn đã có tài khoản?{" "}
-              <a href="/login" className="font-medium text-primary hover:underline">
+              <a
+                href="/login"
+                className="font-medium text-primary hover:underline"
+              >
                 Đăng nhập
               </a>
             </p>
@@ -255,7 +256,10 @@ export default function ForgotPasswordPage() {
                 ← Quay lại
               </button>
               <span className="px-2">|</span>
-              <a href="/login" className="font-medium text-primary hover:underline">
+              <a
+                href="/login"
+                className="font-medium text-primary hover:underline"
+              >
                 Đăng nhập
               </a>
             </p>

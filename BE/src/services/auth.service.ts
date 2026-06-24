@@ -282,17 +282,15 @@ export class AuthService {
 </div>
 `;
 
-    try {
-      await this.transporter.sendMail({
-        from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
-        to: user.email,
-        subject: 'Mã OTP khôi phục mật khẩu - VNA GROUP',
-        html: htmlTemplate,
-      });
-    } catch (error) {
+    this.transporter.sendMail({
+      from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
+      to: user.email,
+      subject: 'Mã OTP khôi phục mật khẩu - VNA GROUP',
+      html: htmlTemplate,
+    }).catch((error) => {
       console.error('--- LỖI GỬI MAIL THỰC TẾ TỪ GOOGLE ---');
       console.error(error);
-    }
+    });
 
     return { message: 'Mã OTP đã được gửi đến email của bạn!' };
   }
@@ -351,18 +349,16 @@ export class AuthService {
   </div>
 </div>`;
 
-    try {
-      await this.transporter.sendMail({
-        from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
-        to: email,
-        subject: 'Mã OTP khôi phục mật khẩu - VNA GROUP',
-        html: htmlTemplate,
-      });
-    } catch (error) {
+    this.transporter.sendMail({
+      from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
+      to: email,
+      subject: 'Mã OTP khôi phục mật khẩu - VNA GROUP',
+      html: htmlTemplate,
+    }).catch((error) => {
       console.log(
         'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
       );
-    }
+    });
 
     return { message: 'Mã OTP đã được gửi đến email của bạn!' };
   }
@@ -499,18 +495,16 @@ export class AuthService {
   </div>
 </div>`;
 
-      try {
-        await this.transporter.sendMail({
-          from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
-          to: user.email,
-          subject: 'Mã OTP xác nhận thay đổi Email - VNA GROUP',
-          html: htmlTemplate,
-        });
-      } catch (error) {
+      this.transporter.sendMail({
+        from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
+        to: user.email,
+        subject: 'Mã OTP xác nhận thay đổi Email - VNA GROUP',
+        html: htmlTemplate,
+      }).catch((error) => {
         console.log(
           'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
         );
-      }
+      });
       return { message: 'Đã gửi mã OTP đến email HIỆN TẠI của bạn' };
     }
 
@@ -553,18 +547,16 @@ export class AuthService {
   </div>
 </div>`;
 
-    try {
-      await this.transporter.sendMail({
-        from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
-        to: business.email,
-        subject: 'Mã OTP xác nhận thay đổi Email - VNA GROUP',
-        html: htmlTemplate,
-      });
-    } catch (error) {
+    this.transporter.sendMail({
+      from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
+      to: business.email,
+      subject: 'Mã OTP xác nhận thay đổi Email - VNA GROUP',
+      html: htmlTemplate,
+    }).catch((error) => {
       console.log(
         'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
       );
-    }
+    });
     return { message: 'Đã gửi mã OTP đến email HIỆN TẠI của bạn' };
   }
 
@@ -687,18 +679,16 @@ export class AuthService {
   </div>
 </div>`;
 
-    try {
-      await this.transporter.sendMail({
-        from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
-        to: dto.email,
-        subject: 'Mã OTP xác thực đăng ký doanh nghiệp - VNA GROUP',
-        html: htmlTemplate,
-      });
-    } catch (error) {
+    this.transporter.sendMail({
+      from: '"Hệ thống VNA" <hientran30012004@gmail.com>',
+      to: dto.email,
+      subject: 'Mã OTP xác thực đăng ký doanh nghiệp - VNA GROUP',
+      html: htmlTemplate,
+    }).catch((error) => {
       console.log(
         'Chưa kết nối Mail Server, lấy mã OTP ở dòng log phía trên để test.',
       );
-    }
+    });
 
     return { message: 'Mã OTP đã được gửi đến email của bạn!' };
   }
