@@ -21,7 +21,10 @@ import {
   EMPTY_VALS,
 } from "@/libs/tts/accident-report/accidentReportData";
 import { getBusinessId } from "@/libs/tts/auth/authApi";
-import { getBusinessById, type BusinessDetail } from "@/libs/tts/enterprise/enterpriseApi";
+import {
+  getBusinessById,
+  type BusinessDetail,
+} from "@/libs/tts/enterprise/enterpriseApi";
 
 type PageView = "list" | "form";
 type FormSection = "ttct" | "tnld" | "tnld_tc" | "phanloai" | "tongquan";
@@ -130,26 +133,65 @@ const normalizeDetail = (d: any): AccidentDetail => {
     mucDo: d.mucDo || "Thương nhẹ",
     ngayXayRa: d.ngayXayRa || "",
     diaDiem: d.diaDiem || "",
-    
-    nguyenNhan: d.nguyenNhan || "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
+
+    nguyenNhan:
+      d.nguyenNhan ||
+      "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
     yeuTo: d.yeuTo || "Thiết bị nâng",
     soVu: String(d.soVu !== undefined ? d.soVu : "1"),
-    soVuCoNguoiChet: String(d.soVuCoNguoiChet !== undefined ? d.soVuCoNguoiChet : (d.mucDo === "Chết" ? "1" : "0")),
-    soVuCo2NguoiBiNan: String(d.soVuCo2NguoiBiNan !== undefined ? d.soVuCo2NguoiBiNan : "0"),
+    soVuCoNguoiChet: String(
+      d.soVuCoNguoiChet !== undefined
+        ? d.soVuCoNguoiChet
+        : d.mucDo === "Chết"
+          ? "1"
+          : "0",
+    ),
+    soVuCo2NguoiBiNan: String(
+      d.soVuCo2NguoiBiNan !== undefined ? d.soVuCo2NguoiBiNan : "0",
+    ),
     soNguoiBiNan: String(d.soNguoiBiNan !== undefined ? d.soNguoiBiNan : "1"),
-    soLDNu: String(d.soLDNu !== undefined ? d.soLDNu : (d.gioiTinh === "Nữ" ? "1" : "0")),
-    soNguoiBiChet: String(d.soNguoiBiChet !== undefined ? d.soNguoiBiChet : (d.mucDo === "Chết" ? "1" : "0")),
-    soNguoiBiThuongNang: String(d.soNguoiBiThuongNang !== undefined ? d.soNguoiBiThuongNang : (d.mucDo === "Thương nặng" ? "1" : "0")),
+    soLDNu: String(
+      d.soLDNu !== undefined ? d.soLDNu : d.gioiTinh === "Nữ" ? "1" : "0",
+    ),
+    soNguoiBiChet: String(
+      d.soNguoiBiChet !== undefined
+        ? d.soNguoiBiChet
+        : d.mucDo === "Chết"
+          ? "1"
+          : "0",
+    ),
+    soNguoiBiThuongNang: String(
+      d.soNguoiBiThuongNang !== undefined
+        ? d.soNguoiBiThuongNang
+        : d.mucDo === "Thương nặng"
+          ? "1"
+          : "0",
+    ),
     nanKhongQL: String(d.nanKhongQL !== undefined ? d.nanKhongQL : "0"),
     nuKhongQL: String(d.nuKhongQL !== undefined ? d.nuKhongQL : "0"),
     chetKhongQL: String(d.chetKhongQL !== undefined ? d.chetKhongQL : "0"),
-    thuongKhongQL: String(d.thuongKhongQL !== undefined ? d.thuongKhongQL : "0"),
-    chiPhiYTe: String(d.chiPhiYTe !== undefined ? d.chiPhiYTe : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
-    chiPhiLuong: String(d.chiPhiLuong !== undefined ? d.chiPhiLuong : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
-    chiPhiBTTC: String(d.chiPhiBTTC !== undefined ? d.chiPhiBTTC : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
-    tongSoTien: String(d.tongSoTien !== undefined ? d.tongSoTien : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    thuongKhongQL: String(
+      d.thuongKhongQL !== undefined ? d.thuongKhongQL : "0",
+    ),
+    chiPhiYTe: String(d.chiPhiYTe !== undefined ? d.chiPhiYTe : "0").replace(
+      /\B(?=(\d{3})+(?!\d))/g,
+      ".",
+    ),
+    chiPhiLuong: String(
+      d.chiPhiLuong !== undefined ? d.chiPhiLuong : "0",
+    ).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    chiPhiBTTC: String(d.chiPhiBTTC !== undefined ? d.chiPhiBTTC : "0").replace(
+      /\B(?=(\d{3})+(?!\d))/g,
+      ".",
+    ),
+    tongSoTien: String(d.tongSoTien !== undefined ? d.tongSoTien : "0").replace(
+      /\B(?=(\d{3})+(?!\d))/g,
+      ".",
+    ),
     soNgayNghi: String(d.soNgayNghi !== undefined ? d.soNgayNghi : "0"),
-    thiethaiTaiSan: String(d.thiethaiTaiSan !== undefined ? d.thiethaiTaiSan : "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    thiethaiTaiSan: String(
+      d.thiethaiTaiSan !== undefined ? d.thiethaiTaiSan : "0",
+    ).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
   };
 };
 
@@ -161,7 +203,7 @@ const InputField = ({
   required = false,
   suffix = "",
   invalid = false,
-  errorMsg = ""
+  errorMsg = "",
 }: {
   label: string;
   value: string;
@@ -193,9 +235,7 @@ const InputField = ({
         )}
       </div>
       {invalid && errorMsg && (
-        <span className="text-[11px] text-danger mt-1">
-          {errorMsg}
-        </span>
+        <span className="text-[11px] text-danger mt-1">{errorMsg}</span>
       )}
     </div>
   );
@@ -213,12 +253,19 @@ const isInvalidValue = (triedSubmit: boolean, val: string, req: boolean) => {
   return !isNaN(parsed) && parsed < 0;
 };
 
-const getErrorMsg = (triedSubmit: boolean, val: string, label: string, req: boolean) => {
+const getErrorMsg = (
+  triedSubmit: boolean,
+  val: string,
+  label: string,
+  req: boolean,
+) => {
   if (!triedSubmit) return "";
-  if (req && !val.trim()) return `Vui lòng nhập ${label.replace(" *", "").toLowerCase()}`;
+  if (req && !val.trim())
+    return `Vui lòng nhập ${label.replace(" *", "").toLowerCase()}`;
   const clean = val.trim().replace(/\./g, "").replace(/,/g, ".");
   const parsed = parseFloat(clean);
-  if (!isNaN(parsed) && parsed < 0) return `${label.replace(" *", "")} không được là số âm`;
+  if (!isNaN(parsed) && parsed < 0)
+    return `${label.replace(" *", "")} không được là số âm`;
   return "";
 };
 const SELECT_TOP_CLASS = `${FC} min-w-[280px] cursor-pointer appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat pr-8`;
@@ -272,7 +319,9 @@ export default function EnterpriseReportPage() {
   const [createKy, setCreateKy] = useState("6 tháng");
   const [creating, setCreating] = useState(false);
 
-  const [businessDetail, setBusinessDetail] = useState<BusinessDetail | null>(null);
+  const [businessDetail, setBusinessDetail] = useState<BusinessDetail | null>(
+    null,
+  );
   const [activeReport, setActiveReport] = useState<ReportRecord | null>(null);
 
   const matchedConfig = useMemo(() => {
@@ -282,9 +331,7 @@ export default function EnterpriseReportPage() {
   }, [availableConfigs, createYear, createKy]);
 
   const isAlreadyCreated = useMemo(() => {
-    return reports.some(
-      (r) => r.nam === createYear && r.ky === createKy,
-    );
+    return reports.some((r) => r.nam === createYear && r.ky === createKy);
   }, [reports, createYear, createKy]);
 
   const openCreateModal = async () => {
@@ -398,7 +445,9 @@ export default function EnterpriseReportPage() {
 
   // Chi tiết từng vụ
   const [accidentDetails, setAccidentDetails] = useState<AccidentDetail[]>([]);
-  const [savedOverviewRows, setSavedOverviewRows] = useState<Record<string, number[]>>({});
+  const [savedOverviewRows, setSavedOverviewRows] = useState<
+    Record<string, number[]>
+  >({});
 
   // Báo cáo đang chỉnh + lưới phân loại phần II + cờ đang lưu
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -414,6 +463,7 @@ export default function EnterpriseReportPage() {
     tongHopRows: any;
     chiTietRows: any;
   } | null>(null);
+  const isLoadingReportRef = useRef(false);
 
   const mapCauseToCode = (cause: string): string => {
     if (!cause) return "16";
@@ -473,6 +523,153 @@ export default function EnterpriseReportPage() {
     }
     return false;
   };
+
+  const tcCrossValidations = useMemo(() => {
+    const tongVu = parseNum(tcTongVu);
+    const vuChet = parseNum(tcVuChet);
+    const vuNhieu = parseNum(tcVuNhieu);
+    const tongNan = parseNum(tcTongNan);
+    const tongNanNu = parseNum(tcTongNanNu);
+    const tongChet = parseNum(tcTongChetNN);
+    const tongThuong = parseNum(tcTongThuongNang);
+    const nanKQL = parseNum(tcNanKhongQL);
+    const nuKQL = parseNum(tcNuKhongQL);
+    const chetKQL = parseNum(tcChetKhongQL);
+    const thuongKQL = parseNum(tcThuongKhongQL);
+
+    return {
+      isTcChetGreater: tongVu < vuChet,
+      isTcNhieuGreater: tongVu < vuNhieu,
+      isTcNanNuGreater: tongNan < tongNanNu,
+      isTcChetNNGreater: tongNan < tongChet,
+      isTcThuongNangGreater: tongNan < tongThuong,
+      isTcNuKQGreater: nanKQL < nuKQL,
+      isTcChetKQGreater: nanKQL < chetKQL,
+      isTcThuongKQGreater: nanKQL < thuongKQL,
+    };
+  }, [
+    tcTongVu,
+    tcVuChet,
+    tcVuNhieu,
+    tcTongNan,
+    tcTongNanNu,
+    tcTongChetNN,
+    tcTongThuongNang,
+    tcNanKhongQL,
+    tcNuKhongQL,
+    tcChetKhongQL,
+    tcThuongKhongQL,
+  ]);
+
+  // Cross-validation for ttct section: totalNu <= totalLao
+  const ttctCrossValidations = useMemo(() => {
+    const lao = parseNum(totalLao);
+    const nu = parseNum(totalNu);
+    return {
+      isNuGreaterThanLao: totalLao.trim() !== "" && totalNu.trim() !== "" && nu > lao,
+    };
+  }, [totalLao, totalNu]);
+
+  // Cross-validation for tnld section (non-tc)
+  const tnldCrossValidations = useMemo(() => {
+    const tVu = parseNum(tcTongVu);
+    const vChet = parseNum(vuChet);
+    const vNhieu = parseNum(vuNhieu);
+    const tNan = parseNum(tongNan);
+    const tNanNu = parseNum(tongNanNu);
+    const tChet = parseNum(tongChetNN);
+    const tThuong = parseNum(tongThuongNang);
+    const nKQL = parseNum(nanKhongQL);
+    const nuKQL = parseNum(nuKhongQL);
+    const chetKQL = parseNum(chetKhongQL);
+    const thuongKQL = parseNum(thuongKhongQL);
+
+    return {
+      // Tổng số vụ group
+      isVuChetGreater: tVu < vChet,
+      isVuNhieuGreater: tVu < vNhieu,
+      // Tổng số người bị nạn group
+      isNanNuGreater: tNan < tNanNu,
+      isChetNNGreater: tNan < tChet,
+      isThuongNangGreater: tNan < tThuong,
+      // Số người bị nạn không QL group
+      isNuKQLGreater: nKQL < nuKQL,
+      isChetKQLGreater: nKQL < chetKQL,
+      isThuongKQLGreater: nKQL < thuongKQL,
+    };
+  }, [
+    tcTongVu,
+    vuChet,
+    vuNhieu,
+    tongNan,
+    tongNanNu,
+    tongChetNN,
+    tongThuongNang,
+    nanKhongQL,
+    nuKhongQL,
+    chetKhongQL,
+    thuongKhongQL,
+  ]);
+
+  // Mismatch detection between tab (1) summary values and tab (2) detail sums
+  const detailSumsMismatch = useMemo(() => {
+    if (accidentDetails.length === 0) return null;
+
+    let sumVu = 0, sumVuChet = 0, sumVuNhieu = 0;
+    let sumNan = 0, sumNanNu = 0, sumChet = 0, sumThuong = 0;
+    let sumNanKQL = 0, sumNuKQL = 0, sumChetKQL = 0, sumThuongKQL = 0;
+    let sumYTe = 0, sumLuong = 0, sumBTTC = 0, sumTongTien = 0;
+    let sumNgayNghi = 0, sumThiHaiTS = 0;
+
+    accidentDetails.forEach((d) => {
+      sumVu += parseNum(d.soVu);
+      sumVuChet += parseNum(d.soVuCoNguoiChet);
+      sumVuNhieu += parseNum(d.soVuCo2NguoiBiNan);
+      sumNan += parseNum(d.soNguoiBiNan);
+      sumNanNu += parseNum(d.soLDNu);
+      sumChet += parseNum(d.soNguoiBiChet);
+      sumThuong += parseNum(d.soNguoiBiThuongNang);
+      sumNanKQL += parseNum(d.nanKhongQL);
+      sumNuKQL += parseNum(d.nuKhongQL);
+      sumChetKQL += parseNum(d.chetKhongQL);
+      sumThuongKQL += parseNum(d.thuongKhongQL);
+      sumYTe += parseNum(d.chiPhiYTe);
+      sumLuong += parseNum(d.chiPhiLuong);
+      sumBTTC += parseNum(d.chiPhiBTTC);
+      sumTongTien += parseNum(d.tongSoTien);
+      sumNgayNghi += parseNum(d.soNgayNghi);
+      sumThiHaiTS += parseNum(d.thiethaiTaiSan);
+    });
+
+    const m = {
+      tongVu: parseNum(tcTongVu) !== sumVu,
+      vuChet: parseNum(vuChet) !== sumVuChet,
+      vuNhieu: parseNum(vuNhieu) !== sumVuNhieu,
+      tongNan: parseNum(tongNan) !== sumNan,
+      tongNanNu: parseNum(tongNanNu) !== sumNanNu,
+      tongChetNN: parseNum(tongChetNN) !== sumChet,
+      tongThuongNang: parseNum(tongThuongNang) !== sumThuong,
+      nanKhongQL: parseNum(nanKhongQL) !== sumNanKQL,
+      nuKhongQL: parseNum(nuKhongQL) !== sumNuKQL,
+      chetKhongQL: parseNum(chetKhongQL) !== sumChetKQL,
+      thuongKhongQL: parseNum(thuongKhongQL) !== sumThuongKQL,
+      chiPhiYTe: parseNum(chiPhiYTe) !== sumYTe,
+      chiPhiLuong: parseNum(chiPhiLuong) !== sumLuong,
+      chiPhiBTTC: parseNum(chiPhiBTTC) !== sumBTTC,
+      tongChiPhi: parseNum(tongChiPhi) !== sumTongTien,
+      soNgayNghi: parseNum(soNgayNghi) !== sumNgayNghi,
+      thiHaiTaiSan: parseNum(thiHaiTaiSan) !== sumThiHaiTS,
+    };
+
+    const hasAny = Object.values(m).some(Boolean);
+    return hasAny ? m : null;
+  }, [
+    accidentDetails, tcTongVu, vuChet, vuNhieu,
+    tongNan, tongNanNu, tongChetNN, tongThuongNang,
+    nanKhongQL, nuKhongQL, chetKhongQL, thuongKhongQL,
+    chiPhiYTe, chiPhiLuong, chiPhiBTTC, tongChiPhi,
+    soNgayNghi, thiHaiTaiSan,
+  ]);
 
   useEffect(() => {
     if (!checkDetailsChanged()) return;
@@ -613,12 +810,33 @@ export default function EnterpriseReportPage() {
   const getDefaultSector = (): string => {
     const ind = (businessDetail?.mainIndustry || "").toLowerCase();
     if (ind.includes("khai khoáng") || ind.includes("khai thác")) return "1";
-    if (ind.includes("chế biến") || ind.includes("chế tạo") || ind.includes("sản xuất") || ind.includes("cơ khí")) return "2";
+    if (
+      ind.includes("chế biến") ||
+      ind.includes("chế tạo") ||
+      ind.includes("sản xuất") ||
+      ind.includes("cơ khí")
+    )
+      return "2";
     if (ind.includes("điện") || ind.includes("khí đốt")) return "3";
-    if (ind.includes("cung cấp nước") || ind.includes("thoát nước") || ind.includes("xử lý chất thải")) return "4";
+    if (
+      ind.includes("cung cấp nước") ||
+      ind.includes("thoát nước") ||
+      ind.includes("xử lý chất thải")
+    )
+      return "4";
     if (ind.includes("xây dựng")) return "5";
-    if (ind.includes("vận tải") || ind.includes("kho bãi") || ind.includes("logistics")) return "6";
-    if (ind.includes("nông nghiệp") || ind.includes("lâm nghiệp") || ind.includes("thủy sản")) return "7";
+    if (
+      ind.includes("vận tải") ||
+      ind.includes("kho bãi") ||
+      ind.includes("logistics")
+    )
+      return "6";
+    if (
+      ind.includes("nông nghiệp") ||
+      ind.includes("lâm nghiệp") ||
+      ind.includes("thủy sản")
+    )
+      return "7";
     return "8"; // Ngành khác
   };
 
@@ -634,35 +852,62 @@ export default function EnterpriseReportPage() {
       let sum = 0;
 
       if (maNum >= 1 && maNum <= 8) {
-        for (let m = 1; m <= 8; m++) sum += parseNum(next[String(m)]?.[col] ?? "0");
+        for (let m = 1; m <= 8; m++)
+          sum += parseNum(next[String(m)]?.[col] ?? "0");
         const cause = "16";
         let sum2 = 0;
-        for (let m = 9; m <= 16; m++) if (String(m) !== cause) sum2 += parseNum(next[String(m)]?.[col] ?? "0");
-        next[cause] = next[cause].map((c, i) => (i === col ? String(Math.max(0, sum - sum2)) : c));
+        for (let m = 9; m <= 16; m++)
+          if (String(m) !== cause)
+            sum2 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[cause] = next[cause].map((c, i) =>
+          i === col ? String(Math.max(0, sum - sum2)) : c,
+        );
         const factor = "24";
         let sum3 = 0;
-        for (let m = 17; m <= 24; m++) if (String(m) !== factor) sum3 += parseNum(next[String(m)]?.[col] ?? "0");
-        next[factor] = next[factor].map((c, i) => (i === col ? String(Math.max(0, sum - sum3)) : c));
+        for (let m = 17; m <= 24; m++)
+          if (String(m) !== factor)
+            sum3 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[factor] = next[factor].map((c, i) =>
+          i === col ? String(Math.max(0, sum - sum3)) : c,
+        );
       } else if (maNum >= 9 && maNum <= 16) {
-        for (let m = 9; m <= 16; m++) sum += parseNum(next[String(m)]?.[col] ?? "0");
+        for (let m = 9; m <= 16; m++)
+          sum += parseNum(next[String(m)]?.[col] ?? "0");
         const sec = getDefaultSector();
         let sum1 = 0;
-        for (let m = 1; m <= 8; m++) if (String(m) !== sec) sum1 += parseNum(next[String(m)]?.[col] ?? "0");
-        next[sec] = next[sec].map((c, i) => (i === col ? String(Math.max(0, sum - sum1)) : c));
+        for (let m = 1; m <= 8; m++)
+          if (String(m) !== sec)
+            sum1 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[sec] = next[sec].map((c, i) =>
+          i === col ? String(Math.max(0, sum - sum1)) : c,
+        );
         const factor = "24";
         let sum3 = 0;
-        for (let m = 17; m <= 24; m++) if (String(m) !== factor) sum3 += parseNum(next[String(m)]?.[col] ?? "0");
-        next[factor] = next[factor].map((c, i) => (i === col ? String(Math.max(0, sum - sum3)) : c));
+        for (let m = 17; m <= 24; m++)
+          if (String(m) !== factor)
+            sum3 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[factor] = next[factor].map((c, i) =>
+          i === col ? String(Math.max(0, sum - sum3)) : c,
+        );
       } else if (maNum >= 17 && maNum <= 24) {
-        for (let m = 17; m <= 24; m++) sum += parseNum(next[String(m)]?.[col] ?? "0");
+        for (let m = 17; m <= 24; m++)
+          sum += parseNum(next[String(m)]?.[col] ?? "0");
         const sec = getDefaultSector();
         let sum1 = 0;
-        for (let m = 1; m <= 8; m++) if (String(m) !== sec) sum1 += parseNum(next[String(m)]?.[col] ?? "0");
-        next[sec] = next[sec].map((c, i) => (i === col ? String(Math.max(0, sum - sum1)) : c));
+        for (let m = 1; m <= 8; m++)
+          if (String(m) !== sec)
+            sum1 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[sec] = next[sec].map((c, i) =>
+          i === col ? String(Math.max(0, sum - sum1)) : c,
+        );
         const cause = "16";
         let sum2 = 0;
-        for (let m = 9; m <= 16; m++) if (String(m) !== cause) sum2 += parseNum(next[String(m)]?.[col] ?? "0");
-        next[cause] = next[cause].map((c, i) => (i === col ? String(Math.max(0, sum - sum2)) : c));
+        for (let m = 9; m <= 16; m++)
+          if (String(m) !== cause)
+            sum2 += parseNum(next[String(m)]?.[col] ?? "0");
+        next[cause] = next[cause].map((c, i) =>
+          i === col ? String(Math.max(0, sum - sum2)) : c,
+        );
       }
 
       const sumStr = String(sum);
@@ -684,23 +929,38 @@ export default function EnterpriseReportPage() {
     });
   };
 
-  const updateFieldAndPhanLoai = (setter: (v: string) => void, col: number, val: string) => {
+  const updateFieldAndPhanLoai = (
+    setter: (v: string) => void,
+    col: number,
+    val: string,
+  ) => {
     setter(val);
     const num = parseNum(val);
     setPhanLoai((prev) => {
       const next = { ...prev };
       const sec = getDefaultSector();
       let sum1 = 0;
-      for (let m = 1; m <= 8; m++) if (String(m) !== sec) sum1 += parseNum(prev[String(m)]?.[col] ?? "0");
-      next[sec] = (next[sec] || Array(13).fill("0")).map((c, i) => (i === col ? String(Math.max(0, num - sum1)) : c));
+      for (let m = 1; m <= 8; m++)
+        if (String(m) !== sec) sum1 += parseNum(prev[String(m)]?.[col] ?? "0");
+      next[sec] = (next[sec] || Array(13).fill("0")).map((c, i) =>
+        i === col ? String(Math.max(0, num - sum1)) : c,
+      );
       const cause = "16";
       let sum2 = 0;
-      for (let m = 9; m <= 16; m++) if (String(m) !== cause) sum2 += parseNum(prev[String(m)]?.[col] ?? "0");
-      next[cause] = (next[cause] || Array(13).fill("0")).map((c, i) => (i === col ? String(Math.max(0, num - sum2)) : c));
+      for (let m = 9; m <= 16; m++)
+        if (String(m) !== cause)
+          sum2 += parseNum(prev[String(m)]?.[col] ?? "0");
+      next[cause] = (next[cause] || Array(13).fill("0")).map((c, i) =>
+        i === col ? String(Math.max(0, num - sum2)) : c,
+      );
       const factor = "24";
       let sum3 = 0;
-      for (let m = 17; m <= 24; m++) if (String(m) !== factor) sum3 += parseNum(prev[String(m)]?.[col] ?? "0");
-      next[factor] = (next[factor] || Array(13).fill("0")).map((c, i) => (i === col ? String(Math.max(0, num - sum3)) : c));
+      for (let m = 17; m <= 24; m++)
+        if (String(m) !== factor)
+          sum3 += parseNum(prev[String(m)]?.[col] ?? "0");
+      next[factor] = (next[factor] || Array(13).fill("0")).map((c, i) =>
+        i === col ? String(Math.max(0, num - sum3)) : c,
+      );
       return next;
     });
   };
@@ -713,10 +973,13 @@ export default function EnterpriseReportPage() {
     setSection(readOnly ? "tongquan" : "ttct");
     setSubTab("tongSo");
     setView("form");
+    isLoadingReportRef.current = true;
     getDnReportById(r.id)
       .then((res) => {
         const t = res.form.tongHop;
-        const normalizedChiTiet = (res.form.chiTietRows || []).map(normalizeDetail);
+        const normalizedChiTiet = (res.form.chiTietRows || []).map(
+          normalizeDetail,
+        );
         originalReportRef.current = {
           tongHop: t,
           phanLoai: res.form.phanLoaiRows || {},
@@ -733,11 +996,19 @@ export default function EnterpriseReportPage() {
         setTongThuongNang(String(t.soNguoiBiThuongNang));
         setSoNgayNghi(String(t.soNgayNghi));
         setChiPhiYTe(String(t.chiPhiYTe).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-        setChiPhiLuong(String(t.chiPhiTraLuong).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-        setChiPhiBTTC(String(t.boiThuongTroCap).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-        setTongChiPhi(String(t.tongSoTien).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-        setThiHaiTaiSan(String(t.thiethaiTaiSan).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-        
+        setChiPhiLuong(
+          String(t.chiPhiTraLuong).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+        );
+        setChiPhiBTTC(
+          String(t.boiThuongTroCap).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+        );
+        setTongChiPhi(
+          String(t.tongSoTien).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+        );
+        setThiHaiTaiSan(
+          String(t.thiethaiTaiSan).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+        );
+
         setAccidentDetails(normalizedChiTiet);
         setSavedOverviewRows(res.form.tongSoRows || {});
 
@@ -754,13 +1025,23 @@ export default function EnterpriseReportPage() {
           setTcChetKhongQL(String(tcVals[8] ?? 0));
           setTcTongThuongNang(String(tcVals[9] ?? 0));
           setTcThuongKhongQL(String(tcVals[10] ?? 0));
-          
+
           setTcSoNgayNghi(String(tcVals[11] ?? 0));
-          setTcTongChiPhi(String(tcVals[12] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-          setTcChiPhiYTe(String(tcVals[13] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-          setTcChiPhiLuong(String(tcVals[14] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-          setTcChiPhiBTTC(String(tcVals[15] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-          setTcThiHaiTaiSan(String(tcVals[16] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+          setTcTongChiPhi(
+            String(tcVals[12] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+          );
+          setTcChiPhiYTe(
+            String(tcVals[13] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+          );
+          setTcChiPhiLuong(
+            String(tcVals[14] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+          );
+          setTcChiPhiBTTC(
+            String(tcVals[15] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+          );
+          setTcThiHaiTaiSan(
+            String(tcVals[16] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+          );
         } else {
           setTcTongVu("0");
           setTcVuChet("0");
@@ -773,7 +1054,7 @@ export default function EnterpriseReportPage() {
           setTcChetKhongQL("0");
           setTcTongThuongNang("0");
           setTcThuongKhongQL("0");
-          
+
           setTcSoNgayNghi("0");
           setTcTongChiPhi("0");
           setTcChiPhiYTe("0");
@@ -791,8 +1072,10 @@ export default function EnterpriseReportPage() {
             );
         }
         setPhanLoai(next);
+        // Allow sync effect to run again after loading is complete
+        setTimeout(() => { isLoadingReportRef.current = false; }, 0);
       })
-      .catch(() => {});
+      .catch(() => { isLoadingReportRef.current = false; });
   };
 
   const buildTongHop = (): ReportTongHop => ({
@@ -831,7 +1114,7 @@ export default function EnterpriseReportPage() {
         const parsed = parseFloat(clean);
         return !isNaN(parsed) && parsed < 0;
       });
-      if (empty || negative) {
+      if (empty || negative || ttctCrossValidations.isNuGreaterThanLao) {
         return false;
       }
     } else if (sec === "tnld") {
@@ -864,11 +1147,21 @@ export default function EnterpriseReportPage() {
         return false;
       }
 
+      // Cross-validation: sub-fields must not exceed parent totals
+      const hasCrossError = Object.values(tnldCrossValidations).some(Boolean);
+      if (hasCrossError) {
+        setSubTab("tongSo");
+        return false;
+      }
+
       for (let i = 0; i < accidentDetails.length; i++) {
         const d = accidentDetails[i];
         const requiredFields: { key: keyof AccidentDetail; label: string }[] = [
           { key: "soVuCoNguoiChet", label: "Tổng số vụ có người chết" },
-          { key: "soVuCo2NguoiBiNan", label: "Tổng số vụ có 2 người bị nạn trở lên" },
+          {
+            key: "soVuCo2NguoiBiNan",
+            label: "Tổng số vụ có 2 người bị nạn trở lên",
+          },
           { key: "soNguoiBiNan", label: "Tổng số người bị nạn" },
           { key: "soLDNu", label: "Tổng số lao động nữ bị nạn" },
           { key: "soNguoiBiChet", label: "Tổng số người bị chết" },
@@ -878,13 +1171,18 @@ export default function EnterpriseReportPage() {
           { key: "chetKhongQL", label: "Số người chết không QL" },
           { key: "thuongKhongQL", label: "Người bị thương nặng không QL" },
           { key: "chiPhiYTe", label: "Chi phí y tế" },
-          { key: "chiPhiLuong", label: "Chi phí trả lương trong thời gian điều trị" },
+          {
+            key: "chiPhiLuong",
+            label: "Chi phí trả lương trong thời gian điều trị",
+          },
           { key: "chiPhiBTTC", label: "Chi phí bồi thường trợ cấp" },
           { key: "tongSoTien", label: "Tổng số tiền chi phí" },
           { key: "soNgayNghi", label: "Tổng số ngày nghỉ vì TNLĐ" },
           { key: "thiethaiTaiSan", label: "Thiệt hại tài sản" },
         ];
-        const emptyDetailField = requiredFields.find((f) => !String(d[f.key] ?? "").trim());
+        const emptyDetailField = requiredFields.find(
+          (f) => !String(d[f.key] ?? "").trim(),
+        );
         const negativeDetailField = requiredFields.find((f) => {
           const v = String(d[f.key] ?? "");
           const clean = v.trim().replace(/\./g, "").replace(/,/g, ".");
@@ -942,7 +1240,6 @@ export default function EnterpriseReportPage() {
     }
   };
 
-
   const validateReport = (): boolean => {
     setTriedSubmit(true);
     const ttctFields: [string, string][] = [
@@ -988,18 +1285,20 @@ export default function EnterpriseReportPage() {
     ];
 
     const emptyTtct = ttctFields.find(([, v]) => !v.trim());
-    if (emptyTtct) {
+    if (emptyTtct || ttctCrossValidations.isNuGreaterThanLao) {
       setSection("ttct");
       return false;
     }
     const emptyTnld = tnldFields.find(([, v]) => !v.trim());
-    if (emptyTnld) {
+    const hasTnldCrossError = Object.values(tnldCrossValidations).some(Boolean);
+    if (emptyTnld || hasTnldCrossError) {
       setSection("tnld");
       setSubTab("tongSo");
       return false;
     }
     const emptyTc = tcFields.find(([, v]) => !v.trim());
-    if (emptyTc) {
+    const hasTcCrossError = Object.values(tcCrossValidations).some(Boolean);
+    if (emptyTc || hasTcCrossError) {
       setSection("tnld_tc");
       return false;
     }
@@ -1008,7 +1307,10 @@ export default function EnterpriseReportPage() {
       const d = accidentDetails[i];
       const requiredFields: { key: keyof AccidentDetail; label: string }[] = [
         { key: "soVuCoNguoiChet", label: "Tổng số vụ có người chết" },
-        { key: "soVuCo2NguoiBiNan", label: "Tổng số vụ có 2 người bị nạn trở lên" },
+        {
+          key: "soVuCo2NguoiBiNan",
+          label: "Tổng số vụ có 2 người bị nạn trở lên",
+        },
         { key: "soNguoiBiNan", label: "Tổng số người bị nạn" },
         { key: "soLDNu", label: "Tổng số lao động nữ bị nạn" },
         { key: "soNguoiBiChet", label: "Tổng số người bị chết" },
@@ -1018,14 +1320,19 @@ export default function EnterpriseReportPage() {
         { key: "chetKhongQL", label: "Số người chết không QL" },
         { key: "thuongKhongQL", label: "Người bị thương nặng không QL" },
         { key: "chiPhiYTe", label: "Chi phí y tế" },
-        { key: "chiPhiLuong", label: "Chi phí trả lương trong thời gian điều trị" },
+        {
+          key: "chiPhiLuong",
+          label: "Chi phí trả lương trong thời gian điều trị",
+        },
         { key: "chiPhiBTTC", label: "Chi phí bồi thường trợ cấp" },
         { key: "tongSoTien", label: "Tổng số tiền chi phí" },
         { key: "soNgayNghi", label: "Tổng số ngày nghỉ vì TNLĐ" },
         { key: "thiethaiTaiSan", label: "Thiệt hại tài sản" },
       ];
 
-      const emptyDetailField = requiredFields.find((f) => !String(d[f.key] ?? "").trim());
+      const emptyDetailField = requiredFields.find(
+        (f) => !String(d[f.key] ?? "").trim(),
+      );
       if (emptyDetailField) {
         setSection("tnld");
         setSubTab("chiTiet");
@@ -1047,11 +1354,13 @@ export default function EnterpriseReportPage() {
       }
     }
 
-    const negative = [...ttctFields, ...tnldFields, ...tcFields].find(([, v]) => {
-      const clean = v.trim().replace(/\./g, "").replace(/,/g, ".");
-      const parsed = parseFloat(clean);
-      return !isNaN(parsed) && parsed < 0;
-    });
+    const negative = [...ttctFields, ...tnldFields, ...tcFields].find(
+      ([, v]) => {
+        const clean = v.trim().replace(/\./g, "").replace(/,/g, ".");
+        const parsed = parseFloat(clean);
+        return !isNaN(parsed) && parsed < 0;
+      },
+    );
     if (negative) {
       const inTtct = ttctFields.some(([lbl]) => lbl === negative[0]);
       if (inTtct) {
@@ -1084,7 +1393,7 @@ export default function EnterpriseReportPage() {
       parseNum(tongChetNN),
       parseNum(chetKhongQL),
       parseNum(tongThuongNang),
-      parseNum(thuongKhongQL)
+      parseNum(thuongKhongQL),
     ];
 
     result["10"] = [
@@ -1104,7 +1413,7 @@ export default function EnterpriseReportPage() {
       parseNum(tcChiPhiYTe),
       parseNum(tcChiPhiLuong),
       parseNum(tcChiPhiBTTC),
-      parseNum(tcThiHaiTaiSan)
+      parseNum(tcThiHaiTaiSan),
     ];
 
     const getCauseRow = (key: string): number[] => {
@@ -1115,13 +1424,18 @@ export default function EnterpriseReportPage() {
       let thuongKQL = 0;
 
       if (accidentDetails.length > 0) {
-        const filtered = accidentDetails.filter(d => mapCauseToCode(d.nguyenNhan) === key);
+        const filtered = accidentDetails.filter(
+          (d) => mapCauseToCode(d.nguyenNhan) === key,
+        );
         nanKQL = filtered.reduce((sum, d) => sum + parseNum(d.nanKhongQL), 0);
         nuKQL = filtered.reduce((sum, d) => sum + parseNum(d.nuKhongQL), 0);
         chetKQL = filtered.reduce((sum, d) => sum + parseNum(d.chetKhongQL), 0);
-        thuongKQL = filtered.reduce((sum, d) => sum + parseNum(d.thuongKhongQL), 0);
+        thuongKQL = filtered.reduce(
+          (sum, d) => sum + parseNum(d.thuongKhongQL),
+          0,
+        );
       }
-      
+
       return [
         parseNum(rowVal[0]),
         parseNum(rowVal[1]),
@@ -1133,10 +1447,10 @@ export default function EnterpriseReportPage() {
         parseNum(rowVal[5]),
         chetKQL,
         parseNum(rowVal[6]),
-        thuongKQL
+        thuongKQL,
       ];
     };
-    
+
     result["1"] = getCauseRow("9");
     result["2"] = getCauseRow("10");
     result["3"] = getCauseRow("11");
@@ -1147,22 +1461,51 @@ export default function EnterpriseReportPage() {
     result["8"] = getCauseRow("15");
     result["9"] = getCauseRow("16");
 
-    const getVictimRow = (filterFn: (d: AccidentDetail) => boolean): number[] => {
+    const getVictimRow = (
+      filterFn: (d: AccidentDetail) => boolean,
+    ): number[] => {
       const filtered = accidentDetails.filter(filterFn);
       if (filtered.length === 0) return Array(11).fill(0);
-      
+
       const countVu = filtered.reduce((sum, d) => sum + parseNum(d.soVu), 0);
-      const countVuChet = filtered.reduce((sum, d) => sum + parseNum(d.soVuCoNguoiChet), 0);
-      const countVuNhieu = filtered.reduce((sum, d) => sum + parseNum(d.soVuCo2NguoiBiNan), 0);
-      const countNan = filtered.reduce((sum, d) => sum + parseNum(d.soNguoiBiNan), 0);
-      const countNanKhongQL = filtered.reduce((sum, d) => sum + parseNum(d.nanKhongQL), 0);
+      const countVuChet = filtered.reduce(
+        (sum, d) => sum + parseNum(d.soVuCoNguoiChet),
+        0,
+      );
+      const countVuNhieu = filtered.reduce(
+        (sum, d) => sum + parseNum(d.soVuCo2NguoiBiNan),
+        0,
+      );
+      const countNan = filtered.reduce(
+        (sum, d) => sum + parseNum(d.soNguoiBiNan),
+        0,
+      );
+      const countNanKhongQL = filtered.reduce(
+        (sum, d) => sum + parseNum(d.nanKhongQL),
+        0,
+      );
       const countNu = filtered.reduce((sum, d) => sum + parseNum(d.soLDNu), 0);
-      const countNuKhongQL = filtered.reduce((sum, d) => sum + parseNum(d.nuKhongQL), 0);
-      const countChet = filtered.reduce((sum, d) => sum + parseNum(d.soNguoiBiChet), 0);
-      const countChetKhongQL = filtered.reduce((sum, d) => sum + parseNum(d.chetKhongQL), 0);
-      const countThuongNang = filtered.reduce((sum, d) => sum + parseNum(d.soNguoiBiThuongNang), 0);
-      const countThuongKhongQL = filtered.reduce((sum, d) => sum + parseNum(d.thuongKhongQL), 0);
-      
+      const countNuKhongQL = filtered.reduce(
+        (sum, d) => sum + parseNum(d.nuKhongQL),
+        0,
+      );
+      const countChet = filtered.reduce(
+        (sum, d) => sum + parseNum(d.soNguoiBiChet),
+        0,
+      );
+      const countChetKhongQL = filtered.reduce(
+        (sum, d) => sum + parseNum(d.chetKhongQL),
+        0,
+      );
+      const countThuongNang = filtered.reduce(
+        (sum, d) => sum + parseNum(d.soNguoiBiThuongNang),
+        0,
+      );
+      const countThuongKhongQL = filtered.reduce(
+        (sum, d) => sum + parseNum(d.thuongKhongQL),
+        0,
+      );
+
       return [
         countVu,
         countVuChet,
@@ -1174,14 +1517,18 @@ export default function EnterpriseReportPage() {
         countChet,
         countChetKhongQL,
         countThuongNang,
-        countThuongKhongQL
+        countThuongKhongQL,
       ];
     };
 
     if (accidentDetails.length > 0) {
       result["101"] = getVictimRow((d) => d.yeuTo === "Thiết bị nâng");
-      result["102"] = getVictimRow((d) => d.ngheNghiep.toLowerCase().includes("lãnh đạo"));
-      result["103"] = getVictimRow((d) => d.ngheNghiep.toLowerCase().includes("công nhân"));
+      result["102"] = getVictimRow((d) =>
+        d.ngheNghiep.toLowerCase().includes("lãnh đạo"),
+      );
+      result["103"] = getVictimRow((d) =>
+        d.ngheNghiep.toLowerCase().includes("công nhân"),
+      );
     }
 
     return result;
@@ -1192,9 +1539,9 @@ export default function EnterpriseReportPage() {
       if (row.kind !== "normal" && row.kind !== "section") {
         return row;
       }
-      
+
       let vals = Array(11).fill(0);
-      
+
       if (row.label === "1. Tai nạn lao động") {
         vals = [
           parseNum(tongVu),
@@ -1207,9 +1554,12 @@ export default function EnterpriseReportPage() {
           parseNum(tongChetNN),
           parseNum(chetKhongQL),
           parseNum(tongThuongNang),
-          parseNum(thuongKhongQL)
+          parseNum(thuongKhongQL),
         ];
-      } else if (row.label === "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ") {
+      } else if (
+        row.label ===
+        "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ"
+      ) {
         vals = [
           parseNum(tcTongVu),
           parseNum(tcVuChet),
@@ -1221,7 +1571,7 @@ export default function EnterpriseReportPage() {
           parseNum(tcTongChetNN),
           parseNum(tcChetKhongQL),
           parseNum(tcTongThuongNang),
-          parseNum(tcThuongKhongQL)
+          parseNum(tcThuongKhongQL),
         ];
       } else if (row.label === "Tổng số (3=1+2)") {
         vals = [
@@ -1235,7 +1585,7 @@ export default function EnterpriseReportPage() {
           parseNum(tongChetNN) + parseNum(tcTongChetNN),
           parseNum(chetKhongQL) + parseNum(tcChetKhongQL),
           parseNum(tongThuongNang) + parseNum(tcTongThuongNang),
-          parseNum(thuongKhongQL) + parseNum(tcThuongKhongQL)
+          parseNum(thuongKhongQL) + parseNum(tcThuongKhongQL),
         ];
       } else if (row.kind === "normal" && row.ma) {
         const ma = row.ma;
@@ -1251,7 +1601,7 @@ export default function EnterpriseReportPage() {
             parseNum(tcTongChetNN),
             parseNum(tcChetKhongQL),
             parseNum(tcTongThuongNang),
-            parseNum(tcThuongKhongQL)
+            parseNum(tcThuongKhongQL),
           ];
         } else if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(ma)) {
           const gridKeyMap: Record<string, string> = {
@@ -1263,7 +1613,7 @@ export default function EnterpriseReportPage() {
             "6": "14",
             "7": "13",
             "8": "15",
-            "9": "16"
+            "9": "16",
           };
           const gridKey = gridKeyMap[ma];
           const rowVal = phanLoai[gridKey] || Array(13).fill("0");
@@ -1278,59 +1628,129 @@ export default function EnterpriseReportPage() {
             parseNum(rowVal[5]),
             0,
             parseNum(rowVal[6]),
-            0
+            0,
           ];
         } else if (ma === "101") {
           if (accidentDetails.length > 0) {
-            const filtered = accidentDetails.filter(d => d.yeuTo === "Thiết bị nâng");
-            const countVu = new Set(filtered.map(d => d.id)).size;
-            const countChet = filtered.filter(d => d.mucDo === "Chết").length;
+            const filtered = accidentDetails.filter(
+              (d) => d.yeuTo === "Thiết bị nâng",
+            );
+            const countVu = new Set(filtered.map((d) => d.id)).size;
+            const countChet = filtered.filter((d) => d.mucDo === "Chết").length;
             const countVuChet = countChet > 0 ? 1 : 0;
             const countVuNhieu = countVu >= 2 ? 1 : 0;
             const countNan = filtered.length;
-            const countNu = filtered.filter(d => d.gioiTinh === "Nữ").length;
-            const countThuongNang = filtered.filter(d => d.mucDo === "Thương nặng").length;
-            vals = [countVu, countVuChet, countVuNhieu, countNan, 0, countNu, 0, countChet, 0, countThuongNang, 0];
+            const countNu = filtered.filter((d) => d.gioiTinh === "Nữ").length;
+            const countThuongNang = filtered.filter(
+              (d) => d.mucDo === "Thương nặng",
+            ).length;
+            vals = [
+              countVu,
+              countVuChet,
+              countVuNhieu,
+              countNan,
+              0,
+              countNu,
+              0,
+              countChet,
+              0,
+              countThuongNang,
+              0,
+            ];
           } else {
             vals = savedOverviewRows["101"] || Array(11).fill(0);
           }
         } else if (ma === "102") {
           if (accidentDetails.length > 0) {
-            const filtered = accidentDetails.filter(d => d.ngheNghiep.toLowerCase().includes("lãnh đạo"));
-            const countVu = new Set(filtered.map(d => d.id)).size;
-            const countChet = filtered.filter(d => d.mucDo === "Chết").length;
+            const filtered = accidentDetails.filter((d) =>
+              d.ngheNghiep.toLowerCase().includes("lãnh đạo"),
+            );
+            const countVu = new Set(filtered.map((d) => d.id)).size;
+            const countChet = filtered.filter((d) => d.mucDo === "Chết").length;
             const countVuChet = countChet > 0 ? 1 : 0;
             const countVuNhieu = countVu >= 2 ? 1 : 0;
             const countNan = filtered.length;
-            const countNu = filtered.filter(d => d.gioiTinh === "Nữ").length;
-            const countThuongNang = filtered.filter(d => d.mucDo === "Thương nặng").length;
-            vals = [countVu, countVuChet, countVuNhieu, countNan, 0, countNu, 0, countChet, 0, countThuongNang, 0];
+            const countNu = filtered.filter((d) => d.gioiTinh === "Nữ").length;
+            const countThuongNang = filtered.filter(
+              (d) => d.mucDo === "Thương nặng",
+            ).length;
+            vals = [
+              countVu,
+              countVuChet,
+              countVuNhieu,
+              countNan,
+              0,
+              countNu,
+              0,
+              countChet,
+              0,
+              countThuongNang,
+              0,
+            ];
           } else {
             vals = savedOverviewRows["102"] || Array(11).fill(0);
           }
         } else if (ma === "103") {
           if (accidentDetails.length > 0) {
-            const filtered = accidentDetails.filter(d => d.ngheNghiep.toLowerCase().includes("công nhân"));
-            const countVu = new Set(filtered.map(d => d.id)).size;
-            const countChet = filtered.filter(d => d.mucDo === "Chết").length;
+            const filtered = accidentDetails.filter((d) =>
+              d.ngheNghiep.toLowerCase().includes("công nhân"),
+            );
+            const countVu = new Set(filtered.map((d) => d.id)).size;
+            const countChet = filtered.filter((d) => d.mucDo === "Chết").length;
             const countVuChet = countChet > 0 ? 1 : 0;
             const countVuNhieu = countVu >= 2 ? 1 : 0;
             const countNan = filtered.length;
-            const countNu = filtered.filter(d => d.gioiTinh === "Nữ").length;
-            const countThuongNang = filtered.filter(d => d.mucDo === "Thương nặng").length;
-            vals = [countVu, countVuChet, countVuNhieu, countNan, 0, countNu, 0, countChet, 0, countThuongNang, 0];
+            const countNu = filtered.filter((d) => d.gioiTinh === "Nữ").length;
+            const countThuongNang = filtered.filter(
+              (d) => d.mucDo === "Thương nặng",
+            ).length;
+            vals = [
+              countVu,
+              countVuChet,
+              countVuNhieu,
+              countNan,
+              0,
+              countNu,
+              0,
+              countChet,
+              0,
+              countThuongNang,
+              0,
+            ];
           } else {
             vals = savedOverviewRows["103"] || Array(11).fill(0);
           }
         }
       }
-      
+
       return { ...row, vals };
     });
   }, [
-    tongVu, vuChet, vuNhieu, tongNan, nanKhongQL, tongNanNu, nuKhongQL, tongChetNN, chetKhongQL, tongThuongNang, thuongKhongQL,
-    tcTongVu, tcVuChet, tcVuNhieu, tcTongNan, tcNanKhongQL, tcTongNanNu, tcNuKhongQL, tcTongChetNN, tcChetKhongQL, tcTongThuongNang, tcThuongKhongQL,
-    phanLoai, accidentDetails, savedOverviewRows
+    tongVu,
+    vuChet,
+    vuNhieu,
+    tongNan,
+    nanKhongQL,
+    tongNanNu,
+    nuKhongQL,
+    tongChetNN,
+    chetKhongQL,
+    tongThuongNang,
+    thuongKhongQL,
+    tcTongVu,
+    tcVuChet,
+    tcVuNhieu,
+    tcTongNan,
+    tcNanKhongQL,
+    tcTongNanNu,
+    tcNuKhongQL,
+    tcTongChetNN,
+    tcChetKhongQL,
+    tcTongThuongNang,
+    tcThuongKhongQL,
+    phanLoai,
+    accidentDetails,
+    savedOverviewRows,
   ]);
 
   const submit = async (status: string, successMsg: string) => {
@@ -1343,12 +1763,23 @@ export default function EnterpriseReportPage() {
     const isReportChanged = () => {
       if (!originalReportRef.current) return true;
       const orig = originalReportRef.current;
-      
+
       const currentTH = buildTongHop();
       const keysToCheck: (keyof typeof currentTH)[] = [
-        "soLaoDong", "soLDNu", "soVu", "soVuCoNguoiChet", "soVuCo2NguoiBiNan",
-        "soNguoiBiNan", "soNguoiBiChet", "soNguoiBiThuongNang", "soNgayNghi",
-        "tongSoTien", "chiPhiYTe", "chiPhiTraLuong", "boiThuongTroCap", "thiethaiTaiSan"
+        "soLaoDong",
+        "soLDNu",
+        "soVu",
+        "soVuCoNguoiChet",
+        "soVuCo2NguoiBiNan",
+        "soNguoiBiNan",
+        "soNguoiBiChet",
+        "soNguoiBiThuongNang",
+        "soNgayNghi",
+        "tongSoTien",
+        "chiPhiYTe",
+        "chiPhiTraLuong",
+        "boiThuongTroCap",
+        "thiethaiTaiSan",
       ];
       for (const key of keysToCheck) {
         if (Number(currentTH[key]) !== Number(orig.tongHop[key] || 0)) {
@@ -1370,7 +1801,10 @@ export default function EnterpriseReportPage() {
 
       const currentTS = buildTongSoRows();
       const origTS = originalReportRef.current.tongHopRows || {};
-      const allTSKeys = new Set([...Object.keys(currentTS), ...Object.keys(origTS)]);
+      const allTSKeys = new Set([
+        ...Object.keys(currentTS),
+        ...Object.keys(origTS),
+      ]);
       for (const key of allTSKeys) {
         const origArr = origTS[key] || [];
         const currArr = currentTS[key] || [];
@@ -1452,10 +1886,11 @@ export default function EnterpriseReportPage() {
   const sendReport = () => submit("Đã nộp", "Gửi báo cáo thành công");
 
   const addDetail = () => {
-    setAccidentDetails((prev) => [
-      ...prev,
-      { id: Date.now(), ...EMPTY_DETAIL },
-    ]);
+    setAccidentDetails((prev) => {
+      const next = [...prev, { id: Date.now(), ...EMPTY_DETAIL }];
+      setTcTongVu(String(next.length));
+      return next;
+    });
   };
 
   const updateDetail = <K extends keyof AccidentDetail>(
@@ -1469,12 +1904,41 @@ export default function EnterpriseReportPage() {
   };
 
   const removeDetail = (id: number) => {
-    setAccidentDetails((prev) => prev.filter((d) => d.id !== id));
+    setAccidentDetails((prev) => {
+      const next = prev.filter((d) => d.id !== id);
+      setTcTongVu(String(next.length));
+      return next;
+    });
   };
+
+  // Auto-sync accidentDetails count when tcTongVu changes
+  useEffect(() => {
+    if (isLoadingReportRef.current) return;
+    const target = parseNum(tcTongVu);
+    if (target < 0) return;
+    setAccidentDetails((prev) => {
+      const current = prev.length;
+      if (target === current) return prev;
+      if (target > current) {
+        // Add new empty details to fill up to target
+        const toAdd = target - current;
+        const newEntries = Array.from({ length: toAdd }, (_, i) => ({
+          id: Date.now() + i + 1,
+          ...EMPTY_DETAIL,
+        }));
+        return [...prev, ...newEntries];
+      } else {
+        // Remove entries from the end
+        return prev.slice(0, target);
+      }
+    });
+  }, [tcTongVu]);
 
   // Năm để lọc lấy từ chính dữ liệu báo cáo (report_configs.nam), đồng thời hiển thị đến năm hiện tại (2026).
   const yearOptions = useMemo(() => {
-    const years = new Set(reports.map((r) => r.nam).filter((n): n is string => !!n));
+    const years = new Set(
+      reports.map((r) => r.nam).filter((n): n is string => !!n),
+    );
     const currentYear = new Date().getFullYear();
     for (let y = 2022; y <= currentYear; y++) {
       years.add(String(y));
@@ -1608,9 +2072,15 @@ export default function EnterpriseReportPage() {
                       <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
                       <td className="px-3.5 py-2.5 text-[#374151]">{r.mst}</td>
                       <td className="px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
-                      <td className="px-3.5 py-2.5 text-[#374151]">{r.nam || "–"}</td>
-                      <td className="px-3.5 py-2.5 text-[#374151]">{formatTime(r.updatedAt)}</td>
-                      <td className="px-3.5 py-2.5 text-[#374151]">{formatTime(r.submittedAt)}</td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">
+                        {r.nam || "–"}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">
+                        {formatTime(r.updatedAt)}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-[#374151]">
+                        {formatTime(r.submittedAt)}
+                      </td>
                       <td className="px-3.5 py-2.5">
                         <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
                           <span
@@ -1739,8 +2209,12 @@ export default function EnterpriseReportPage() {
                   value={section}
                   onChange={(e) => {
                     const nextSec = e.target.value as FormSection;
-                    const currIdx = SECTION_OPTIONS.findIndex((o) => o.value === section);
-                    const targetIdx = SECTION_OPTIONS.findIndex((o) => o.value === nextSec);
+                    const currIdx = SECTION_OPTIONS.findIndex(
+                      (o) => o.value === section,
+                    );
+                    const targetIdx = SECTION_OPTIONS.findIndex(
+                      (o) => o.value === nextSec,
+                    );
                     if (targetIdx > currIdx) {
                       for (let i = currIdx; i < targetIdx; i++) {
                         const secToValidate = SECTION_OPTIONS[i].value;
@@ -1760,7 +2234,6 @@ export default function EnterpriseReportPage() {
                       {o.label}
                     </option>
                   ))}
-
                 </select>
               </div>
             )}
@@ -1812,16 +2285,40 @@ export default function EnterpriseReportPage() {
                     value={totalLao}
                     onChange={setTotalLao}
                     required
-                    invalid={isInvalidValue(triedSubmit, totalLao, true)}
-                    errorMsg={getErrorMsg(triedSubmit, totalLao, "Tổng số lao động của cơ sở", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, totalLao, true) ||
+                      ttctCrossValidations.isNuGreaterThanLao
+                    }
+                    errorMsg={
+                      ttctCrossValidations.isNuGreaterThanLao
+                        ? "Tổng số lao động phải lớn hơn hoặc bằng tổng số lao động nữ"
+                        : getErrorMsg(
+                            triedSubmit,
+                            totalLao,
+                            "Tổng số lao động của cơ sở",
+                            true,
+                          )
+                    }
                   />
                   <InputField
                     label="Tổng số lao động nữ"
                     value={totalNu}
                     onChange={setTotalNu}
                     required
-                    invalid={isInvalidValue(triedSubmit, totalNu, true)}
-                    errorMsg={getErrorMsg(triedSubmit, totalNu, "Tổng số lao động nữ", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, totalNu, true) ||
+                      ttctCrossValidations.isNuGreaterThanLao
+                    }
+                    errorMsg={
+                      ttctCrossValidations.isNuGreaterThanLao
+                        ? "Tổng số lao động nữ không được lớn hơn tổng số lao động"
+                        : getErrorMsg(
+                            triedSubmit,
+                            totalNu,
+                            "Tổng số lao động nữ",
+                            true,
+                          )
+                    }
                   />
                   <InputField
                     label="Tổng quỹ lương"
@@ -1830,7 +2327,12 @@ export default function EnterpriseReportPage() {
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tongLuong, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tongLuong, "Tổng quỹ lương", true)}
+                    errorMsg={getErrorMsg(
+                      triedSubmit,
+                      tongLuong,
+                      "Tổng quỹ lương",
+                      true,
+                    )}
                   />
                 </div>
               </div>
@@ -1871,30 +2373,73 @@ export default function EnterpriseReportPage() {
                       1. Tổng số vụ tai nạn lao động & số nạn nhân tai nạn lao
                       động
                     </div>
-                         <div className="mb-3 grid grid-cols-4 gap-3">
+                    <div className="mb-3 grid grid-cols-4 gap-3">
                       <InputField
                         label="Tổng số vụ"
-                        value={tongVu}
-                        onChange={(v) => updateFieldAndPhanLoai(setTongVu, 0, v)}
+                        value={tcTongVu}
+                        onChange={setTcTongVu}
                         required
-                        invalid={isInvalidValue(triedSubmit, tongVu, true)}
-                        errorMsg={getErrorMsg(triedSubmit, tongVu, "Tổng số vụ", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, tcTongVu, true) ||
+                          tnldCrossValidations.isVuChetGreater ||
+                          tnldCrossValidations.isVuNhieuGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isVuChetGreater
+                            ? "Tổng số vụ phải lớn hơn hoặc bằng số vụ có người chết"
+                            : tnldCrossValidations.isVuNhieuGreater
+                              ? "Tổng số vụ phải lớn hơn hoặc bằng số vụ ≥ 2 người bị nạn"
+                              : getErrorMsg(
+                                  triedSubmit,
+                                  tcTongVu,
+                                  "Tổng số vụ",
+                                  true,
+                                )
+                        }
                       />
                       <InputField
                         label="Số vụ có người chết"
                         value={vuChet}
-                        onChange={(v) => updateFieldAndPhanLoai(setVuChet, 1, v)}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(setVuChet, 1, v)
+                        }
                         required
-                        invalid={isInvalidValue(triedSubmit, vuChet, true)}
-                        errorMsg={getErrorMsg(triedSubmit, vuChet, "Số vụ có người chết", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, vuChet, true) ||
+                          tnldCrossValidations.isVuChetGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isVuChetGreater
+                            ? "Số vụ có người chết không được lớn hơn tổng số vụ"
+                            : getErrorMsg(
+                                triedSubmit,
+                                vuChet,
+                                "Số vụ có người chết",
+                                true,
+                              )
+                        }
                       />
                       <InputField
                         label="Số vụ ≥ 2 người bị nạn"
                         value={vuNhieu}
-                        onChange={(v) => updateFieldAndPhanLoai(setVuNhieu, 2, v)}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(setVuNhieu, 2, v)
+                        }
                         required
-                        invalid={isInvalidValue(triedSubmit, vuNhieu, true)}
-                        errorMsg={getErrorMsg(triedSubmit, vuNhieu, "Số vụ ≥ 2 người bị nạn", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, vuNhieu, true) ||
+                          tnldCrossValidations.isVuNhieuGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isVuNhieuGreater
+                            ? "Số vụ ≥ 2 người bị nạn không được lớn hơn tổng số vụ"
+                            : getErrorMsg(
+                                triedSubmit,
+                                vuNhieu,
+                                "Số vụ ≥ 2 người bị nạn",
+                                true,
+                              )
+                        }
                       />
                       <div />
                     </div>
@@ -1903,34 +2448,96 @@ export default function EnterpriseReportPage() {
                       <InputField
                         label="Tổng số người bị nạn"
                         value={tongNan}
-                        onChange={(v) => updateFieldAndPhanLoai(setTongNan, 3, v)}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(setTongNan, 3, v)
+                        }
                         required
-                        invalid={isInvalidValue(triedSubmit, tongNan, true)}
-                        errorMsg={getErrorMsg(triedSubmit, tongNan, "Tổng số người bị nạn", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, tongNan, true) ||
+                          tnldCrossValidations.isNanNuGreater ||
+                          tnldCrossValidations.isChetNNGreater ||
+                          tnldCrossValidations.isThuongNangGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isNanNuGreater
+                            ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số lao động nữ bị nạn"
+                            : tnldCrossValidations.isChetNNGreater
+                              ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người bị chết"
+                              : tnldCrossValidations.isThuongNangGreater
+                                ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người bị thương nặng"
+                                : getErrorMsg(
+                                    triedSubmit,
+                                    tongNan,
+                                    "Tổng số người bị nạn",
+                                    true,
+                                  )
+                        }
                       />
                       <InputField
                         label="Tổng số lao động nữ bị nạn"
                         value={tongNanNu}
-                        onChange={(v) => updateFieldAndPhanLoai(setTongNanNu, 4, v)}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(setTongNanNu, 4, v)
+                        }
                         required
-                        invalid={isInvalidValue(triedSubmit, tongNanNu, true)}
-                        errorMsg={getErrorMsg(triedSubmit, tongNanNu, "Tổng số lao động nữ bị nạn", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, tongNanNu, true) ||
+                          tnldCrossValidations.isNanNuGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isNanNuGreater
+                            ? "Tổng số lao động nữ bị nạn không được lớn hơn tổng số người bị nạn"
+                            : getErrorMsg(
+                                triedSubmit,
+                                tongNanNu,
+                                "Tổng số lao động nữ bị nạn",
+                                true,
+                              )
+                        }
                       />
                       <InputField
                         label="Tổng số người bị chết"
                         value={tongChetNN}
-                        onChange={(v) => updateFieldAndPhanLoai(setTongChetNN, 5, v)}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(setTongChetNN, 5, v)
+                        }
                         required
-                        invalid={isInvalidValue(triedSubmit, tongChetNN, true)}
-                        errorMsg={getErrorMsg(triedSubmit, tongChetNN, "Tổng số người bị chết", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, tongChetNN, true) ||
+                          tnldCrossValidations.isChetNNGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isChetNNGreater
+                            ? "Tổng số người bị chết không được lớn hơn tổng số người bị nạn"
+                            : getErrorMsg(
+                                triedSubmit,
+                                tongChetNN,
+                                "Tổng số người bị chết",
+                                true,
+                              )
+                        }
                       />
                       <InputField
                         label="Tổng số người bị thương nặng"
                         value={tongThuongNang}
-                        onChange={(v) => updateFieldAndPhanLoai(setTongThuongNang, 6, v)}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(setTongThuongNang, 6, v)
+                        }
                         required
-                        invalid={isInvalidValue(triedSubmit, tongThuongNang, true)}
-                        errorMsg={getErrorMsg(triedSubmit, tongThuongNang, "Tổng số người bị thương nặng", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, tongThuongNang, true) ||
+                          tnldCrossValidations.isThuongNangGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isThuongNangGreater
+                            ? "Tổng số người bị thương nặng không được lớn hơn tổng số người bị nạn"
+                            : getErrorMsg(
+                                triedSubmit,
+                                tongThuongNang,
+                                "Tổng số người bị thương nặng",
+                                true,
+                              )
+                        }
                       />
                     </div>
 
@@ -1940,32 +2547,86 @@ export default function EnterpriseReportPage() {
                         value={nanKhongQL}
                         onChange={setNanKhongQL}
                         required
-                        invalid={isInvalidValue(triedSubmit, nanKhongQL, true)}
-                        errorMsg={getErrorMsg(triedSubmit, nanKhongQL, "Số người bị nạn không QL", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, nanKhongQL, true) ||
+                          tnldCrossValidations.isNuKQLGreater ||
+                          tnldCrossValidations.isChetKQLGreater ||
+                          tnldCrossValidations.isThuongKQLGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isNuKQLGreater
+                            ? "Số người bị nạn không QL phải lớn hơn hoặc bằng lao động nữ bị nạn không QL"
+                            : tnldCrossValidations.isChetKQLGreater
+                              ? "Số người bị nạn không QL phải lớn hơn hoặc bằng số người chết không QL"
+                              : tnldCrossValidations.isThuongKQLGreater
+                                ? "Số người bị nạn không QL phải lớn hơn hoặc bằng người bị thương nặng không QL"
+                                : getErrorMsg(
+                                    triedSubmit,
+                                    nanKhongQL,
+                                    "Số người bị nạn không QL",
+                                    true,
+                                  )
+                        }
                       />
                       <InputField
                         label="Lao động nữ bị nạn không QL"
                         value={nuKhongQL}
                         onChange={setNuKhongQL}
                         required
-                        invalid={isInvalidValue(triedSubmit, nuKhongQL, true)}
-                        errorMsg={getErrorMsg(triedSubmit, nuKhongQL, "Lao động nữ bị nạn không QL", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, nuKhongQL, true) ||
+                          tnldCrossValidations.isNuKQLGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isNuKQLGreater
+                            ? "Lao động nữ bị nạn không QL không được lớn hơn số người bị nạn không QL"
+                            : getErrorMsg(
+                                triedSubmit,
+                                nuKhongQL,
+                                "Lao động nữ bị nạn không QL",
+                                true,
+                              )
+                        }
                       />
                       <InputField
                         label="Số người chết không QL"
                         value={chetKhongQL}
                         onChange={setChetKhongQL}
                         required
-                        invalid={isInvalidValue(triedSubmit, chetKhongQL, true)}
-                        errorMsg={getErrorMsg(triedSubmit, chetKhongQL, "Số người chết không QL", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, chetKhongQL, true) ||
+                          tnldCrossValidations.isChetKQLGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isChetKQLGreater
+                            ? "Số người chết không QL không được lớn hơn số người bị nạn không QL"
+                            : getErrorMsg(
+                                triedSubmit,
+                                chetKhongQL,
+                                "Số người chết không QL",
+                                true,
+                              )
+                        }
                       />
                       <InputField
                         label="Người bị thương nặng không QL"
                         value={thuongKhongQL}
                         onChange={setThuongKhongQL}
                         required
-                        invalid={isInvalidValue(triedSubmit, thuongKhongQL, true)}
-                        errorMsg={getErrorMsg(triedSubmit, thuongKhongQL, "Người bị thương nặng không QL", true)}
+                        invalid={
+                          isInvalidValue(triedSubmit, thuongKhongQL, true) ||
+                          tnldCrossValidations.isThuongKQLGreater
+                        }
+                        errorMsg={
+                          tnldCrossValidations.isThuongKQLGreater
+                            ? "Người bị thương nặng không QL không được lớn hơn số người bị nạn không QL"
+                            : getErrorMsg(
+                                triedSubmit,
+                                thuongKhongQL,
+                                "Người bị thương nặng không QL",
+                                true,
+                              )
+                        }
                       />
                     </div>
 
@@ -1977,38 +2638,82 @@ export default function EnterpriseReportPage() {
                       <InputField
                         label="Chi phí y tế"
                         value={chiPhiYTe}
-                        onChange={(v) => updateFieldAndPhanLoai(setChiPhiYTe, 9, formatNumberString(v))}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(
+                            setChiPhiYTe,
+                            9,
+                            formatNumberString(v),
+                          )
+                        }
                         required
                         suffix="(1.000đ)"
                         invalid={isInvalidValue(triedSubmit, chiPhiYTe, true)}
-                        errorMsg={getErrorMsg(triedSubmit, chiPhiYTe, "Chi phí y tế", true)}
+                        errorMsg={getErrorMsg(
+                          triedSubmit,
+                          chiPhiYTe,
+                          "Chi phí y tế",
+                          true,
+                        )}
                       />
                       <InputField
                         label="Chi phí trả lương trong thời gian điều trị"
                         value={chiPhiLuong}
-                        onChange={(v) => updateFieldAndPhanLoai(setChiPhiLuong, 10, formatNumberString(v))}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(
+                            setChiPhiLuong,
+                            10,
+                            formatNumberString(v),
+                          )
+                        }
                         required
                         suffix="(1.000đ)"
                         invalid={isInvalidValue(triedSubmit, chiPhiLuong, true)}
-                        errorMsg={getErrorMsg(triedSubmit, chiPhiLuong, "Chi phí trả lương trong thời gian điều trị", true)}
+                        errorMsg={getErrorMsg(
+                          triedSubmit,
+                          chiPhiLuong,
+                          "Chi phí trả lương trong thời gian điều trị",
+                          true,
+                        )}
                       />
                       <InputField
                         label="Chi phí bồi thường trợ cấp"
                         value={chiPhiBTTC}
-                        onChange={(v) => updateFieldAndPhanLoai(setChiPhiBTTC, 11, formatNumberString(v))}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(
+                            setChiPhiBTTC,
+                            11,
+                            formatNumberString(v),
+                          )
+                        }
                         required
                         suffix="(1.000đ)"
                         invalid={isInvalidValue(triedSubmit, chiPhiBTTC, true)}
-                        errorMsg={getErrorMsg(triedSubmit, chiPhiBTTC, "Chi phí bồi thường trợ cấp", true)}
+                        errorMsg={getErrorMsg(
+                          triedSubmit,
+                          chiPhiBTTC,
+                          "Chi phí bồi thường trợ cấp",
+                          true,
+                        )}
                       />
                       <InputField
                         label="Tổng số tiền chi phí"
                         value={tongChiPhi}
-                        onChange={(v) => updateFieldAndPhanLoai(setTongChiPhi, 8, formatNumberString(v))}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(
+                            setTongChiPhi,
+                            8,
+                            formatNumberString(v),
+                          )
+                        }
                         required
                         suffix="(1.000đ)"
                         invalid={isInvalidValue(triedSubmit, tongChiPhi, true)}
-                        errorMsg={getErrorMsg(triedSubmit, tongChiPhi, "Tổng số tiền chi phí", true)}
+                        errorMsg={getErrorMsg(
+                          triedSubmit,
+                          tongChiPhi,
+                          "Tổng số tiền chi phí",
+                          true,
+                        )}
                       />
                     </div>
 
@@ -2016,18 +2721,40 @@ export default function EnterpriseReportPage() {
                       <InputField
                         label="Tổng số ngày nghỉ vì TNLĐ"
                         value={soNgayNghi}
-                        onChange={(v) => updateFieldAndPhanLoai(setSoNgayNghi, 7, v)}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(setSoNgayNghi, 7, v)
+                        }
                         required
                         invalid={isInvalidValue(triedSubmit, soNgayNghi, true)}
-                        errorMsg={getErrorMsg(triedSubmit, soNgayNghi, "Tổng số ngày nghỉ vì TNLĐ", true)}
+                        errorMsg={getErrorMsg(
+                          triedSubmit,
+                          soNgayNghi,
+                          "Tổng số ngày nghỉ vì TNLĐ",
+                          true,
+                        )}
                       />
                       <InputField
                         label="Thiệt hại tài sản"
                         value={thiHaiTaiSan}
-                        onChange={(v) => updateFieldAndPhanLoai(setThiHaiTaiSan, 12, formatNumberString(v))}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(
+                            setThiHaiTaiSan,
+                            12,
+                            formatNumberString(v),
+                          )
+                        }
                         suffix="(1.000đ)"
-                        invalid={isInvalidValue(triedSubmit, thiHaiTaiSan, false)}
-                        errorMsg={getErrorMsg(triedSubmit, thiHaiTaiSan, "Thiệt hại tài sản", false)}
+                        invalid={isInvalidValue(
+                          triedSubmit,
+                          thiHaiTaiSan,
+                          false,
+                        )}
+                        errorMsg={getErrorMsg(
+                          triedSubmit,
+                          thiHaiTaiSan,
+                          "Thiệt hại tài sản",
+                          false,
+                        )}
                       />
                     </div>
                   </>
@@ -2035,12 +2762,15 @@ export default function EnterpriseReportPage() {
                   <>
                     <div className="rounded-lg border-2 border-[#2563eb] p-6 bg-white shadow-sm">
                       <div className="mb-4 text-[13px] font-bold text-[#2563eb] uppercase tracking-wide">
-                        **** Doanh nghiệp xảy ra tai nạn lao động vui lòng nhập theo từng bước
+                        **** Doanh nghiệp xảy ra tai nạn lao động vui lòng nhập
+                        theo từng bước
                       </div>
-                      
+
                       {accidentDetails.length === 0 ? (
                         <div className="mb-4 rounded-md border border-dashed border-[#d1d5db] bg-[#f9fafb] py-8 text-center text-[13.5px] text-muted">
-                          Chưa có vụ tai nạn nào. Nhấn &quot;Thêm vụ&quot; để bắt đầu nhập.
+                          Chưa có vụ tai nạn nào. Nhập &quot;Tổng số vụ&quot; ở tab
+                          (1) để tự động tạo chi tiết, hoặc nhấn &quot;Thêm
+                          vụ&quot; bên dưới.
                         </div>
                       ) : (
                         accidentDetails.map((d, idx) => {
@@ -2061,7 +2791,7 @@ export default function EnterpriseReportPage() {
                             "Điều kiện làm việc không tốt",
                             "Quy phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn",
                             "Không sử dụng phương tiện bảo vệ cá nhân",
-                            "Khách quan khó tránh/ Nguyên nhân chưa kể đến"
+                            "Khách quan khó tránh/ Nguyên nhân chưa kể đến",
                           ];
 
                           const FACTOR_OPTIONS = [
@@ -2073,12 +2803,12 @@ export default function EnterpriseReportPage() {
                             "Chất độc hại",
                             "Bỏng",
                             "Thiết bị nâng",
-                            "Khác"
+                            "Khác",
                           ];
 
                           const OCCUPATION_OPTIONS = [
                             "Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương",
-                            "Công nhân"
+                            "Công nhân",
                           ];
 
                           return (
@@ -2131,7 +2861,11 @@ export default function EnterpriseReportPage() {
                                         className={SC}
                                         value={d.nguyenNhan}
                                         onChange={(e) =>
-                                          updateDetail(d.id, "nguyenNhan", e.target.value)
+                                          updateDetail(
+                                            d.id,
+                                            "nguyenNhan",
+                                            e.target.value,
+                                          )
                                         }
                                       >
                                         {CAUSE_OPTIONS.map((opt) => (
@@ -2149,7 +2883,11 @@ export default function EnterpriseReportPage() {
                                         className={SC}
                                         value={d.yeuTo}
                                         onChange={(e) =>
-                                          updateDetail(d.id, "yeuTo", e.target.value)
+                                          updateDetail(
+                                            d.id,
+                                            "yeuTo",
+                                            e.target.value,
+                                          )
                                         }
                                       >
                                         {FACTOR_OPTIONS.map((opt) => (
@@ -2170,7 +2908,11 @@ export default function EnterpriseReportPage() {
                                         className={SC}
                                         value={d.ngheNghiep}
                                         onChange={(e) =>
-                                          updateDetail(d.id, "ngheNghiep", e.target.value)
+                                          updateDetail(
+                                            d.id,
+                                            "ngheNghiep",
+                                            e.target.value,
+                                          )
                                         }
                                       >
                                         {OCCUPATION_OPTIONS.map((opt) => (
@@ -2191,154 +2933,374 @@ export default function EnterpriseReportPage() {
                                       <InputField
                                         label="Tổng số vụ"
                                         value={d.soVu}
-                                        onChange={(v) => updateDetail(d.id, "soVu", v)}
-                                        invalid={isInvalidValue(triedSubmit, d.soVu, false)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.soVu, "Tổng số vụ", false)}
+                                        onChange={(v) =>
+                                          updateDetail(d.id, "soVu", v)
+                                        }
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.soVu,
+                                          false,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.soVu,
+                                          "Tổng số vụ",
+                                          false,
+                                        )}
                                       />
                                       <InputField
                                         label="Tổng số vụ có người chết"
                                         value={d.soVuCoNguoiChet}
-                                        onChange={(v) => updateDetail(d.id, "soVuCoNguoiChet", v)}
+                                        onChange={(v) =>
+                                          updateDetail(
+                                            d.id,
+                                            "soVuCoNguoiChet",
+                                            v,
+                                          )
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.soVuCoNguoiChet, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.soVuCoNguoiChet, "Tổng số vụ có người chết", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.soVuCoNguoiChet,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.soVuCoNguoiChet,
+                                          "Tổng số vụ có người chết",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Tổng số vụ có 2 người bị nạn trở lên"
                                         value={d.soVuCo2NguoiBiNan}
-                                        onChange={(v) => updateDetail(d.id, "soVuCo2NguoiBiNan", v)}
+                                        onChange={(v) =>
+                                          updateDetail(
+                                            d.id,
+                                            "soVuCo2NguoiBiNan",
+                                            v,
+                                          )
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.soVuCo2NguoiBiNan, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.soVuCo2NguoiBiNan, "Tổng số vụ có 2 người bị nạn trở lên", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.soVuCo2NguoiBiNan,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.soVuCo2NguoiBiNan,
+                                          "Tổng số vụ có 2 người bị nạn trở lên",
+                                          true,
+                                        )}
                                       />
                                       <div />
 
                                       <InputField
                                         label="Tổng số người bị nạn"
                                         value={d.soNguoiBiNan}
-                                        onChange={(v) => updateDetail(d.id, "soNguoiBiNan", v)}
+                                        onChange={(v) =>
+                                          updateDetail(d.id, "soNguoiBiNan", v)
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.soNguoiBiNan, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.soNguoiBiNan, "Tổng số người bị nạn", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.soNguoiBiNan,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.soNguoiBiNan,
+                                          "Tổng số người bị nạn",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Tổng số lao động nữ bị nạn"
                                         value={d.soLDNu}
-                                        onChange={(v) => updateDetail(d.id, "soLDNu", v)}
+                                        onChange={(v) =>
+                                          updateDetail(d.id, "soLDNu", v)
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.soLDNu, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.soLDNu, "Tổng số lao động nữ bị nạn", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.soLDNu,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.soLDNu,
+                                          "Tổng số lao động nữ bị nạn",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Tổng số người chết"
                                         value={d.soNguoiBiChet}
-                                        onChange={(v) => updateDetail(d.id, "soNguoiBiChet", v)}
+                                        onChange={(v) =>
+                                          updateDetail(d.id, "soNguoiBiChet", v)
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.soNguoiBiChet, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.soNguoiBiChet, "Tổng số người chết", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.soNguoiBiChet,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.soNguoiBiChet,
+                                          "Tổng số người chết",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Tổng số người bị thương nặng"
                                         value={d.soNguoiBiThuongNang}
-                                        onChange={(v) => updateDetail(d.id, "soNguoiBiThuongNang", v)}
+                                        onChange={(v) =>
+                                          updateDetail(
+                                            d.id,
+                                            "soNguoiBiThuongNang",
+                                            v,
+                                          )
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.soNguoiBiThuongNang, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.soNguoiBiThuongNang, "Tổng số người bị thương nặng", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.soNguoiBiThuongNang,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.soNguoiBiThuongNang,
+                                          "Tổng số người bị thương nặng",
+                                          true,
+                                        )}
                                       />
 
                                       <InputField
                                         label="Số người bị nạn không QL"
                                         value={d.nanKhongQL}
-                                        onChange={(v) => updateDetail(d.id, "nanKhongQL", v)}
+                                        onChange={(v) =>
+                                          updateDetail(d.id, "nanKhongQL", v)
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.nanKhongQL, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.nanKhongQL, "Số người bị nạn không QL", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.nanKhongQL,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.nanKhongQL,
+                                          "Số người bị nạn không QL",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Lao động nữ bị nạn không QL"
                                         value={d.nuKhongQL}
-                                        onChange={(v) => updateDetail(d.id, "nuKhongQL", v)}
+                                        onChange={(v) =>
+                                          updateDetail(d.id, "nuKhongQL", v)
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.nuKhongQL, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.nuKhongQL, "Lao động nữ bị nạn không QL", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.nuKhongQL,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.nuKhongQL,
+                                          "Lao động nữ bị nạn không QL",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Số người chết không QL"
                                         value={d.chetKhongQL}
-                                        onChange={(v) => updateDetail(d.id, "chetKhongQL", v)}
+                                        onChange={(v) =>
+                                          updateDetail(d.id, "chetKhongQL", v)
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.chetKhongQL, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.chetKhongQL, "Số người chết không QL", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.chetKhongQL,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.chetKhongQL,
+                                          "Số người chết không QL",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Người bị thương nặng không QL"
                                         value={d.thuongKhongQL}
-                                        onChange={(v) => updateDetail(d.id, "thuongKhongQL", v)}
+                                        onChange={(v) =>
+                                          updateDetail(d.id, "thuongKhongQL", v)
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.thuongKhongQL, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.thuongKhongQL, "Người bị thương nặng không QL", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.thuongKhongQL,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.thuongKhongQL,
+                                          "Người bị thương nặng không QL",
+                                          true,
+                                        )}
                                       />
                                     </div>
                                   </div>
 
                                   <div className="border-t border-dashed border-line pt-4">
                                     <div className="text-[13px] font-semibold text-ink mb-3">
-                                      5. Thiệt hại do tai nạn lao động số {idx + 1}
+                                      5. Thiệt hại do tai nạn lao động số{" "}
+                                      {idx + 1}
                                     </div>
                                     <div className="grid grid-cols-4 gap-x-4 gap-y-5">
                                       <InputField
                                         label="Chi phí y tế"
                                         value={d.chiPhiYTe}
-                                        onChange={(v) => updateDetail(d.id, "chiPhiYTe", formatNumberString(v))}
+                                        onChange={(v) =>
+                                          updateDetail(
+                                            d.id,
+                                            "chiPhiYTe",
+                                            formatNumberString(v),
+                                          )
+                                        }
                                         required
                                         suffix="(1.000đ)"
-                                        invalid={isInvalidValue(triedSubmit, d.chiPhiYTe, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.chiPhiYTe, "Chi phí y tế", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.chiPhiYTe,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.chiPhiYTe,
+                                          "Chi phí y tế",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Chi phí trả lương trong thời gian điều trị"
                                         value={d.chiPhiLuong}
-                                        onChange={(v) => updateDetail(d.id, "chiPhiLuong", formatNumberString(v))}
+                                        onChange={(v) =>
+                                          updateDetail(
+                                            d.id,
+                                            "chiPhiLuong",
+                                            formatNumberString(v),
+                                          )
+                                        }
                                         required
                                         suffix="(1.000đ)"
-                                        invalid={isInvalidValue(triedSubmit, d.chiPhiLuong, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.chiPhiLuong, "Chi phí trả lương trong thời gian điều trị", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.chiPhiLuong,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.chiPhiLuong,
+                                          "Chi phí trả lương trong thời gian điều trị",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Chi phí bồi thường trợ cấp"
                                         value={d.chiPhiBTTC}
-                                        onChange={(v) => updateDetail(d.id, "chiPhiBTTC", formatNumberString(v))}
+                                        onChange={(v) =>
+                                          updateDetail(
+                                            d.id,
+                                            "chiPhiBTTC",
+                                            formatNumberString(v),
+                                          )
+                                        }
                                         required
                                         suffix="(1.000đ)"
-                                        invalid={isInvalidValue(triedSubmit, d.chiPhiBTTC, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.chiPhiBTTC, "Chi phí bồi thường trợ cấp", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.chiPhiBTTC,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.chiPhiBTTC,
+                                          "Chi phí bồi thường trợ cấp",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Tổng số tiền chi phí"
                                         value={d.tongSoTien}
-                                        onChange={(v) => updateDetail(d.id, "tongSoTien", formatNumberString(v))}
+                                        onChange={(v) =>
+                                          updateDetail(
+                                            d.id,
+                                            "tongSoTien",
+                                            formatNumberString(v),
+                                          )
+                                        }
                                         required
                                         suffix="(1.000đ)"
-                                        invalid={isInvalidValue(triedSubmit, d.tongSoTien, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.tongSoTien, "Tổng số tiền chi phí", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.tongSoTien,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.tongSoTien,
+                                          "Tổng số tiền chi phí",
+                                          true,
+                                        )}
                                       />
 
                                       <InputField
                                         label="Tổng số ngày nghỉ vì TNLĐ"
                                         value={d.soNgayNghi}
-                                        onChange={(v) => updateDetail(d.id, "soNgayNghi", v)}
+                                        onChange={(v) =>
+                                          updateDetail(d.id, "soNgayNghi", v)
+                                        }
                                         required
-                                        invalid={isInvalidValue(triedSubmit, d.soNgayNghi, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.soNgayNghi, "Tổng số ngày nghỉ vì TNLĐ", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.soNgayNghi,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.soNgayNghi,
+                                          "Tổng số ngày nghỉ vì TNLĐ",
+                                          true,
+                                        )}
                                       />
                                       <InputField
                                         label="Thiệt hại tài sản"
                                         value={d.thiethaiTaiSan}
-                                        onChange={(v) => updateDetail(d.id, "thiethaiTaiSan", formatNumberString(v))}
+                                        onChange={(v) =>
+                                          updateDetail(
+                                            d.id,
+                                            "thiethaiTaiSan",
+                                            formatNumberString(v),
+                                          )
+                                        }
                                         required
                                         suffix="(1.000đ)"
-                                        invalid={isInvalidValue(triedSubmit, d.thiethaiTaiSan, true)}
-                                        errorMsg={getErrorMsg(triedSubmit, d.thiethaiTaiSan, "Thiệt hại tài sản", true)}
+                                        invalid={isInvalidValue(
+                                          triedSubmit,
+                                          d.thiethaiTaiSan,
+                                          true,
+                                        )}
+                                        errorMsg={getErrorMsg(
+                                          triedSubmit,
+                                          d.thiethaiTaiSan,
+                                          "Thiệt hại tài sản",
+                                          true,
+                                        )}
                                       />
                                       <div />
                                       <div />
@@ -2383,24 +3345,63 @@ export default function EnterpriseReportPage() {
                     value={tcTongVu}
                     onChange={setTcTongVu}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcTongVu, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcTongVu, "Tổng số vụ", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcTongVu, true) ||
+                      tcCrossValidations.isTcChetGreater ||
+                      tcCrossValidations.isTcNhieuGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcChetGreater
+                        ? "Tổng số vụ phải lớn hơn hoặc bằng số vụ có người chết"
+                        : tcCrossValidations.isTcNhieuGreater
+                          ? "Tổng số vụ phải lớn hơn hoặc bằng số vụ ≥ 2 người bị nạn"
+                          : getErrorMsg(
+                              triedSubmit,
+                              tcTongVu,
+                              "Tổng số vụ",
+                              true,
+                            )
+                    }
                   />
                   <InputField
                     label="Số vụ có người chết"
                     value={tcVuChet}
                     onChange={setTcVuChet}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcVuChet, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcVuChet, "Số vụ có người chết", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcVuChet, true) ||
+                      tcCrossValidations.isTcChetGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcChetGreater
+                        ? "Số vụ có người chết phải nhỏ hơn hoặc bằng tổng số vụ"
+                        : getErrorMsg(
+                            triedSubmit,
+                            tcVuChet,
+                            "Số vụ có người chết",
+                            true,
+                          )
+                    }
                   />
                   <InputField
                     label="Số vụ ≥ 2 người bị nạn"
                     value={tcVuNhieu}
                     onChange={setTcVuNhieu}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcVuNhieu, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcVuNhieu, "Số vụ ≥ 2 người bị nạn", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcVuNhieu, true) ||
+                      tcCrossValidations.isTcNhieuGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcNhieuGreater
+                        ? "Số vụ ≥ 2 người bị nạn phải nhỏ hơn hoặc bằng tổng số vụ"
+                        : getErrorMsg(
+                            triedSubmit,
+                            tcVuNhieu,
+                            "Số vụ ≥ 2 người bị nạn",
+                            true,
+                          )
+                    }
                   />
                   <div />
                 </div>
@@ -2411,32 +3412,86 @@ export default function EnterpriseReportPage() {
                     value={tcTongNan}
                     onChange={setTcTongNan}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcTongNan, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcTongNan, "Tổng số người bị nạn", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcTongNan, true) ||
+                      tcCrossValidations.isTcNanNuGreater ||
+                      tcCrossValidations.isTcChetNNGreater ||
+                      tcCrossValidations.isTcThuongNangGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcNanNuGreater
+                        ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số lao động nữ bị nạn"
+                        : tcCrossValidations.isTcChetNNGreater
+                          ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người bị chết"
+                          : tcCrossValidations.isTcThuongNangGreater
+                            ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người bị thương nặng"
+                            : getErrorMsg(
+                                triedSubmit,
+                                tcTongNan,
+                                "Tổng số người bị nạn",
+                                true,
+                              )
+                    }
                   />
                   <InputField
                     label="Tổng số lao động nữ bị nạn"
                     value={tcTongNanNu}
                     onChange={setTcTongNanNu}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcTongNanNu, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcTongNanNu, "Tổng số lao động nữ bị nạn", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcTongNanNu, true) ||
+                      tcCrossValidations.isTcNanNuGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcNanNuGreater
+                        ? "Tổng số lao động nữ bị nạn phải nhỏ hơn hoặc bằng tổng số người bị nạn"
+                        : getErrorMsg(
+                            triedSubmit,
+                            tcTongNanNu,
+                            "Tổng số lao động nữ bị nạn",
+                            true,
+                          )
+                    }
                   />
                   <InputField
                     label="Tổng số người bị chết"
                     value={tcTongChetNN}
                     onChange={setTcTongChetNN}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcTongChetNN, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcTongChetNN, "Tổng số người bị chết", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcTongChetNN, true) ||
+                      tcCrossValidations.isTcChetNNGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcChetNNGreater
+                        ? "Tổng số người bị chết phải nhỏ hơn hoặc bằng tổng số người bị nạn"
+                        : getErrorMsg(
+                            triedSubmit,
+                            tcTongChetNN,
+                            "Tổng số người bị chết",
+                            true,
+                          )
+                    }
                   />
                   <InputField
                     label="Tổng số người bị thương nặng"
                     value={tcTongThuongNang}
                     onChange={setTcTongThuongNang}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcTongThuongNang, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcTongThuongNang, "Tổng số người bị thương nặng", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcTongThuongNang, true) ||
+                      tcCrossValidations.isTcThuongNangGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcThuongNangGreater
+                        ? "Tổng số người bị thương nặng phải nhỏ hơn hoặc bằng tổng số người bị nạn"
+                        : getErrorMsg(
+                            triedSubmit,
+                            tcTongThuongNang,
+                            "Tổng số người bị thương nặng",
+                            true,
+                          )
+                    }
                   />
                 </div>
 
@@ -2446,32 +3501,86 @@ export default function EnterpriseReportPage() {
                     value={tcNanKhongQL}
                     onChange={setTcNanKhongQL}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcNanKhongQL, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcNanKhongQL, "Số người bị nạn không QL", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcNanKhongQL, true) ||
+                      tcCrossValidations.isTcNuKQGreater ||
+                      tcCrossValidations.isTcChetKQGreater ||
+                      tcCrossValidations.isTcThuongKQGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcNuKQGreater
+                        ? "Số người bị nạn không QL phải lớn hơn hoặc bằng lao động nữ bị nạn không QL"
+                        : tcCrossValidations.isTcChetKQGreater
+                          ? "Số người bị nạn không QL phải lớn hơn hoặc bằng số người chết không QL"
+                          : tcCrossValidations.isTcThuongKQGreater
+                            ? "Số người bị nạn không QL phải lớn hơn hoặc bằng người bị thương nặng không QL"
+                            : getErrorMsg(
+                                triedSubmit,
+                                tcNanKhongQL,
+                                "Số người bị nạn không QL",
+                                true,
+                              )
+                    }
                   />
                   <InputField
                     label="Lao động nữ bị nạn không QL"
                     value={tcNuKhongQL}
                     onChange={setTcNuKhongQL}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcNuKhongQL, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcNuKhongQL, "Lao động nữ bị nạn không QL", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcNuKhongQL, true) ||
+                      tcCrossValidations.isTcNuKQGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcNuKQGreater
+                        ? "Lao động nữ bị nạn không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL"
+                        : getErrorMsg(
+                            triedSubmit,
+                            tcNuKhongQL,
+                            "Lao động nữ bị nạn không QL",
+                            true,
+                          )
+                    }
                   />
                   <InputField
                     label="Số người chết không QL"
                     value={tcChetKhongQL}
                     onChange={setTcChetKhongQL}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcChetKhongQL, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcChetKhongQL, "Số người chết không QL", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcChetKhongQL, true) ||
+                      tcCrossValidations.isTcChetKQGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcChetKQGreater
+                        ? "Số người chết không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL"
+                        : getErrorMsg(
+                            triedSubmit,
+                            tcChetKhongQL,
+                            "Số người chết không QL",
+                            true,
+                          )
+                    }
                   />
                   <InputField
                     label="Người bị thương nặng không QL"
                     value={tcThuongKhongQL}
                     onChange={setTcThuongKhongQL}
                     required
-                    invalid={isInvalidValue(triedSubmit, tcThuongKhongQL, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcThuongKhongQL, "Người bị thương nặng không QL", true)}
+                    invalid={
+                      isInvalidValue(triedSubmit, tcThuongKhongQL, true) ||
+                      tcCrossValidations.isTcThuongKQGreater
+                    }
+                    errorMsg={
+                      tcCrossValidations.isTcThuongKQGreater
+                        ? "Người bị thương nặng không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL"
+                        : getErrorMsg(
+                            triedSubmit,
+                            tcThuongKhongQL,
+                            "Người bị thương nặng không QL",
+                            true,
+                          )
+                    }
                   />
                 </div>
 
@@ -2487,7 +3596,12 @@ export default function EnterpriseReportPage() {
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcChiPhiYTe, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcChiPhiYTe, "Chi phí y tế", true)}
+                    errorMsg={getErrorMsg(
+                      triedSubmit,
+                      tcChiPhiYTe,
+                      "Chi phí y tế",
+                      true,
+                    )}
                   />
                   <InputField
                     label="Chi phí trả lương trong thời gian điều trị"
@@ -2496,7 +3610,12 @@ export default function EnterpriseReportPage() {
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcChiPhiLuong, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcChiPhiLuong, "Chi phí trả lương trong thời gian điều trị", true)}
+                    errorMsg={getErrorMsg(
+                      triedSubmit,
+                      tcChiPhiLuong,
+                      "Chi phí trả lương trong thời gian điều trị",
+                      true,
+                    )}
                   />
                   <InputField
                     label="Chi phí bồi thường trợ cấp"
@@ -2505,7 +3624,12 @@ export default function EnterpriseReportPage() {
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcChiPhiBTTC, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcChiPhiBTTC, "Chi phí bồi thường trợ cấp", true)}
+                    errorMsg={getErrorMsg(
+                      triedSubmit,
+                      tcChiPhiBTTC,
+                      "Chi phí bồi thường trợ cấp",
+                      true,
+                    )}
                   />
                   <InputField
                     label="Tổng số tiền chi phí"
@@ -2514,7 +3638,12 @@ export default function EnterpriseReportPage() {
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcTongChiPhi, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcTongChiPhi, "Tổng số tiền chi phí", true)}
+                    errorMsg={getErrorMsg(
+                      triedSubmit,
+                      tcTongChiPhi,
+                      "Tổng số tiền chi phí",
+                      true,
+                    )}
                   />
                 </div>
 
@@ -2525,7 +3654,12 @@ export default function EnterpriseReportPage() {
                     onChange={setTcSoNgayNghi}
                     required
                     invalid={isInvalidValue(triedSubmit, tcSoNgayNghi, true)}
-                    errorMsg={getErrorMsg(triedSubmit, tcSoNgayNghi, "Tổng số ngày nghỉ vì TNLĐ", true)}
+                    errorMsg={getErrorMsg(
+                      triedSubmit,
+                      tcSoNgayNghi,
+                      "Tổng số ngày nghỉ vì TNLĐ",
+                      true,
+                    )}
                   />
                   <InputField
                     label="Thiệt hại tài sản"
@@ -2533,7 +3667,12 @@ export default function EnterpriseReportPage() {
                     onChange={(v) => setTcThiHaiTaiSan(formatNumberString(v))}
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcThiHaiTaiSan, false)}
-                    errorMsg={getErrorMsg(triedSubmit, tcThiHaiTaiSan, "Thiệt hại tài sản", false)}
+                    errorMsg={getErrorMsg(
+                      triedSubmit,
+                      tcThiHaiTaiSan,
+                      "Thiệt hại tài sản",
+                      false,
+                    )}
                   />
                 </div>
               </div>
@@ -2590,7 +3729,11 @@ export default function EnterpriseReportPage() {
                                     min={0}
                                     value={phanLoai[item.ma]?.[col] ?? "0"}
                                     onKeyDown={(e) => {
-                                      if (["-", "+", "e", "E", "."].includes(e.key)) {
+                                      if (
+                                        ["-", "+", "e", "E", "."].includes(
+                                          e.key,
+                                        )
+                                      ) {
                                         e.preventDefault();
                                       }
                                     }}
@@ -2617,7 +3760,8 @@ export default function EnterpriseReportPage() {
               <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
                 <div className="mb-1.5 text-[15px] font-bold text-ink">
                   Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo:{" "}
-                  {activeReport?.ky || "6 tháng"} năm {activeReport?.nam || "2023"}
+                  {activeReport?.ky || "6 tháng"} năm{" "}
+                  {activeReport?.nam || "2023"}
                 </div>
                 <p className="mb-4 text-[13px] text-muted">
                   **Vui lòng đính kèm báo cáo TNLĐ có dấu mộc công ty:{" "}
@@ -2720,7 +3864,9 @@ export default function EnterpriseReportPage() {
                         }
                         return (
                           <tr key={idx}>
-                            <td className={`${CT_TD} text-left`}>{row.label}</td>
+                            <td className={`${CT_TD} text-left`}>
+                              {row.label}
+                            </td>
                             <td className={CT_TD}>{row.ma || ""}</td>
                             {vals.map((v, i) => (
                               <td key={i} className={CT_TD}>
@@ -2774,22 +3920,34 @@ export default function EnterpriseReportPage() {
                     <tbody>
                       <tr>
                         <td className={CT_TD}>
-                          {(parseNum(soNgayNghi) + parseNum(tcSoNgayNghi)).toLocaleString("vi-VN")}
+                          {(
+                            parseNum(soNgayNghi) + parseNum(tcSoNgayNghi)
+                          ).toLocaleString("vi-VN")}
                         </td>
                         <td className={CT_TD}>
-                          {(parseNum(tongChiPhi) + parseNum(tcTongChiPhi)).toLocaleString("vi-VN")}
+                          {(
+                            parseNum(tongChiPhi) + parseNum(tcTongChiPhi)
+                          ).toLocaleString("vi-VN")}
                         </td>
                         <td className={CT_TD}>
-                          {(parseNum(chiPhiYTe) + parseNum(tcChiPhiYTe)).toLocaleString("vi-VN")}
+                          {(
+                            parseNum(chiPhiYTe) + parseNum(tcChiPhiYTe)
+                          ).toLocaleString("vi-VN")}
                         </td>
                         <td className={CT_TD}>
-                          {(parseNum(chiPhiLuong) + parseNum(tcChiPhiLuong)).toLocaleString("vi-VN")}
+                          {(
+                            parseNum(chiPhiLuong) + parseNum(tcChiPhiLuong)
+                          ).toLocaleString("vi-VN")}
                         </td>
                         <td className={CT_TD}>
-                          {(parseNum(chiPhiBTTC) + parseNum(tcChiPhiBTTC)).toLocaleString("vi-VN")}
+                          {(
+                            parseNum(chiPhiBTTC) + parseNum(tcChiPhiBTTC)
+                          ).toLocaleString("vi-VN")}
                         </td>
                         <td className={CT_TD}>
-                          {(parseNum(thiHaiTaiSan) + parseNum(tcThiHaiTaiSan)).toLocaleString("vi-VN")}
+                          {(
+                            parseNum(thiHaiTaiSan) + parseNum(tcThiHaiTaiSan)
+                          ).toLocaleString("vi-VN")}
                         </td>
                       </tr>
                     </tbody>
