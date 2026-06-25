@@ -33,7 +33,10 @@ export default function RolePage() {
   const canDelete = useCan("delete", "ROLE");
   const [roles, setRoles] = useState<Role[]>([]);
   const [allPerms, setAllPerms] = useState<Permission[]>([]);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    variant?: "success" | "error" | "warning";
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   // User hiện tại là ADMIN/CEO? — chỉ họ mới được sửa vai trò cấp cao (is_super).
   // Đọc 1 lần từ localStorage; server trả false để tránh hydration mismatch.
@@ -46,7 +49,12 @@ export default function RolePage() {
   useEffect(() => {
     getRoleList()
       .then(setRoles)
-      .catch(() => setToast("Không tải được danh sách vai trò"));
+      .catch(() =>
+        setToast({
+          message: "Không tải được danh sách vai trò",
+          variant: "error",
+        }),
+      );
     getPermissionList()
       .then(setAllPerms)
       .catch(() => {});
@@ -78,10 +86,7 @@ export default function RolePage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const hasActiveFilters = Boolean(
-    filterMa ||
-      searchMa ||
-      filterTen ||
-      searchTen
+    filterMa || searchMa || filterTen || searchTen,
   );
 
   const handleClearFilters = () => {
@@ -137,21 +142,65 @@ export default function RolePage() {
     );
     const ids = [...selectedIds].filter((id) => !protectedIds.has(id));
     if (ids.length === 0) {
-      setToast("Vai trò hệ thống cấp cao không thể xóa");
+      setToast({
+        message: "⚠️ Vai trò hệ thống cấp cao không thể xóa",
+        variant: "warning",
+      });
       setDeleteConfirmOpen(false);
       return;
     }
     setIsDeleting(true);
     try {
-      await Promise.all(ids.map((id) => deleteRole(id)));
-      setRoles((prev) => prev.filter((r) => !ids.includes(r.id)));
-      setSelectedIds(new Set());
-      setCurrentPage(1);
-      setToast(`Đã xóa ${ids.length} vai trò`);
+      const results = await Promise.allSettled(ids.map((id) => deleteRole(id)));
+
+      const successIds: number[] = [];
+      const errorMessages: string[] = [];
+
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          successIds.push(ids[index]);
+        } else {
+          const error = result.reason;
+          let msg = `Role ID ${ids[index]}: Xóa thất bại`;
+          if (error?.response?.data?.message) {
+            msg = error.response.data.message;
+          } else if (error?.message) {
+            msg = error.message;
+          }
+          errorMessages.push(msg);
+        }
+      });
+
+      if (successIds.length > 0) {
+        setRoles((prev) => prev.filter((r) => !successIds.includes(r.id)));
+        setSelectedIds(new Set());
+        setCurrentPage(1);
+      }
+
+      if (errorMessages.length === 0) {
+        setToast({
+          message: `✅ Đã xóa thành công ${successIds.length} vai trò`,
+          variant: "success",
+        });
+      } else if (successIds.length === 0) {
+        // Tất cả đều thất bại - hiển thị lỗi với xuống dòng
+        setToast({
+          message: `❌ Không thể xóa các vai trò:\n${errorMessages.join("\n")}`,
+          variant: "warning",
+        });
+      } else {
+        // Một phần thành công
+        setToast({
+          message: `⚠️ Đã xóa ${successIds.length} vai trò.\nKhông thể xóa ${errorMessages.length} vai trò:\n${errorMessages.join("\n")}`,
+          variant: "warning",
+        });
+      }
     } catch (e) {
-      setToast(
-        e instanceof Error ? e.message : "Xóa thất bại. Vui lòng thử lại.",
-      );
+      setToast({
+        message:
+          e instanceof Error ? e.message : "Xóa thất bại. Vui lòng thử lại.",
+        variant: "error",
+      });
     } finally {
       setIsDeleting(false);
       setDeleteConfirmOpen(false);
@@ -231,11 +280,16 @@ export default function RolePage() {
       }
       setFormErrors({});
       setModalOpen(false);
-      setToast(editingId ? "Cập nhật thành công" : "Thêm mới thành công");
+      setToast({
+        message: editingId ? "Cập nhật thành công" : "Thêm mới thành công",
+        variant: "success",
+      });
     } catch (e) {
-      setToast(
-        e instanceof Error ? e.message : "Lưu thất bại. Vui lòng thử lại.",
-      );
+      setToast({
+        message:
+          e instanceof Error ? e.message : "Lưu thất bại. Vui lòng thử lại.",
+        variant: "error",
+      });
     } finally {
       setSaving(false);
     }
@@ -851,7 +905,11 @@ export default function RolePage() {
         </div>
       </div>
 
-      <Toast message={toast} onDone={() => setToast(null)} />
+      <Toast
+        message={toast?.message || null}
+        variant={toast?.variant || "success"}
+        onDone={() => setToast(null)}
+      />
     </>
   );
 }
