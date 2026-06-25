@@ -36,11 +36,16 @@ type ReportRecord = {
   mst: string;
   ky: string;
   nam: string | null;
-  tt: "Đang báo cáo" | "Đã nộp";
+  tt: "Đang báo cáo" | "Đã nộp" | "Từ chối" | "Đã tiếp nhận";
   configId: number;
   submittedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  rejectedAt?: string | null;
+  rejectedBy?: string | null;
+  rejectionReason?: string | null;
+  acceptedAt?: string | null;
+  acceptedBy?: string | null;
 };
 
 const formatTime = (dStr?: string | null): string => {
@@ -323,6 +328,10 @@ export default function EnterpriseReportPage() {
     null,
   );
   const [activeReport, setActiveReport] = useState<ReportRecord | null>(null);
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const [timelineReport, setTimelineReport] = useState<ReportRecord | null>(
+    null,
+  );
 
   const matchedConfig = useMemo(() => {
     return availableConfigs.find(
@@ -566,7 +575,8 @@ export default function EnterpriseReportPage() {
     const lao = parseNum(totalLao);
     const nu = parseNum(totalNu);
     return {
-      isNuGreaterThanLao: totalLao.trim() !== "" && totalNu.trim() !== "" && nu > lao,
+      isNuGreaterThanLao:
+        totalLao.trim() !== "" && totalNu.trim() !== "" && nu > lao,
     };
   }, [totalLao, totalNu]);
 
@@ -615,11 +625,23 @@ export default function EnterpriseReportPage() {
   const detailSumsMismatch = useMemo(() => {
     if (accidentDetails.length === 0) return null;
 
-    let sumVu = 0, sumVuChet = 0, sumVuNhieu = 0;
-    let sumNan = 0, sumNanNu = 0, sumChet = 0, sumThuong = 0;
-    let sumNanKQL = 0, sumNuKQL = 0, sumChetKQL = 0, sumThuongKQL = 0;
-    let sumYTe = 0, sumLuong = 0, sumBTTC = 0, sumTongTien = 0;
-    let sumNgayNghi = 0, sumThiHaiTS = 0;
+    let sumVu = 0,
+      sumVuChet = 0,
+      sumVuNhieu = 0;
+    let sumNan = 0,
+      sumNanNu = 0,
+      sumChet = 0,
+      sumThuong = 0;
+    let sumNanKQL = 0,
+      sumNuKQL = 0,
+      sumChetKQL = 0,
+      sumThuongKQL = 0;
+    let sumYTe = 0,
+      sumLuong = 0,
+      sumBTTC = 0,
+      sumTongTien = 0;
+    let sumNgayNghi = 0,
+      sumThiHaiTS = 0;
 
     accidentDetails.forEach((d) => {
       sumVu += parseNum(d.soVu);
@@ -664,11 +686,24 @@ export default function EnterpriseReportPage() {
     const hasAny = Object.values(m).some(Boolean);
     return hasAny ? m : null;
   }, [
-    accidentDetails, tcTongVu, vuChet, vuNhieu,
-    tongNan, tongNanNu, tongChetNN, tongThuongNang,
-    nanKhongQL, nuKhongQL, chetKhongQL, thuongKhongQL,
-    chiPhiYTe, chiPhiLuong, chiPhiBTTC, tongChiPhi,
-    soNgayNghi, thiHaiTaiSan,
+    accidentDetails,
+    tcTongVu,
+    vuChet,
+    vuNhieu,
+    tongNan,
+    tongNanNu,
+    tongChetNN,
+    tongThuongNang,
+    nanKhongQL,
+    nuKhongQL,
+    chetKhongQL,
+    thuongKhongQL,
+    chiPhiYTe,
+    chiPhiLuong,
+    chiPhiBTTC,
+    tongChiPhi,
+    soNgayNghi,
+    thiHaiTaiSan,
   ]);
 
   useEffect(() => {
@@ -1073,9 +1108,13 @@ export default function EnterpriseReportPage() {
         }
         setPhanLoai(next);
         // Allow sync effect to run again after loading is complete
-        setTimeout(() => { isLoadingReportRef.current = false; }, 0);
+        setTimeout(() => {
+          isLoadingReportRef.current = false;
+        }, 0);
       })
-      .catch(() => { isLoadingReportRef.current = false; });
+      .catch(() => {
+        isLoadingReportRef.current = false;
+      });
   };
 
   const buildTongHop = (): ReportTongHop => ({
@@ -2067,6 +2106,28 @@ export default function EnterpriseReportPage() {
                               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTimelineReport(r);
+                              setTimelineOpen(true);
+                            }}
+                            title="Tiến độ xử lý"
+                            className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <circle cx="12" cy="12" r="10" />
+                              <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                          </button>
                         </div>
                       </td>
                       <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
@@ -2084,7 +2145,17 @@ export default function EnterpriseReportPage() {
                       <td className="px-3.5 py-2.5">
                         <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
                           <span
-                            className={`h-2 w-2 rounded-full ${r.tt === "Đang báo cáo" ? "bg-[#d1d5db]" : "bg-[#3b82f6]"}`}
+                            className={`inline-block h-2 w-2 rounded-full ${
+                              r.tt === "Đang báo cáo"
+                                ? "bg-[#d1d5db]"
+                                : r.tt === "Đã nộp"
+                                  ? "bg-[#f59e0b]"
+                                  : r.tt === "Từ chối"
+                                    ? "bg-[#ef4444]"
+                                    : r.tt === "Đã tiếp nhận"
+                                      ? "bg-[#3b82f6]"
+                                      : "bg-[#3b82f6]"
+                            }`}
                           />
                           {r.tt}
                         </span>
@@ -2768,8 +2839,8 @@ export default function EnterpriseReportPage() {
 
                       {accidentDetails.length === 0 ? (
                         <div className="mb-4 rounded-md border border-dashed border-[#d1d5db] bg-[#f9fafb] py-8 text-center text-[13.5px] text-muted">
-                          Chưa có vụ tai nạn nào. Nhập &quot;Tổng số vụ&quot; ở tab
-                          (1) để tự động tạo chi tiết, hoặc nhấn &quot;Thêm
+                          Chưa có vụ tai nạn nào. Nhập &quot;Tổng số vụ&quot; ở
+                          tab (1) để tự động tạo chi tiết, hoặc nhấn &quot;Thêm
                           vụ&quot; bên dưới.
                         </div>
                       ) : (
@@ -4028,6 +4099,103 @@ export default function EnterpriseReportPage() {
               Bạn đã tạo báo cáo cho năm {createYear} ({createKy}) rồi.
             </p>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={timelineOpen}
+        title="Tiến độ xử lý"
+        onClose={() => setTimelineOpen(false)}
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setTimelineOpen(false)}
+              className="h-9 rounded-md border border-line px-5 text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
+            >
+              Đóng
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-0">
+          {(() => {
+            // ← THAY TOÀN BỘ ĐOẠN NÀY
+            const events: {
+              time: string | null | undefined;
+              label: string;
+              isRed?: boolean;
+            }[] = [];
+
+            if (
+              timelineReport?.tt === "Từ chối" &&
+              timelineReport?.rejectedAt
+            ) {
+              events.push({
+                time: timelineReport.rejectedAt,
+                label: `${timelineReport.rejectedBy ?? "Cơ quan quản lý"} đã từ chối báo cáo${
+                  timelineReport.rejectionReason
+                    ? ` — Lý do: ${timelineReport.rejectionReason}`
+                    : ""
+                }`,
+                isRed: true,
+              });
+            }
+
+            if (
+              timelineReport?.tt === "Đã tiếp nhận" &&
+              timelineReport?.acceptedAt
+            ) {
+              events.push({
+                time: timelineReport.acceptedAt,
+                label: `${timelineReport.acceptedBy ?? "Cơ quan quản lý"} đã tiếp nhận báo cáo`,
+              });
+            }
+
+            if (timelineReport?.submittedAt) {
+              events.push({
+                time: timelineReport.submittedAt,
+                label: `${timelineReport.ten} đã gửi báo cáo`,
+              });
+            }
+
+            if (timelineReport?.createdAt) {
+              events.push({
+                time: timelineReport.createdAt,
+                label: `${timelineReport.ten} đã tạo bản nháp báo cáo`,
+              });
+            }
+
+            return events.map((ev, idx) => (
+              <div key={idx} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`mt-1 h-3 w-3 rounded-full border-2 bg-white ${
+                      ev.isRed ? "border-[#ef4444]" : "border-[#d1d5db]"
+                    }`}
+                  />
+                  {idx < events.length - 1 && (
+                    <div className="w-px flex-1 bg-[#e5e7eb]" />
+                  )}
+                </div>
+                <div className="pb-5">
+                  <p className="text-[12px] text-muted">
+                    {formatTime(ev.time)}
+                  </p>
+                  <p className="mt-0.5 text-[13.5px] text-ink">
+                    <span className="font-semibold">
+                      {ev.isRed
+                        ? (timelineReport?.rejectedBy ?? "Cơ quan quản lý")
+                        : timelineReport?.ten}
+                    </span>{" "}
+                    {ev.isRed
+                      ? `đã từ chối báo cáo${timelineReport?.rejectionReason ? ` — Lý do: ${timelineReport.rejectionReason}` : ""}`
+                      : ev.label.replace(timelineReport?.ten ?? "", "").trim()}
+                  </p>
+                </div>
+              </div>
+            ));
+          })()}
         </div>
       </Modal>
     </>
