@@ -18,6 +18,7 @@ import {
 const STATUS_DRAFT = 'Đang báo cáo';
 const STATUS_SUBMITTED = 'Đã nộp';
 const STATUS_APPROVED = 'Đã tiếp nhận';
+const STATUS_REJECTED = 'Từ chối';
 
 @Injectable()
 export class AccidentReportService {
@@ -89,8 +90,34 @@ export class AccidentReportService {
     if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
 
     report.status = STATUS_APPROVED;
+    report.rejectionReason = null;
     await this.repo.save(report);
     return { message: 'Đã tiếp nhận báo cáo' };
+  }
+
+  async approveMany(ids: number[]): Promise<{ message: string }> {
+    if (ids.length === 0) return { message: 'Không có báo cáo nào được chọn' };
+    await this.repo
+      .createQueryBuilder()
+      .update(AccidentReport)
+      .set({ status: STATUS_APPROVED, rejectionReason: null } as never)
+      .whereInIds(ids)
+      .execute();
+    return { message: `Đã duyệt ${ids.length} báo cáo` };
+  }
+
+  async rejectMany(
+    ids: number[],
+    reason: string,
+  ): Promise<{ message: string }> {
+    if (ids.length === 0) return { message: 'Không có báo cáo nào được chọn' };
+    await this.repo
+      .createQueryBuilder()
+      .update(AccidentReport)
+      .set({ status: STATUS_REJECTED, rejectionReason: reason || '—' } as never)
+      .whereInIds(ids)
+      .execute();
+    return { message: `Đã từ chối ${ids.length} báo cáo` };
   }
 
   async remove(id: number): Promise<{ message: string }> {
@@ -321,6 +348,7 @@ export class AccidentReportService {
       chiPhiTraLuong: r.chiPhiTraLuong,
       boiThuongTroCap: r.boiThuongTroCap,
       thiethaiTaiSan: r.thiethaiTaiSan,
+      rejectionReason: r.rejectionReason,
       submittedAt: r.submittedAt,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,

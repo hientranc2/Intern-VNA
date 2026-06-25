@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Delete,
+  Body,
   Param,
   Query,
   ParseIntPipe,
@@ -30,6 +31,18 @@ export class AccidentReportController {
   @Get('summary')
   getSummary(@Query() query: SummaryQueryDto) {
     return this.service.getSummary(query);
+  }
+
+  @Post('bulk-approve')
+  @HttpCode(HttpStatus.OK)
+  approveMany(@Body('ids') ids: number[]) {
+    return this.service.approveMany(ids ?? []);
+  }
+
+  @Post('bulk-reject')
+  @HttpCode(HttpStatus.OK)
+  rejectMany(@Body() body: { ids: number[]; reason: string }) {
+    return this.service.rejectMany(body.ids ?? [], body.reason ?? '');
   }
 
   @Get(':id')

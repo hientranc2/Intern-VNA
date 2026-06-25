@@ -3,7 +3,8 @@ export type AccidentReport = {
   ten: string;
   mst: string;
   ky: string;
-  tt: "Đang báo cáo" | "Đã nộp" | "Đã tiếp nhận";
+  tt: "Đang báo cáo" | "Đã nộp" | "Đã tiếp nhận" | "Từ chối";
+  rejectionReason?: string | null;
   province: string;
   ward: string;
   loaiHinh: string;

@@ -226,6 +226,10 @@ export default function SignReportPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyReport, setHistoryReport] = useState<AtvsldReport | null>(null);
 
+  // Popup xem lý do từ chối (trong view chi tiết báo cáo).
+  const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
+  const [rejectReasonText, setRejectReasonText] = useState("");
+
   const parseDate = (dStr: string) => {
     if (!dStr) return new Date();
     const parts = dStr.split("/");
@@ -704,6 +708,37 @@ export default function SignReportPage() {
             </button>
           </div>
           <div className="px-6 py-5">
+            {viewingReport?.status === "Từ chối" && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[13px] text-[#b91c1c]">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="shrink-0"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span className="font-medium">Lý do từ chối báo cáo:</span>
+                <span className="flex-1 text-[#7f1d1d]">
+                  {viewingReport.lyDoTuChoi || "—"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectReasonText(viewingReport.lyDoTuChoi || "—");
+                    setRejectReasonOpen(true);
+                  }}
+                  className="rounded border border-[#fca5a5] bg-white px-3 py-1 text-[12.5px] font-medium text-[#dc2626] transition-colors hover:bg-[#fef2f2]"
+                >
+                  Xem
+                </button>
+              </div>
+            )}
             <div className="rounded-lg bg-white p-8 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
               <PhuLucIIView
                 values={viewValues}
@@ -809,6 +844,26 @@ export default function SignReportPage() {
               Chưa có lịch sử xử lý
             </div>
           )}
+        </div>
+      </Modal>
+      <Modal
+        open={rejectReasonOpen}
+        title="Lý do từ chối báo cáo"
+        onClose={() => setRejectReasonOpen(false)}
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setRejectReasonOpen(false)}
+              className="h-9.5 rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af]"
+            >
+              Đã hiểu
+            </button>
+          </div>
+        }
+      >
+        <div className="rounded-md border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[13.5px] leading-relaxed text-[#7f1d1d]">
+          {rejectReasonText}
         </div>
       </Modal>
     </>

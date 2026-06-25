@@ -67,3 +67,17 @@ export function getSummaryReport(params?: { nam?: string; ky?: string }) {
   const qs = query.toString();
   return request<SummaryResponse>(`/accident-reports/summary${qs ? `?${qs}` : ""}`);
 }
+
+export function approveAccidentReports(ids: number[]) {
+  return request<{ message: string }>("/accident-reports/bulk-approve", {
+    method: "POST",
+    body: { ids },
+  });
+}
+
+export function rejectAccidentReports(ids: number[], reason: string) {
+  return request<{ message: string }>("/accident-reports/bulk-reject", {
+    method: "POST",
+    body: { ids, reason },
+  });
+}

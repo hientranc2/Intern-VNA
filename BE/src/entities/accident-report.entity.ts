@@ -109,6 +109,10 @@ export class AccidentReport {
   @Column({ name: 'thiet_hai_tai_san', type: 'integer', default: 0 })
   thiethaiTaiSan: number;
 
+  // Lý do từ chối báo cáo (null nếu chưa bị từ chối).
+  @Column({ name: 'rejection_reason', type: 'text', nullable: true })
+  rejectionReason: string | null;
+
   @Column({ name: 'submitted_at', type: 'timestamp', nullable: true })
   submittedAt: Date | null;
 
