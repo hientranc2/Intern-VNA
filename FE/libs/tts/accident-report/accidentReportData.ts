@@ -29,6 +29,10 @@ export type AccidentReport = {
   createdAt?: string;
   updatedAt?: string;
   nam?: string | null;
+  acceptedAt?: string | null;
+  acceptedBy?: string | null;
+  rejectedAt?: string | null;
+  rejectedBy?: string | null;
 };
 
 export type ReportRow =

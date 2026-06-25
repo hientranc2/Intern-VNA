@@ -278,11 +278,8 @@ export default function AccidentReportPage() {
   // Nháp ("Đang báo cáo") chưa nộp → không cho duyệt lẫn từ chối.
   // "Đã tiếp nhận" = đã duyệt rồi → không cho duyệt lại.
   // "Từ chối" rồi → không cho từ chối lại.
-  const hasDraft = selectedReports.some((r) => r.tt === "Đang báo cáo");
-  const hasAccepted = selectedReports.some((r) => r.tt === "Đã tiếp nhận");
-  const hasRejected = selectedReports.some((r) => r.tt === "Từ chối");
-  const disableApprove = hasDraft || hasAccepted;
-  const disableReject = hasDraft || hasRejected;
+  const disableApprove = selectedReports.some((r) => r.tt !== "Đã nộp");
+  const disableReject = selectedReports.some((r) => r.tt !== "Đã nộp");
 
   const toggleSelectAll = () => {
     const allIds = paged.map((r) => r.id);
@@ -1270,10 +1267,10 @@ export default function AccidentReportPage() {
         />
       </Modal>
 
-      {/* Modal xem lý do từ chối (trong view chi tiết) */}
+      {/* Modal xem lịch sử xử lý (trong view chi tiết) */}
       <Modal
         open={rejectViewOpen}
-        title="Lý do từ chối báo cáo"
+        title="Lịch sử xử lý báo cáo"
         onClose={() => setRejectViewOpen(false)}
         footer={
           <div className="flex justify-end">
@@ -1287,8 +1284,96 @@ export default function AccidentReportPage() {
           </div>
         }
       >
-        <div className="rounded-md border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[13.5px] leading-relaxed text-[#7f1d1d]">
-          {viewingReport?.rejectionReason || "—"}
+        <div className="relative bg-white min-h-[100px] py-2">
+          {(() => {
+            const events: {
+              time: string | null | undefined;
+              actor: string;
+              action: string;
+              isRed?: boolean;
+              isGreen?: boolean;
+            }[] = [];
+
+            if (viewingReport?.rejectedAt) {
+              events.push({
+                time: viewingReport.rejectedAt,
+                actor: viewingReport.rejectedBy ?? "Cơ quan quản lý",
+                action: `đã từ chối báo cáo${
+                  viewingReport.rejectionReason
+                    ? ` — Lý do: ${viewingReport.rejectionReason}`
+                    : ""
+                }`,
+                isRed: true,
+              });
+            }
+
+            if (viewingReport?.acceptedAt) {
+              events.push({
+                time: viewingReport.acceptedAt,
+                actor: viewingReport.acceptedBy ?? "Cơ quan quản lý",
+                action: "đã tiếp nhận báo cáo",
+                isGreen: true,
+              });
+            }
+
+            if (viewingReport?.submittedAt) {
+              events.push({
+                time: viewingReport.submittedAt,
+                actor: viewingReport.ten,
+                action: "đã gửi báo cáo",
+              });
+            }
+
+            if (viewingReport?.createdAt) {
+              events.push({
+                time: viewingReport.createdAt,
+                actor: viewingReport.ten,
+                action: "đã tạo bản nháp báo cáo",
+              });
+            }
+
+            if (events.length === 0) {
+              return (
+                <div className="text-center text-[#6b7280] py-4">
+                  Chưa có lịch sử xử lý
+                </div>
+              );
+            }
+
+            return (
+              <div className="relative">
+                {/* Vertical connector line */}
+                <div className="absolute left-[6px] top-[10px] bottom-[10px] w-[1.5px] bg-[#e2e8f0]" />
+
+                <div className="space-y-6">
+                  {events.map((ev, idx) => (
+                    <div key={idx} className="relative pl-7 text-[13.5px]">
+                      {/* Timeline circle node */}
+                      <div
+                        className={`absolute left-0 top-[4px] h-3.5 w-3.5 rounded-full border-2 bg-white z-10 ${
+                          ev.isRed
+                            ? "border-[#ef4444]"
+                            : ev.isGreen
+                            ? "border-[#22c55e]"
+                            : "border-[#cbd5e1]"
+                        }`}
+                      />
+
+                      <div className="text-[#6b7280] text-[12.5px] mb-1">
+                        {formatTime(ev.time)}
+                      </div>
+                      <div className="text-ink">
+                        <span className="font-bold text-[#1f2937]">
+                          {ev.actor}
+                        </span>{" "}
+                        <span className="text-[#4b5563]">{ev.action}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </Modal>
 

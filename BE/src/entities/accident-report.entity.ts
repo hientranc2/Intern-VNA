@@ -113,6 +113,20 @@ export class AccidentReport {
   @Column({ name: 'rejection_reason', type: 'text', nullable: true })
   rejectionReason: string | null;
 
+  // Timeline: duyệt
+  @Column({ name: 'accepted_at', type: 'timestamp', nullable: true })
+  acceptedAt: Date | null;
+
+  @Column({ name: 'accepted_by', type: 'text', nullable: true })
+  acceptedBy: string | null;
+
+  // Timeline: từ chối
+  @Column({ name: 'rejected_at', type: 'timestamp', nullable: true })
+  rejectedAt: Date | null;
+
+  @Column({ name: 'rejected_by', type: 'text', nullable: true })
+  rejectedBy: string | null;
+
   @Column({ name: 'submitted_at', type: 'timestamp', nullable: true })
   submittedAt: Date | null;
 

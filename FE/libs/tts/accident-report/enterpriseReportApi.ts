@@ -12,6 +12,11 @@ export type DnReportRecord = {
   submittedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  rejectionReason?: string | null;
+  acceptedAt?: string | null;
+  acceptedBy?: string | null;
+  rejectedAt?: string | null;
+  rejectedBy?: string | null;
 };
 
 export type AccidentDetailRow = {

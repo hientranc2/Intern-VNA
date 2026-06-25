@@ -8,6 +8,7 @@ import { Repository, ILike, In } from 'typeorm';
 import { AccidentReport } from '../entities/accident-report.entity';
 import { Business } from '../entities/business.entity';
 import { ReportConfig } from '../entities/report-config.entity';
+import { User } from '../entities/user.entity';
 import {
   AccidentReportQueryDto,
   SummaryQueryDto,
@@ -29,6 +30,8 @@ export class AccidentReportService {
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(ReportConfig)
     private readonly configRepo: Repository<ReportConfig>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   // ===== Màn hình Sở =====
@@ -85,22 +88,29 @@ export class AccidentReportService {
     };
   }
 
-  async approve(id: number): Promise<{ message: string }> {
+  async approve(id: number, userId?: string): Promise<{ message: string }> {
     const report = await this.repo.findOne({ where: { id } });
     if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
 
+    const fullName = userId ? await this.lookupFullName(userId) : null;
     report.status = STATUS_APPROVED;
-    report.rejectionReason = null;
+    report.acceptedAt = new Date();
+    report.acceptedBy = fullName;
     await this.repo.save(report);
     return { message: 'Đã tiếp nhận báo cáo' };
   }
 
-  async approveMany(ids: number[]): Promise<{ message: string }> {
+  async approveMany(ids: number[], userId?: string): Promise<{ message: string }> {
     if (ids.length === 0) return { message: 'Không có báo cáo nào được chọn' };
+    const fullName = userId ? await this.lookupFullName(userId) : null;
     await this.repo
       .createQueryBuilder()
       .update(AccidentReport)
-      .set({ status: STATUS_APPROVED, rejectionReason: null } as never)
+      .set({
+        status: STATUS_APPROVED,
+        acceptedAt: new Date(),
+        acceptedBy: fullName,
+      } as never)
       .whereInIds(ids)
       .execute();
     return { message: `Đã duyệt ${ids.length} báo cáo` };
@@ -109,12 +119,19 @@ export class AccidentReportService {
   async rejectMany(
     ids: number[],
     reason: string,
+    userId?: string,
   ): Promise<{ message: string }> {
     if (ids.length === 0) return { message: 'Không có báo cáo nào được chọn' };
+    const fullName = userId ? await this.lookupFullName(userId) : null;
     await this.repo
       .createQueryBuilder()
       .update(AccidentReport)
-      .set({ status: STATUS_REJECTED, rejectionReason: reason || '—' } as never)
+      .set({
+        status: STATUS_REJECTED,
+        rejectionReason: reason || '—',
+        rejectedAt: new Date(),
+        rejectedBy: fullName,
+      } as never)
       .whereInIds(ids)
       .execute();
     return { message: `Đã từ chối ${ids.length} báo cáo` };
@@ -312,6 +329,14 @@ export class AccidentReportService {
       report.thiethaiTaiSan = dto.thiethaiTaiSan;
   }
 
+  private async lookupFullName(userId: string): Promise<string | null> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId as any },
+      select: { fullName: true },
+    });
+    return user?.fullName ?? null;
+  }
+
   private async resolveBusiness(userId: string): Promise<Business> {
     const business = await this.businessRepo.findOne({
       where: { accountId: userId },
@@ -349,6 +374,10 @@ export class AccidentReportService {
       boiThuongTroCap: r.boiThuongTroCap,
       thiethaiTaiSan: r.thiethaiTaiSan,
       rejectionReason: r.rejectionReason,
+      acceptedAt: r.acceptedAt,
+      acceptedBy: r.acceptedBy,
+      rejectedAt: r.rejectedAt,
+      rejectedBy: r.rejectedBy,
       submittedAt: r.submittedAt,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
@@ -364,6 +393,11 @@ export class AccidentReportService {
       nam,
       tt: r.status,
       configId: r.configId,
+      rejectionReason: r.rejectionReason,
+      acceptedAt: r.acceptedAt,
+      acceptedBy: r.acceptedBy,
+      rejectedAt: r.rejectedAt,
+      rejectedBy: r.rejectedBy,
       submittedAt: r.submittedAt,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,

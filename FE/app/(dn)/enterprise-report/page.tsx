@@ -4123,17 +4123,17 @@ export default function EnterpriseReportPage() {
             // ← THAY TOÀN BỘ ĐOẠN NÀY
             const events: {
               time: string | null | undefined;
-              label: string;
+              actor: string;
+              action: string;
               isRed?: boolean;
+              isGreen?: boolean;
             }[] = [];
 
-            if (
-              timelineReport?.tt === "Từ chối" &&
-              timelineReport?.rejectedAt
-            ) {
+            if (timelineReport?.rejectedAt) {
               events.push({
                 time: timelineReport.rejectedAt,
-                label: `${timelineReport.rejectedBy ?? "Cơ quan quản lý"} đã từ chối báo cáo${
+                actor: timelineReport.rejectedBy ?? "Cơ quan quản lý",
+                action: `đã từ chối báo cáo${
                   timelineReport.rejectionReason
                     ? ` — Lý do: ${timelineReport.rejectionReason}`
                     : ""
@@ -4142,27 +4142,28 @@ export default function EnterpriseReportPage() {
               });
             }
 
-            if (
-              timelineReport?.tt === "Đã tiếp nhận" &&
-              timelineReport?.acceptedAt
-            ) {
+            if (timelineReport?.acceptedAt) {
               events.push({
                 time: timelineReport.acceptedAt,
-                label: `${timelineReport.acceptedBy ?? "Cơ quan quản lý"} đã tiếp nhận báo cáo`,
+                actor: timelineReport.acceptedBy ?? "Cơ quan quản lý",
+                action: "đã tiếp nhận báo cáo",
+                isGreen: true,
               });
             }
 
             if (timelineReport?.submittedAt) {
               events.push({
                 time: timelineReport.submittedAt,
-                label: `${timelineReport.ten} đã gửi báo cáo`,
+                actor: timelineReport.ten,
+                action: "đã gửi báo cáo",
               });
             }
 
             if (timelineReport?.createdAt) {
               events.push({
                 time: timelineReport.createdAt,
-                label: `${timelineReport.ten} đã tạo bản nháp báo cáo`,
+                actor: timelineReport.ten,
+                action: "đã tạo bản nháp báo cáo",
               });
             }
 
@@ -4171,7 +4172,11 @@ export default function EnterpriseReportPage() {
                 <div className="flex flex-col items-center">
                   <div
                     className={`mt-1 h-3 w-3 rounded-full border-2 bg-white ${
-                      ev.isRed ? "border-[#ef4444]" : "border-[#d1d5db]"
+                      ev.isRed
+                        ? "border-[#ef4444]"
+                        : ev.isGreen
+                        ? "border-[#22c55e]"
+                        : "border-[#d1d5db]"
                     }`}
                   />
                   {idx < events.length - 1 && (
@@ -4184,13 +4189,11 @@ export default function EnterpriseReportPage() {
                   </p>
                   <p className="mt-0.5 text-[13.5px] text-ink">
                     <span className="font-semibold">
-                      {ev.isRed
-                        ? (timelineReport?.rejectedBy ?? "Cơ quan quản lý")
-                        : timelineReport?.ten}
+                      {ev.actor}
                     </span>{" "}
-                    {ev.isRed
-                      ? `đã từ chối báo cáo${timelineReport?.rejectionReason ? ` — Lý do: ${timelineReport.rejectionReason}` : ""}`
-                      : ev.label.replace(timelineReport?.ten ?? "", "").trim()}
+                    <span className="text-[#4b5563]">
+                      {ev.action}
+                    </span>
                   </p>
                 </div>
               </div>
