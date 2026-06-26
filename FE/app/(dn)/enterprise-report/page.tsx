@@ -452,7 +452,7 @@ export default function EnterpriseReportPage() {
   const [tcTongChiPhi, setTcTongChiPhi] = useState("0");
   const [tcSoNgayNghi, setTcSoNgayNghi] = useState("0");
   const [tcThiHaiTaiSan, setTcThiHaiTaiSan] = useState("0");
-
+  const isTcEditedByUser = useRef(false);
   // Chi tiết từng vụ
   const [accidentDetails, setAccidentDetails] = useState<AccidentDetail[]>([]);
   const [savedOverviewRows, setSavedOverviewRows] = useState<
@@ -540,10 +540,57 @@ export default function EnterpriseReportPage() {
   // Auto-compute tongChiPhi (tab 1) = chiPhiYTe + chiPhiLuong + chiPhiBTTC
   useEffect(() => {
     if (isLoadingReportRef.current) return;
-    const total = parseNum(chiPhiYTe) + parseNum(chiPhiLuong) + parseNum(chiPhiBTTC);
+    const total =
+      parseNum(chiPhiYTe) + parseNum(chiPhiLuong) + parseNum(chiPhiBTTC);
     const formatted = String(total).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     setTongChiPhi(formatted);
   }, [chiPhiYTe, chiPhiLuong, chiPhiBTTC]);
+
+  // 👉 TÌM VÀ THAY THẾ USEEFFECT CŨ BẰNG ĐOẠN NÀY
+  useEffect(() => {
+    if (isLoadingReportRef.current) return;
+
+    // Nếu người dùng đã tự tay nhập số liệu vào Mục 2, ta KHÔNG ghi đè nữa để tôn trọng dữ liệu của họ.
+    if (isTcEditedByUser.current) return;
+
+    // Nếu người dùng chưa đụng vào Mục 2, tự động lấy 100% dữ liệu từ Mục 1 đắp sang
+    setTcTongVu(tongVu);
+    setTcVuChet(vuChet);
+    setTcVuNhieu(vuNhieu);
+    setTcTongNan(tongNan);
+    setTcTongNanNu(tongNanNu);
+    setTcTongChetNN(tongChetNN);
+    setTcTongThuongNang(tongThuongNang);
+    setTcNanKhongQL(nanKhongQL);
+    setTcNuKhongQL(nuKhongQL);
+    setTcChetKhongQL(chetKhongQL);
+    setTcThuongKhongQL(thuongKhongQL);
+    setTcChiPhiYTe(chiPhiYTe);
+    setTcChiPhiLuong(chiPhiLuong);
+    setTcChiPhiBTTC(chiPhiBTTC);
+    setTcTongChiPhi(tongChiPhi);
+    setTcSoNgayNghi(soNgayNghi);
+    setTcThiHaiTaiSan(thiHaiTaiSan);
+  }, [
+    // Lắng nghe trực tiếp Mục 1: Bất cứ khi nào Mục 1 thay đổi, Mục 2 sẽ tự động cập nhật theo
+    tongVu,
+    vuChet,
+    vuNhieu,
+    tongNan,
+    tongNanNu,
+    tongChetNN,
+    tongThuongNang,
+    nanKhongQL,
+    nuKhongQL,
+    chetKhongQL,
+    thuongKhongQL,
+    chiPhiYTe,
+    chiPhiLuong,
+    chiPhiBTTC,
+    tongChiPhi,
+    soNgayNghi,
+    thiHaiTaiSan,
+  ]);
 
   const tcCrossValidations = useMemo(() => {
     const tongVu = parseNum(tcTongVu);
@@ -1063,6 +1110,11 @@ export default function EnterpriseReportPage() {
 
         const tcVals = res.form.tongSoRows?.["10"];
         if (Array.isArray(tcVals)) {
+          // 👉 THÊM VÀO ĐÂY: Kiểm tra xem báo cáo lấy từ API về đã có dữ liệu Mục 2 chưa
+          // Nếu có bất kỳ số nào > 0, nghĩa là Mục 2 đã từng được nhập -> Khóa auto-sync lại để bảo vệ dữ liệu.
+          const hasTcData = tcVals.some((v) => Number(v) > 0);
+          isTcEditedByUser.current = hasTcData;
+
           setTcTongVu(String(tcVals[0] ?? 0));
           setTcVuChet(String(tcVals[1] ?? 0));
           setTcVuNhieu(String(tcVals[2] ?? 0));
@@ -1092,6 +1144,9 @@ export default function EnterpriseReportPage() {
             String(tcVals[16] ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
           );
         } else {
+          // 👉 THÊM VÀO ĐÂY: Reset lại cờ nếu đây là báo cáo trống / mới, cho phép auto-sync hoạt động
+          isTcEditedByUser.current = false;
+
           setTcTongVu("0");
           setTcVuChet("0");
           setTcVuNhieu("0");
@@ -1938,7 +1993,9 @@ export default function EnterpriseReportPage() {
     }
   };
 
-  const handleReportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReportFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSaving(true);
@@ -1975,12 +2032,21 @@ export default function EnterpriseReportPage() {
         if (d.id !== id) return d;
         const updated = { ...d, [key]: val };
         // Auto-compute tongSoTien from the 3 cost columns
-        if (key === "chiPhiYTe" || key === "chiPhiLuong" || key === "chiPhiBTTC") {
+        if (
+          key === "chiPhiYTe" ||
+          key === "chiPhiLuong" ||
+          key === "chiPhiBTTC"
+        ) {
           const sum =
             parseNum(key === "chiPhiYTe" ? String(val) : updated.chiPhiYTe) +
-            parseNum(key === "chiPhiLuong" ? String(val) : updated.chiPhiLuong) +
+            parseNum(
+              key === "chiPhiLuong" ? String(val) : updated.chiPhiLuong,
+            ) +
             parseNum(key === "chiPhiBTTC" ? String(val) : updated.chiPhiBTTC);
-          updated.tongSoTien = String(sum).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+          updated.tongSoTien = String(sum).replace(
+            /\B(?=(\d{3})+(?!\d))/g,
+            ".",
+          );
         }
         return updated;
       }),
@@ -2493,8 +2559,10 @@ export default function EnterpriseReportPage() {
                     <div className="mb-3 grid grid-cols-4 gap-3">
                       <InputField
                         label="Tổng số vụ"
-                        value={tcTongVu}
-                        onChange={setTcTongVu}
+                        value={tongVu}
+                        onChange={(v) =>
+                          updateFieldAndPhanLoai(setTongVu, 0, v)
+                        }
                         required
                         invalid={
                           isInvalidValue(triedSubmit, tcTongVu, true) ||
@@ -2880,11 +2948,15 @@ export default function EnterpriseReportPage() {
                       {detailSumsMismatch && accidentDetails.length > 0 && (
                         <div className="mb-4 rounded-md border border-[#f59e0b] bg-[#fffbeb] px-4 py-3 text-[12.5px] text-[#92400e]">
                           <div className="mb-1 font-semibold text-[#b45309]">
-                            ⚠️ Thông số không khớp giữa Tab (1) và Chi tiết các vụ
+                            ⚠️ Thông số không khớp giữa Tab (1) và Chi tiết các
+                            vụ
                           </div>
                           <ul className="list-inside list-disc space-y-0.5">
                             {detailSumsMismatch.tongVu && (
-                              <li>Tổng số vụ (tab 1) không khớp với tổng số vụ của các chi tiết</li>
+                              <li>
+                                Tổng số vụ (tab 1) không khớp với tổng số vụ của
+                                các chi tiết
+                              </li>
                             )}
                             {detailSumsMismatch.vuChet && (
                               <li>Số vụ có người chết không khớp</li>
@@ -2918,7 +2990,8 @@ export default function EnterpriseReportPage() {
                             )}
                           </ul>
                           <div className="mt-2 text-[12px] text-[#78350f]">
-                            Vui lòng kiểm tra lại thông số ở Tab (1) hoặc điều chỉnh chi tiết từng vụ để khớp nhau.
+                            Vui lòng kiểm tra lại thông số ở Tab (1) hoặc điều
+                            chỉnh chi tiết từng vụ để khớp nhau.
                           </div>
                         </div>
                       )}
@@ -3427,7 +3500,12 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Tổng số vụ"
                     value={tcTongVu}
-                    onChange={setTcTongVu}
+                    onChange={(val) => {
+                      // 👉 THÊM DÒNG NÀY VÀO TẤT CẢ ONCHANGE CỦA CÁC INPUT THUỘC MỤC 2
+                      isTcEditedByUser.current = true;
+
+                      setTcTongVu(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcTongVu, true) ||
@@ -3450,7 +3528,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Số vụ có người chết"
                     value={tcVuChet}
-                    onChange={setTcVuChet}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcVuChet(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcVuChet, true) ||
@@ -3470,7 +3551,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Số vụ ≥ 2 người bị nạn"
                     value={tcVuNhieu}
-                    onChange={setTcVuNhieu}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcVuNhieu(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcVuNhieu, true) ||
@@ -3494,7 +3578,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Tổng số người bị nạn"
                     value={tcTongNan}
-                    onChange={setTcTongNan}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcTongNan(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcTongNan, true) ||
@@ -3520,7 +3607,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Tổng số lao động nữ bị nạn"
                     value={tcTongNanNu}
-                    onChange={setTcTongNanNu}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcTongNanNu(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcTongNanNu, true) ||
@@ -3540,7 +3630,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Tổng số người bị chết"
                     value={tcTongChetNN}
-                    onChange={setTcTongChetNN}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcTongChetNN(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcTongChetNN, true) ||
@@ -3560,7 +3653,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Tổng số người bị thương nặng"
                     value={tcTongThuongNang}
-                    onChange={setTcTongThuongNang}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcTongThuongNang(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcTongThuongNang, true) ||
@@ -3583,7 +3679,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Số người bị nạn không QL"
                     value={tcNanKhongQL}
-                    onChange={setTcNanKhongQL}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcNanKhongQL(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcNanKhongQL, true) ||
@@ -3609,7 +3708,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Lao động nữ bị nạn không QL"
                     value={tcNuKhongQL}
-                    onChange={setTcNuKhongQL}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcNuKhongQL(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcNuKhongQL, true) ||
@@ -3629,7 +3731,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Số người chết không QL"
                     value={tcChetKhongQL}
-                    onChange={setTcChetKhongQL}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcChetKhongQL(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcChetKhongQL, true) ||
@@ -3649,7 +3754,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Người bị thương nặng không QL"
                     value={tcThuongKhongQL}
-                    onChange={setTcThuongKhongQL}
+                    onChange={(val) => {
+                      isTcEditedByUser.current = true;
+                      setTcThuongKhongQL(val);
+                    }}
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcThuongKhongQL, true) ||
@@ -3676,7 +3784,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Chi phí y tế"
                     value={tcChiPhiYTe}
-                    onChange={(v) => setTcChiPhiYTe(formatNumberString(v))}
+                    onChange={(v) => {
+                      isTcEditedByUser.current = true;
+                      setTcChiPhiYTe(formatNumberString(v));
+                    }}
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcChiPhiYTe, true)}
@@ -3690,7 +3801,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Chi phí trả lương trong thời gian điều trị"
                     value={tcChiPhiLuong}
-                    onChange={(v) => setTcChiPhiLuong(formatNumberString(v))}
+                    onChange={(v) => {
+                      isTcEditedByUser.current = true;
+                      setTcChiPhiLuong(formatNumberString(v));
+                    }}
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcChiPhiLuong, true)}
@@ -3704,7 +3818,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Chi phí bồi thường trợ cấp"
                     value={tcChiPhiBTTC}
-                    onChange={(v) => setTcChiPhiBTTC(formatNumberString(v))}
+                    onChange={(v) => {
+                      isTcEditedByUser.current = true;
+                      setTcChiPhiBTTC(formatNumberString(v));
+                    }}
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcChiPhiBTTC, true)}
@@ -3718,7 +3835,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Tổng số tiền chi phí"
                     value={tcTongChiPhi}
-                    onChange={(v) => setTcTongChiPhi(formatNumberString(v))}
+                    onChange={(v) => {
+                      isTcEditedByUser.current = true;
+                      setTcTongChiPhi(formatNumberString(v));
+                    }}
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcTongChiPhi, true)}
@@ -3735,7 +3855,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Tổng số ngày nghỉ vì TNLĐ"
                     value={tcSoNgayNghi}
-                    onChange={setTcSoNgayNghi}
+                    onChange={(v) => {
+                      isTcEditedByUser.current = true;
+                      setTcSoNgayNghi(v);
+                    }}
                     required
                     invalid={isInvalidValue(triedSubmit, tcSoNgayNghi, true)}
                     errorMsg={getErrorMsg(
@@ -3748,7 +3871,10 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Thiệt hại tài sản"
                     value={tcThiHaiTaiSan}
-                    onChange={(v) => setTcThiHaiTaiSan(formatNumberString(v))}
+                    onChange={(v) => {
+                      isTcEditedByUser.current = true;
+                      setTcThiHaiTaiSan(formatNumberString(v));
+                    }}
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tcThiHaiTaiSan, false)}
                     errorMsg={getErrorMsg(
@@ -3857,7 +3983,10 @@ export default function EnterpriseReportPage() {
                         rel="noreferrer"
                         className="text-primary font-medium hover:underline flex items-center gap-1"
                       >
-                        {reportFileUrl.split("/").pop()?.replace(/^[^-]+-[^-]+-/, "") || "baocaoTNLD.pdf"}
+                        {reportFileUrl
+                          .split("/")
+                          .pop()
+                          ?.replace(/^[^-]+-[^-]+-/, "") || "baocaoTNLD.pdf"}
                       </a>
                     ) : (
                       <span className="text-gray-400 italic">(chưa có)</span>
@@ -3885,9 +4014,16 @@ export default function EnterpriseReportPage() {
                             target="_blank"
                             rel="noreferrer"
                             className="text-primary font-medium hover:underline text-[12px] truncate max-w-[200px]"
-                            title={reportFileUrl.split("/").pop()?.replace(/^[^-]+-[^-]+-/, "")}
+                            title={reportFileUrl
+                              .split("/")
+                              .pop()
+                              ?.replace(/^[^-]+-[^-]+-/, "")}
                           >
-                            {reportFileUrl.split("/").pop()?.replace(/^[^-]+-[^-]+-/, "") || "baocaoTNLD.pdf"}
+                            {reportFileUrl
+                              .split("/")
+                              .pop()
+                              ?.replace(/^[^-]+-[^-]+-/, "") ||
+                              "baocaoTNLD.pdf"}
                           </a>
                           <button
                             type="button"
@@ -3899,7 +4035,9 @@ export default function EnterpriseReportPage() {
                           </button>
                         </div>
                       ) : (
-                        <span className="text-gray-400 italic ml-1">(chưa có)</span>
+                        <span className="text-gray-400 italic ml-1">
+                          (chưa có)
+                        </span>
                       )}
                     </>
                   )}
@@ -4239,8 +4377,8 @@ export default function EnterpriseReportPage() {
                       ev.isRed
                         ? "border-[#ef4444]"
                         : ev.isGreen
-                        ? "border-[#22c55e]"
-                        : "border-[#d1d5db]"
+                          ? "border-[#22c55e]"
+                          : "border-[#d1d5db]"
                     }`}
                   />
                   {idx < events.length - 1 && (
@@ -4252,12 +4390,8 @@ export default function EnterpriseReportPage() {
                     {formatTime(ev.time)}
                   </p>
                   <p className="mt-0.5 text-[13.5px] text-ink">
-                    <span className="font-semibold">
-                      {ev.actor}
-                    </span>{" "}
-                    <span className="text-[#4b5563]">
-                      {ev.action}
-                    </span>
+                    <span className="font-semibold">{ev.actor}</span>{" "}
+                    <span className="text-[#4b5563]">{ev.action}</span>
                   </p>
                 </div>
               </div>
