@@ -388,9 +388,9 @@ export default function EnterpriseReportPage() {
   }, []);
 
   // Thông tin công ty
-  const [totalLao, setTotalLao] = useState("10");
-  const [totalNu, setTotalNu] = useState("5");
-  const [tongLuong, setTongLuong] = useState("10.2");
+  const [totalLao, setTotalLao] = useState("0");
+  const [totalNu, setTotalNu] = useState("0");
+  const [tongLuong, setTongLuong] = useState("0");
 
   // Tổng số vụ (Section 1)
   const [tongVu, setTongVu] = useState("1");
@@ -2323,7 +2323,7 @@ export default function EnterpriseReportPage() {
                   <InputField
                     label="Tổng quỹ lương"
                     value={tongLuong}
-                    onChange={setTongLuong}
+                    onChange={(v) => setTongLuong(formatNumberString(v))}
                     required
                     suffix="(1.000đ)"
                     invalid={isInvalidValue(triedSubmit, tongLuong, true)}
@@ -2697,7 +2697,14 @@ export default function EnterpriseReportPage() {
                       />
                       <InputField
                         label="Tổng số tiền chi phí"
-                        value={tongChiPhi}
+                        disabled
+                        value={formatNumberString(
+                          String(
+                            (Number(chiPhiYTe?.replace(/\./g, "")) || 0) +
+                            (Number(chiPhiLuong?.replace(/\./g, "")) || 0) +
+                            (Number(chiPhiBTTC?.replace(/\./g, "")) || 0)
+                          )
+                        )}
                         onChange={(v) =>
                           updateFieldAndPhanLoai(
                             setTongChiPhi,
@@ -3633,7 +3640,14 @@ export default function EnterpriseReportPage() {
                   />
                   <InputField
                     label="Tổng số tiền chi phí"
-                    value={tcTongChiPhi}
+                    disabled
+                    value={formatNumberString(
+                      String(
+                        (Number(tcChiPhiYTe?.replace(/\./g, "")) || 0) +
+                        (Number(tcChiPhiLuong?.replace(/\./g, "")) || 0) +
+                        (Number(tcChiPhiBTTC?.replace(/\./g, "")) || 0)
+                      )
+                    )}
                     onChange={(v) => setTcTongChiPhi(formatNumberString(v))}
                     required
                     suffix="(1.000đ)"
