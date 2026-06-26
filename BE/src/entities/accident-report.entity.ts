@@ -109,8 +109,29 @@ export class AccidentReport {
   @Column({ name: 'thiet_hai_tai_san', type: 'integer', default: 0 })
   thiethaiTaiSan: number;
 
+  // Lý do từ chối báo cáo (null nếu chưa bị từ chối).
+  @Column({ name: 'rejection_reason', type: 'text', nullable: true })
+  rejectionReason: string | null;
+
+  // Timeline: duyệt
+  @Column({ name: 'accepted_at', type: 'timestamp', nullable: true })
+  acceptedAt: Date | null;
+
+  @Column({ name: 'accepted_by', type: 'text', nullable: true })
+  acceptedBy: string | null;
+
+  // Timeline: từ chối
+  @Column({ name: 'rejected_at', type: 'timestamp', nullable: true })
+  rejectedAt: Date | null;
+
+  @Column({ name: 'rejected_by', type: 'text', nullable: true })
+  rejectedBy: string | null;
+
   @Column({ name: 'submitted_at', type: 'timestamp', nullable: true })
   submittedAt: Date | null;
+
+  @Column({ name: 'file_url', type: 'text', nullable: true })
+  fileUrl: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

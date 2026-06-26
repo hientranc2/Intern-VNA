@@ -73,7 +73,6 @@ export class AtvsldReportService {
     const actorName = user ? user.fullName : 'Cán bộ Sở';
 
     report.status = STATUS_DONE;
-    report.lyDoTuChoi = null;
     report.ngayKetThuc = this.formatDate(new Date());
     report.updatedAt = new Date();
 
@@ -102,7 +101,6 @@ export class AtvsldReportService {
 
     report.status = STATUS_REJECTED;
     report.lyDoTuChoi = lyDoTuChoi;
-    report.ngayKetThuc = '';
     report.updatedAt = new Date();
 
     const history = report.history || [];
@@ -129,7 +127,6 @@ export class AtvsldReportService {
     const reports = await this.repo.find({ where: { id: In(ids) } });
     for (const report of reports) {
       report.status = STATUS_DONE;
-      report.lyDoTuChoi = null;
       report.ngayKetThuc = this.formatDate(new Date());
       report.updatedAt = new Date();
       const history = report.history || [];
@@ -157,7 +154,6 @@ export class AtvsldReportService {
     for (const report of reports) {
       report.status = STATUS_REJECTED;
       report.lyDoTuChoi = lyDoTuChoi;
-      report.ngayKetThuc = '';
       report.updatedAt = new Date();
       const history = report.history || [];
       history.push({

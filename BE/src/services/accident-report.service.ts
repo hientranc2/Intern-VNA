@@ -2,12 +2,15 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
+import { createClient } from '@supabase/supabase-js';
 import { AccidentReport } from '../entities/accident-report.entity';
 import { Business } from '../entities/business.entity';
 import { ReportConfig } from '../entities/report-config.entity';
+import { User } from '../entities/user.entity';
 import {
   AccidentReportQueryDto,
   SummaryQueryDto,
@@ -18,9 +21,15 @@ import {
 const STATUS_DRAFT = 'Đang báo cáo';
 const STATUS_SUBMITTED = 'Đã nộp';
 const STATUS_APPROVED = 'Đã tiếp nhận';
+const STATUS_REJECTED = 'Từ chối';
 
 @Injectable()
 export class AccidentReportService {
+  private supabaseAdmin = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!,
+  );
+
   constructor(
     @InjectRepository(AccidentReport)
     private readonly repo: Repository<AccidentReport>,
@@ -28,7 +37,36 @@ export class AccidentReportService {
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(ReportConfig)
     private readonly configRepo: Repository<ReportConfig>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
+
+  async uploadReportFile(
+    file: Express.Multer.File,
+    userId: string,
+  ): Promise<string> {
+    const business = await this.resolveBusiness(userId);
+    const taxCode = business.taxCode;
+    const ext = file.originalname.split('.').pop();
+    const fileName = `report-${taxCode}-${Date.now()}.${ext}`;
+    const fileBlob = new Blob([new Uint8Array(file.buffer)], {
+      type: file.mimetype,
+    });
+
+    const { error } = await this.supabaseAdmin.storage
+      .from('businesses')
+      .upload(fileName, fileBlob, { contentType: file.mimetype, upsert: true });
+
+    if (error) {
+      throw new BadRequestException('Lỗi khi tải file lên hệ thống!');
+    }
+
+    const { data } = this.supabaseAdmin.storage
+      .from('businesses')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  }
 
   // ===== Màn hình Sở =====
 
@@ -84,13 +122,53 @@ export class AccidentReportService {
     };
   }
 
-  async approve(id: number): Promise<{ message: string }> {
+  async approve(id: number, userId?: string): Promise<{ message: string }> {
     const report = await this.repo.findOne({ where: { id } });
     if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
 
+    const fullName = userId ? await this.lookupFullName(userId) : null;
     report.status = STATUS_APPROVED;
+    report.acceptedAt = new Date();
+    report.acceptedBy = fullName;
     await this.repo.save(report);
     return { message: 'Đã tiếp nhận báo cáo' };
+  }
+
+  async approveMany(ids: number[], userId?: string): Promise<{ message: string }> {
+    if (ids.length === 0) return { message: 'Không có báo cáo nào được chọn' };
+    const fullName = userId ? await this.lookupFullName(userId) : null;
+    await this.repo
+      .createQueryBuilder()
+      .update(AccidentReport)
+      .set({
+        status: STATUS_APPROVED,
+        acceptedAt: new Date(),
+        acceptedBy: fullName,
+      } as never)
+      .whereInIds(ids)
+      .execute();
+    return { message: `Đã duyệt ${ids.length} báo cáo` };
+  }
+
+  async rejectMany(
+    ids: number[],
+    reason: string,
+    userId?: string,
+  ): Promise<{ message: string }> {
+    if (ids.length === 0) return { message: 'Không có báo cáo nào được chọn' };
+    const fullName = userId ? await this.lookupFullName(userId) : null;
+    await this.repo
+      .createQueryBuilder()
+      .update(AccidentReport)
+      .set({
+        status: STATUS_REJECTED,
+        rejectionReason: reason || '—',
+        rejectedAt: new Date(),
+        rejectedBy: fullName,
+      } as never)
+      .whereInIds(ids)
+      .execute();
+    return { message: `Đã từ chối ${ids.length} báo cáo` };
   }
 
   async remove(id: number): Promise<{ message: string }> {
@@ -283,6 +361,15 @@ export class AccidentReportService {
       report.boiThuongTroCap = dto.boiThuongTroCap;
     if (dto.thiethaiTaiSan !== undefined)
       report.thiethaiTaiSan = dto.thiethaiTaiSan;
+    if (dto.fileUrl !== undefined) report.fileUrl = dto.fileUrl;
+  }
+
+  private async lookupFullName(userId: string): Promise<string | null> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId as any },
+      select: { fullName: true },
+    });
+    return user?.fullName ?? null;
   }
 
   private async resolveBusiness(userId: string): Promise<Business> {
@@ -305,6 +392,7 @@ export class AccidentReportService {
       province: r.province,
       ward: r.ward,
       loaiHinh: r.loaiHinh,
+      rows: r.rows ?? {},
       phanLoaiRows: r.phanLoaiRows ?? {},
       soLaoDong: r.soLaoDong,
       soLDCoBaoHiem: r.soLDCoBaoHiem,
@@ -321,7 +409,13 @@ export class AccidentReportService {
       chiPhiTraLuong: r.chiPhiTraLuong,
       boiThuongTroCap: r.boiThuongTroCap,
       thiethaiTaiSan: r.thiethaiTaiSan,
+      rejectionReason: r.rejectionReason,
+      acceptedAt: r.acceptedAt,
+      acceptedBy: r.acceptedBy,
+      rejectedAt: r.rejectedAt,
+      rejectedBy: r.rejectedBy,
       submittedAt: r.submittedAt,
+      fileUrl: r.fileUrl,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     };
@@ -336,7 +430,13 @@ export class AccidentReportService {
       nam,
       tt: r.status,
       configId: r.configId,
+      rejectionReason: r.rejectionReason,
+      acceptedAt: r.acceptedAt,
+      acceptedBy: r.acceptedBy,
+      rejectedAt: r.rejectedAt,
+      rejectedBy: r.rejectedBy,
       submittedAt: r.submittedAt,
+      fileUrl: r.fileUrl,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     };

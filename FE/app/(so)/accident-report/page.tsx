@@ -14,12 +14,13 @@ import {
 import {
   getAccidentReportList,
   deleteAccidentReport,
+  approveAccidentReports,
+  rejectAccidentReports,
 } from "@/libs/tts/accident-report/accidentReportApi";
 import { exportTonghopDocx } from "@/libs/tts/accident-report/exportTonghopDocx";
 import { exportDetailDocx } from "@/libs/tts/accident-report/exportDetailDocx";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
-
 
 type ViewMode = "list" | "detail" | "tonghop";
 
@@ -76,11 +77,18 @@ export default function AccidentReportPage() {
   }, [year]);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     variant: "success" | "error";
   } | null>(null);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  // Report đang xem chi tiết + popup xem lý do từ chối.
+  const [viewingReport, setViewingReport] = useState<AccidentReport | null>(
+    null,
+  );
+  const [rejectViewOpen, setRejectViewOpen] = useState(false);
 
   const deleteSelected = async () => {
     const ids = [...selectedIds];
@@ -88,11 +96,56 @@ export default function AccidentReportPage() {
       await Promise.all(ids.map((id) => deleteAccidentReport(id)));
       setReports((prev) => prev.filter((r) => !selectedIds.has(r.id)));
       setSelectedIds(new Set());
-      setDeleteConfirmOpen(false);
       setToast({ message: `Đã xóa ${ids.length} báo cáo`, variant: "success" });
     } catch {
-      setDeleteConfirmOpen(false);
-      setToast({ message: "Xóa thất bại. Vui lòng thử lại.", variant: "error" });
+      setToast({
+        message: "Xóa thất bại. Vui lòng thử lại.",
+        variant: "error",
+      });
+    }
+  };
+
+  const approveSelected = async () => {
+    const ids = [...selectedIds];
+    try {
+      await approveAccidentReports(ids);
+      setToast({
+        message: `Đã duyệt ${ids.length} báo cáo`,
+        variant: "success",
+      });
+      setSelectedIds(new Set());
+      // reload reports
+      getAccidentReportList({ page: 1, pageSize: 1000, nam: year || undefined })
+        .then((res) => setReports(res.data))
+        .catch(() => {});
+    } catch (e) {
+      setToast({
+        message: e instanceof Error ? e.message : "Duyệt báo cáo thất bại",
+        variant: "error",
+      });
+    }
+  };
+
+  const confirmReject = async () => {
+    const ids = [...selectedIds];
+    try {
+      await rejectAccidentReports(ids, rejectReason.trim() || "—");
+      setToast({
+        message: `Đã từ chối ${ids.length} báo cáo`,
+        variant: "success",
+      });
+      setSelectedIds(new Set());
+      setRejectReason("");
+      setRejectOpen(false);
+      // reload reports
+      getAccidentReportList({ page: 1, pageSize: 1000, nam: year || undefined })
+        .then((res) => setReports(res.data))
+        .catch(() => {});
+    } catch (e) {
+      setToast({
+        message: e instanceof Error ? e.message : "Từ chối báo cáo thất bại",
+        variant: "error",
+      });
     }
   };
 
@@ -102,7 +155,9 @@ export default function AccidentReportPage() {
   const [searchMST, setSearchMST] = useState("");
   const [fKy, setFKy] = useState("");
   const [fTT, setFTT] = useState("");
-  const [selectedProvince, setSelectedProvince] = useState("Thành phố Hồ Chí Minh");
+  const [selectedProvince, setSelectedProvince] = useState(
+    "Thành phố Hồ Chí Minh",
+  );
   const [selectedWard, setSelectedWard] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -165,19 +220,31 @@ export default function AccidentReportPage() {
       }
     }
 
-    const matchLoaiHinh = (reportLoaiHinh: string, categoryName: string): boolean => {
+    const matchLoaiHinh = (
+      reportLoaiHinh: string,
+      categoryName: string,
+    ): boolean => {
       if (!reportLoaiHinh) return false;
       const normReport = reportLoaiHinh.trim().toLowerCase();
       const normCategory = categoryName.trim().toLowerCase();
       if (normReport === normCategory) return true;
       if (normCategory === "công ty trách nhiệm hữu hạn") {
-        return normReport === "công ty tnhh" || normReport === "công ty trách nhiệm hữu hạn";
+        return (
+          normReport === "công ty tnhh" ||
+          normReport === "công ty trách nhiệm hữu hạn"
+        );
       }
       if (normCategory === "đơn vị kinh tế tập thể") {
-        return normReport === "hợp tác xã" || normReport === "đơn vị kinh tế tập thể";
+        return (
+          normReport === "hợp tác xã" || normReport === "đơn vị kinh tế tập thể"
+        );
       }
       if (normCategory === "đơn vị kinh tế cá thể") {
-        return normReport === "hộ kinh doanh cá thể" || normReport === "hộ kinh doanh" || normReport === "đơn vị kinh tế cá thể";
+        return (
+          normReport === "hộ kinh doanh cá thể" ||
+          normReport === "hộ kinh doanh" ||
+          normReport === "đơn vị kinh tế cá thể"
+        );
       }
       return false;
     };
@@ -191,6 +258,58 @@ export default function AccidentReportPage() {
     };
   }, [filtered]);
 
+  // Tính các dòng chi tiết cho view xem báo cáo phía Sở.
+  // Logic mirror với overviewRows của enterprise side.
+  const soDetailRows = useMemo(() => {
+    const r = viewingReport;
+    if (!r) return DETAIL_REPORT_ROWS;
+    const rows = r.rows ?? {};
+
+    const get11 = (ma: string): number[] => {
+      const raw = rows[ma];
+      if (!Array.isArray(raw)) return Array(11).fill(0);
+      // Chỉ lấy 11 cột đầu (tránh lồi cột do rows["10"] có 17 phần tử)
+      return Array(11).fill(0).map((_, i) => Number(raw[i] ?? 0));
+    };
+
+    // Section tổng (mã "1") dùng field tổng hợp của báo cáo.
+    const section1Vals = [
+      r.soVu, r.soVuCoNguoiChet, r.soVuCo2NguoiBiNan,
+      r.soNguoiBiNan, 0,
+      r.soLDNu, 0,
+      r.soNguoiBiChet, 0,
+      r.soNguoiBiThuongNang, 0,
+    ];
+
+    // Section "2. Tai nạn được hưởng trợ cấp..." = rows["10"] cột 0..10
+    const section2Vals = get11("10");
+
+    // Section "3. Tổng số" = section1 + section2
+    const section3Vals = section1Vals.map((v, i) => v + section2Vals[i]);
+
+    return DETAIL_REPORT_ROWS.map((row) => {
+      if (row.kind === "sub") return row;
+
+      let vals: number[];
+      if (row.label === "1. Tai nạn lao động") {
+        vals = section1Vals;
+      } else if (
+        row.label === "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ"
+      ) {
+        vals = section2Vals;
+      } else if (row.label === "Tổng số (3=1+2)") {
+        vals = section3Vals;
+      } else if ((row as { ma?: string }).ma) {
+        vals = get11((row as { ma?: string }).ma!);
+      } else {
+        vals = Array(11).fill(0);
+      }
+
+      return { ...row, vals };
+    });
+  }, [viewingReport]);
+
+
   const total = filtered.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(currentPage, lastPage);
@@ -201,6 +320,18 @@ export default function AccidentReportPage() {
   const allPageSelected =
     paged.length > 0 && paged.every((r) => selectedIds.has(r.id));
   const somePageSelected = paged.some((r) => selectedIds.has(r.id));
+
+  // Các báo cáo đang được chọn — dùng để validate trạng thái trước khi duyệt/từ chối.
+  const selectedReports = useMemo(
+    () => reports.filter((r) => selectedIds.has(r.id)),
+    [reports, selectedIds],
+  );
+
+  // Nháp ("Đang báo cáo") chưa nộp → không cho duyệt lẫn từ chối.
+  // "Đã tiếp nhận" = đã duyệt rồi → không cho duyệt lại.
+  // "Từ chối" rồi → không cho từ chối lại.
+  const disableApprove = selectedReports.some((r) => r.tt !== "Đã nộp");
+  const disableReject = selectedReports.some((r) => r.tt !== "Đã nộp");
 
   const toggleSelectAll = () => {
     const allIds = paged.map((r) => r.id);
@@ -233,7 +364,9 @@ export default function AccidentReportPage() {
                 }}
                 style={{ color: year === "" ? "transparent" : "inherit" }}
               >
-                <option value="" className="text-ink bg-white">Bỏ chọn</option>
+                <option value="" className="text-ink bg-white">
+                  Bỏ chọn
+                </option>
                 {yearsList.map((y) => (
                   <option key={y} value={y} className="text-ink bg-white">
                     {y}
@@ -355,9 +488,13 @@ export default function AccidentReportPage() {
                           setFKy(e.target.value);
                           setCurrentPage(1);
                         }}
-                        style={{ color: fKy === "" ? "transparent" : "inherit" }}
+                        style={{
+                          color: fKy === "" ? "transparent" : "inherit",
+                        }}
                       >
-                        <option value="" className="text-ink bg-white">Bỏ chọn</option>
+                        <option value="" className="text-ink bg-white">
+                          Bỏ chọn
+                        </option>
                         <option className="text-ink bg-white">6 tháng</option>
                         <option className="text-ink bg-white">Cả năm</option>
                       </select>
@@ -373,12 +510,21 @@ export default function AccidentReportPage() {
                           setFTT(e.target.value);
                           setCurrentPage(1);
                         }}
-                        style={{ color: fTT === "" ? "transparent" : "inherit" }}
+                        style={{
+                          color: fTT === "" ? "transparent" : "inherit",
+                        }}
                       >
-                        <option value="" className="text-ink bg-white">Bỏ chọn</option>
-                        <option className="text-ink bg-white">Đang báo cáo</option>
+                        <option value="" className="text-ink bg-white">
+                          Bỏ chọn
+                        </option>
+                        <option className="text-ink bg-white">
+                          Đang báo cáo
+                        </option>
                         <option className="text-ink bg-white">Đã nộp</option>
-                        <option className="text-ink bg-white">Đã tiếp nhận</option>
+                        <option className="text-ink bg-white">
+                          Đã tiếp nhận
+                        </option>
+                        <option className="text-ink bg-white">Từ chối</option>
                       </select>
                     </th>
                   </tr>
@@ -408,7 +554,10 @@ export default function AccidentReportPage() {
                         <td className="px-3.5 py-2.5">
                           <button
                             type="button"
-                            onClick={() => setView("detail")}
+                            onClick={() => {
+                              setViewingReport(r);
+                              setView("detail");
+                            }}
                             title="Xem"
                             className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                           >
@@ -432,13 +581,19 @@ export default function AccidentReportPage() {
                           {r.mst}
                         </td>
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">{r.nam || "–"}</td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">{formatTime(r.updatedAt)}</td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">{formatTime(r.submittedAt)}</td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">
+                          {r.nam || "–"}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">
+                          {formatTime(r.updatedAt)}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-[#374151]">
+                          {formatTime(r.submittedAt)}
+                        </td>
                         <td className="px-3.5 py-2.5">
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
                             <span
-                              className={`inline-block h-2 w-2 rounded-full ${r.tt === "Đang báo cáo" ? "bg-[#d1d5db]" : r.tt === "Đã nộp" ? "bg-[#f59e0b]" : "bg-[#3b82f6]"}`}
+                              className={`inline-block h-2 w-2 rounded-full ${r.tt === "Đang báo cáo" ? "bg-[#d1d5db]" : r.tt === "Đã nộp" ? "bg-[#f59e0b]" : r.tt === "Từ chối" ? "bg-[#ef4444]" : "bg-[#3b82f6]"}`}
                             />
                             {r.tt}
                           </span>
@@ -518,7 +673,10 @@ export default function AccidentReportPage() {
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={() => setView("list")}
+                onClick={() => {
+                  setView("list");
+                  setViewingReport(null);
+                }}
                 className="flex h-9 items-center justify-center rounded-md border border-line px-4 text-[13.5px] font-medium text-[#374151] hover:bg-[#f9fafb] hover:text-ink"
               >
                 Huỷ bỏ
@@ -547,15 +705,37 @@ export default function AccidentReportPage() {
           <div className="px-6 py-5">
             <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
               <div className="mb-1.5 text-[15px] font-bold text-ink">
-                Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo: 6
-                tháng năm 2023
+                Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo:{" "}
+                {viewingReport?.ky || "6 tháng"} năm{" "}
+                {viewingReport?.nam || "2023"}
               </div>
               <p className="mb-4 text-[13px] text-muted">
                 **Vui lòng đính kèm báo cáo TNLĐ có dấu mộc công ty:{" "}
-                <a href="#" className="text-primary">
-                  baocaoTNLD.pdf
-                </a>
+                {viewingReport?.fileUrl ? (
+                  <a
+                    href={viewingReport.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary font-medium hover:underline"
+                  >
+                    {viewingReport.fileUrl.split("/").pop()?.replace(/^[^-]+-[^-]+-/, "") || "baocaoTNLD.pdf"}
+                  </a>
+                ) : (
+                  <span className="text-gray-400 italic">(chưa có)</span>
+                )}
               </p>
+              {viewingReport?.tt === "Từ chối" && (
+                <p className="mb-4 text-[13px] text-muted">
+                  Lý do từ chối báo cáo:{" "}
+                  <button
+                    type="button"
+                    onClick={() => setRejectViewOpen(true)}
+                    className="text-primary hover:underline"
+                  >
+                    Xem
+                  </button>
+                </p>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
                   <thead>
@@ -616,7 +796,7 @@ export default function AccidentReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {DETAIL_REPORT_ROWS.map((row, idx) => {
+                    {soDetailRows.map((row, idx) => {
                       if (row.kind === "sub") {
                         return (
                           <tr key={idx}>
@@ -630,10 +810,7 @@ export default function AccidentReportPage() {
                           </tr>
                         );
                       }
-                      const vals =
-                        row.vals && row.vals.length
-                          ? row.vals
-                          : EMPTY_VALS.map(() => "");
+                      const vals = (row.vals ?? []) as number[];
                       if (row.kind === "section") {
                         return (
                           <tr key={idx} className="bg-[#f9fafb]">
@@ -643,7 +820,7 @@ export default function AccidentReportPage() {
                             <td className={CT_TD} />
                             {vals.map((v, i) => (
                               <td key={i} className={`${CT_TD} font-bold`}>
-                                {v}
+                                {v ?? 0}
                               </td>
                             ))}
                           </tr>
@@ -652,10 +829,10 @@ export default function AccidentReportPage() {
                       return (
                         <tr key={idx}>
                           <td className={`${CT_TD} text-left`}>{row.label}</td>
-                          <td className={CT_TD}>{row.ma || ""}</td>
+                          <td className={CT_TD}>{(row as { ma?: string }).ma || ""}</td>
                           {vals.map((v, i) => (
                             <td key={i} className={CT_TD}>
-                              {v}
+                              {v ?? 0}
                             </td>
                           ))}
                         </tr>
@@ -704,12 +881,12 @@ export default function AccidentReportPage() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td className={CT_TD}>20</td>
-                      <td className={CT_TD}>6.000.000</td>
-                      <td className={CT_TD}>2.000.000</td>
-                      <td className={CT_TD}>2.000.000</td>
-                      <td className={CT_TD}>2.000.000</td>
-                      <td className={CT_TD}>20.000.000</td>
+                      <td className={CT_TD}>{viewingReport?.soNgayNghi ?? "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.tongSoTien) : "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.chiPhiYTe) : "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.chiPhiTraLuong) : "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.boiThuongTroCap) : "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.thiethaiTaiSan) : "—"}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1029,10 +1206,11 @@ export default function AccidentReportPage() {
                             {(() => {
                               const rowVals = tonghopStats.phanLoai[item.ma];
                               const hasData = !!rowVals;
-                              const displayVals = rowVals ?? Array.from({ length: 13 }, () => 0);
+                              const displayVals =
+                                rowVals ?? Array.from({ length: 13 }, () => 0);
                               return displayVals.map((v, i) => (
                                 <td key={i} className={CT_TD}>
-                                  {hasData ? v : (v || "")}
+                                  {hasData ? v : v || ""}
                                 </td>
                               ));
                             })()}
@@ -1048,86 +1226,214 @@ export default function AccidentReportPage() {
         </>
       ) : null}
 
-      {/* Thanh thao tác hàng loạt khi chọn checkbox */}
+      {/* Thanh thao tác duyệt/từ chối báo cáo */}
       {selectedIds.size > 0 ? (
-        <div className="fixed bottom-6 left-1/2 z-300 -translate-x-1/2">
-          <div className="flex items-center gap-0 overflow-hidden rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.18)]">
-            <div className="flex h-10 min-w-9 items-center justify-center bg-primary px-3 text-sm font-bold text-white">
-              {selectedIds.size}
-            </div>
-            <div className="flex h-10 items-center bg-white px-3 text-[13px] font-medium text-ink">
-              dữ liệu được chọn
-            </div>
-            <button
-              type="button"
-              onClick={() => setDeleteConfirmOpen(true)}
-              className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626]"
+        <div className="fixed bottom-6 left-1/2 z-300 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.15)]">
+          <span className="flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-[12px] font-semibold text-white">
+            {selectedIds.size}
+          </span>
+          <span className="text-[13px] text-[#374151]">dữ liệu được chọn</span>
+          <button
+            type="button"
+            onClick={() => setRejectOpen(true)}
+            disabled={disableReject}
+            className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                <path d="M10 11v6M14 11v6" />
-                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-              </svg>
-              Xoá
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedIds(new Set())}
-              aria-label="Bỏ chọn"
-              className="flex h-10 w-10 items-center justify-center bg-white text-muted hover:bg-body hover:text-ink"
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+            Từ chối
+          </button>
+          <button
+            type="button"
+            onClick={approveSelected}
+            disabled={disableApprove}
+            className="flex h-8 items-center gap-1.5 rounded-md bg-success px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-success"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Duyệt báo cáo
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            aria-label="Bỏ chọn"
+            className="rounded p-1 text-muted hover:bg-body hover:text-ink"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
       ) : null}
 
-      {/* Modal xác nhận xóa */}
+      {/* Modal nhập lý do từ chối */}
       <Modal
-        open={deleteConfirmOpen}
-        title="Xác nhận xóa"
-        onClose={() => setDeleteConfirmOpen(false)}
+        open={rejectOpen}
+        title="Từ chối báo cáo"
+        onClose={() => setRejectOpen(false)}
         footer={
           <div className="flex justify-end gap-3">
             <button
               type="button"
-              onClick={() => setDeleteConfirmOpen(false)}
+              onClick={() => setRejectOpen(false)}
               className="h-9.5 rounded-md px-5 text-sm font-medium text-muted hover:bg-[#f9fafb] hover:text-[#374151]"
             >
-              Huỷ bỏ
+              Hủy bỏ
             </button>
             <button
               type="button"
-              onClick={deleteSelected}
+              onClick={confirmReject}
               className="h-9.5 rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626]"
             >
-              Xóa
+              Xác nhận từ chối
             </button>
           </div>
         }
       >
-        <p className="text-[13.5px] text-[#374151]">
-          Bạn có chắc muốn xóa <strong>{selectedIds.size}</strong> báo cáo đã
-          chọn? Hành động này không thể hoàn tác.
-        </p>
+        <label className="mb-1.5 block text-[12.5px] text-[#374151]">
+          Lý do từ chối <span className="text-danger">*</span>
+        </label>
+        <textarea
+          className="min-h-22.5 w-full rounded-md border border-line px-3 py-2 text-[13px] text-ink outline-none focus:border-[#3b82f6] resize-none"
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Nhập lý do từ chối báo cáo..."
+        />
+      </Modal>
+
+      {/* Modal xem lịch sử xử lý (trong view chi tiết) */}
+      <Modal
+        open={rejectViewOpen}
+        title="Lịch sử xử lý báo cáo"
+        onClose={() => setRejectViewOpen(false)}
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setRejectViewOpen(false)}
+              className="h-9.5 rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af]"
+            >
+              Đã hiểu
+            </button>
+          </div>
+        }
+      >
+        <div className="relative bg-white min-h-[100px] py-2">
+          {(() => {
+            const events: {
+              time: string | null | undefined;
+              actor: string;
+              action: string;
+              isRed?: boolean;
+              isGreen?: boolean;
+            }[] = [];
+
+            if (viewingReport?.rejectedAt) {
+              events.push({
+                time: viewingReport.rejectedAt,
+                actor: viewingReport.rejectedBy ?? "Cơ quan quản lý",
+                action: `đã từ chối báo cáo${
+                  viewingReport.rejectionReason
+                    ? ` — Lý do: ${viewingReport.rejectionReason}`
+                    : ""
+                }`,
+                isRed: true,
+              });
+            }
+
+            if (viewingReport?.acceptedAt) {
+              events.push({
+                time: viewingReport.acceptedAt,
+                actor: viewingReport.acceptedBy ?? "Cơ quan quản lý",
+                action: "đã tiếp nhận báo cáo",
+                isGreen: true,
+              });
+            }
+
+            if (viewingReport?.submittedAt) {
+              events.push({
+                time: viewingReport.submittedAt,
+                actor: viewingReport.ten,
+                action: "đã gửi báo cáo",
+              });
+            }
+
+            if (viewingReport?.createdAt) {
+              events.push({
+                time: viewingReport.createdAt,
+                actor: viewingReport.ten,
+                action: "đã tạo bản nháp báo cáo",
+              });
+            }
+
+            if (events.length === 0) {
+              return (
+                <div className="text-center text-[#6b7280] py-4">
+                  Chưa có lịch sử xử lý
+                </div>
+              );
+            }
+
+            return (
+              <div className="relative">
+                {/* Vertical connector line */}
+                <div className="absolute left-[6px] top-[10px] bottom-[10px] w-[1.5px] bg-[#e2e8f0]" />
+
+                <div className="space-y-6">
+                  {events.map((ev, idx) => (
+                    <div key={idx} className="relative pl-7 text-[13.5px]">
+                      {/* Timeline circle node */}
+                      <div
+                        className={`absolute left-0 top-[4px] h-3.5 w-3.5 rounded-full border-2 bg-white z-10 ${
+                          ev.isRed
+                            ? "border-[#ef4444]"
+                            : ev.isGreen
+                            ? "border-[#22c55e]"
+                            : "border-[#cbd5e1]"
+                        }`}
+                      />
+
+                      <div className="text-[#6b7280] text-[12.5px] mb-1">
+                        {formatTime(ev.time)}
+                      </div>
+                      <div className="text-ink">
+                        <span className="font-bold text-[#1f2937]">
+                          {ev.actor}
+                        </span>{" "}
+                        <span className="text-[#4b5563]">{ev.action}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       </Modal>
 
       {toast && (
@@ -1140,5 +1446,3 @@ export default function AccidentReportPage() {
     </>
   );
 }
-
-

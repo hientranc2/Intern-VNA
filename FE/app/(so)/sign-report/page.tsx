@@ -178,26 +178,26 @@ export default function SignReportPage() {
 
   const disableRejectButton = useMemo(() => {
     if (!canApprove) return true;
-    return selectedReports.some((r) => r.status === "Từ chối");
+    return selectedReports.some((r) => r.status !== "Chờ tiếp nhận");
   }, [selectedReports, canApprove]);
 
   const disableApproveButton = useMemo(() => {
     if (!canApprove) return true;
-    return selectedReports.some((r) => r.status === "Hoàn thành");
+    return selectedReports.some((r) => r.status !== "Chờ tiếp nhận");
   }, [selectedReports, canApprove]);
 
   const rejectTitle = useMemo(() => {
     if (!canApprove) return "Bạn không có quyền duyệt/từ chối";
-    if (selectedReports.some((r) => r.status === "Từ chối")) {
-      return "Không thể từ chối báo cáo đã bị từ chối trước đó";
+    if (selectedReports.some((r) => r.status !== "Chờ tiếp nhận")) {
+      return "Chỉ có thể từ chối các báo cáo ở trạng thái Chờ tiếp nhận";
     }
     return undefined;
   }, [selectedReports, canApprove]);
 
   const approveTitle = useMemo(() => {
     if (!canApprove) return "Bạn không có quyền duyệt/từ chối";
-    if (selectedReports.some((r) => r.status === "Hoàn thành")) {
-      return "Không thể duyệt báo cáo đã hoàn thành trước đó";
+    if (selectedReports.some((r) => r.status !== "Chờ tiếp nhận")) {
+      return "Chỉ có thể duyệt các báo cáo ở trạng thái Chờ tiếp nhận";
     }
     return undefined;
   }, [selectedReports, canApprove]);
@@ -225,6 +225,10 @@ export default function SignReportPage() {
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyReport, setHistoryReport] = useState<AtvsldReport | null>(null);
+
+  // Popup xem lý do từ chối (trong view chi tiết báo cáo).
+  const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
+  const [rejectReasonText, setRejectReasonText] = useState("");
 
   const parseDate = (dStr: string) => {
     if (!dStr) return new Date();
@@ -270,6 +274,29 @@ export default function SignReportPage() {
         timestamp: nopDate.toISOString(),
         actor: historyReport.ten,
         action: "đã gửi báo cáo",
+      });
+    }
+
+    // 3. Tự động thêm sự kiện từ chối nếu có lý do từ chối mà thiếu trong history
+    const hasReject = list.some((h) => h.action.includes("từ chối"));
+    if (!hasReject && historyReport.lyDoTuChoi) {
+      const rejectDate = parseDate(historyReport.ngayCapNhat);
+      list.push({
+        timestamp: rejectDate.toISOString(),
+        actor: "Cán bộ Sở",
+        action: "từ chối báo cáo",
+        lyDo: historyReport.lyDoTuChoi,
+      });
+    }
+
+    // 4. Tự động thêm sự kiện duyệt nếu trạng thái là Hoàn thành mà thiếu trong history
+    const hasApprove = list.some((h) => h.action.includes("duyệt"));
+    if (!hasApprove && historyReport.status === "Hoàn thành") {
+      const approveDate = parseDate(historyReport.ngayKetThuc || historyReport.ngayCapNhat);
+      list.push({
+        timestamp: approveDate.toISOString(),
+        actor: "Cán bộ Sở",
+        action: "đã duyệt báo cáo",
       });
     }
 
@@ -704,6 +731,37 @@ export default function SignReportPage() {
             </button>
           </div>
           <div className="px-6 py-5">
+            {viewingReport?.status === "Từ chối" && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[13px] text-[#b91c1c]">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="shrink-0"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span className="font-medium">Lý do từ chối báo cáo:</span>
+                <span className="flex-1 text-[#7f1d1d]">
+                  {viewingReport.lyDoTuChoi || "—"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectReasonText(viewingReport.lyDoTuChoi || "—");
+                    setRejectReasonOpen(true);
+                  }}
+                  className="rounded border border-[#fca5a5] bg-white px-3 py-1 text-[12.5px] font-medium text-[#dc2626] transition-colors hover:bg-[#fef2f2]"
+                >
+                  Xem
+                </button>
+              </div>
+            )}
             <div className="rounded-lg bg-white p-8 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
               <PhuLucIIView
                 values={viewValues}
@@ -779,10 +837,21 @@ export default function SignReportPage() {
                   const minutes = String(dateObj.getMinutes()).padStart(2, "0");
                   const formattedTime = `${day}/${month}/${year} ${hours}:${minutes}`;
 
+                  const isReject = h.action.includes("từ chối");
+                  const isApprove = h.action.includes("duyệt");
+
                   return (
                     <div key={i} className="relative pl-7 text-[13.5px]">
                       {/* Timeline circle node */}
-                      <div className="absolute left-0 top-[4px] h-3.5 w-3.5 rounded-full border-2 border-[#cbd5e1] bg-white z-10" />
+                      <div
+                        className={`absolute left-0 top-[4px] h-3.5 w-3.5 rounded-full border-2 bg-white z-10 ${
+                          isReject
+                            ? "border-[#ef4444]"
+                            : isApprove
+                            ? "border-[#22c55e]"
+                            : "border-[#cbd5e1]"
+                        }`}
+                      />
 
                       <div className="text-[#6b7280] text-[12.5px] mb-1">
                         {formattedTime}
@@ -809,6 +878,26 @@ export default function SignReportPage() {
               Chưa có lịch sử xử lý
             </div>
           )}
+        </div>
+      </Modal>
+      <Modal
+        open={rejectReasonOpen}
+        title="Lý do từ chối báo cáo"
+        onClose={() => setRejectReasonOpen(false)}
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setRejectReasonOpen(false)}
+              className="h-9.5 rounded-md bg-primary px-6 text-sm font-semibold text-white hover:bg-[#1e40af]"
+            >
+              Đã hiểu
+            </button>
+          </div>
+        }
+      >
+        <div className="rounded-md border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[13.5px] leading-relaxed text-[#7f1d1d]">
+          {rejectReasonText}
         </div>
       </Modal>
     </>

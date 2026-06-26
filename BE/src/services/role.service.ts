@@ -60,9 +60,23 @@ export class RoleService {
 
   async remove(id: number): Promise<{ message: string }> {
     const item = await this.findOne(id);
-    // Vai trò hệ thống cấp cao không được xóa, dù người dùng có quyền SO_C_ROLE_DELETE.
+
+    // Vai trò hệ thống cấp cao không được xóa
     if (item.isProtected)
       throw new ForbiddenException('Không thể xóa vai trò hệ thống cấp cao');
+
+    // *** THÊM: Kiểm tra xem có user nào đang dùng role này không ***
+    const userCount = await this.userRepo.count({
+      where: { roleId: id },
+    });
+
+    if (userCount > 0) {
+      throw new ConflictException(
+        `Không thể xóa vai trò này vì đang có ${userCount} người dùng sử dụng. Vui lòng chuyển người dùng sang vai trò khác trước khi xóa.`,
+      );
+    }
+
+    // Nếu không có user, tiến hành xóa
     await this.repo.remove(item);
     return { message: 'Xóa vai trò thành công' };
   }

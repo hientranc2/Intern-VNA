@@ -301,6 +301,8 @@ export default function EnterpriseSignReportPage() {
     return new Date();
   };
 
+
+
   const displayHistory = useMemo(() => {
     if (!historyReport) return [];
 
@@ -330,6 +332,29 @@ export default function EnterpriseSignReportPage() {
         timestamp: nopDate.toISOString(),
         actor: historyReport.ten,
         action: "đã gửi báo cáo",
+      });
+    }
+
+    // 3. Tự động thêm sự kiện từ chối nếu có lý do từ chối mà thiếu trong history
+    const hasReject = list.some((h) => h.action.includes("từ chối"));
+    if (!hasReject && historyReport.lyDoTuChoi) {
+      const rejectDate = parseDate(historyReport.ngayCapNhat);
+      list.push({
+        timestamp: rejectDate.toISOString(),
+        actor: "Cán bộ Sở",
+        action: "từ chối báo cáo",
+        lyDo: historyReport.lyDoTuChoi,
+      });
+    }
+
+    // 4. Tự động thêm sự kiện duyệt nếu trạng thái là Hoàn thành mà thiếu trong history
+    const hasApprove = list.some((h) => h.action.includes("duyệt"));
+    if (!hasApprove && historyReport.status === "Hoàn thành") {
+      const approveDate = parseDate(historyReport.ngayKetThuc || historyReport.ngayCapNhat);
+      list.push({
+        timestamp: approveDate.toISOString(),
+        actor: "Cán bộ Sở",
+        action: "đã duyệt báo cáo",
       });
     }
 
@@ -986,10 +1011,21 @@ export default function EnterpriseSignReportPage() {
                   const minutes = String(dateObj.getMinutes()).padStart(2, "0");
                   const formattedTime = `${day}/${month}/${year} ${hours}:${minutes}`;
 
+                  const isReject = h.action.includes("từ chối");
+                  const isApprove = h.action.includes("duyệt");
+
                   return (
                     <div key={i} className="relative pl-7 text-[13.5px]">
                       {/* Timeline circle node */}
-                      <div className="absolute left-0 top-[4px] h-3.5 w-3.5 rounded-full border-2 border-[#cbd5e1] bg-white z-10" />
+                      <div
+                        className={`absolute left-0 top-[4px] h-3.5 w-3.5 rounded-full border-2 bg-white z-10 ${
+                          isReject
+                            ? "border-[#ef4444]"
+                            : isApprove
+                            ? "border-[#22c55e]"
+                            : "border-[#cbd5e1]"
+                        }`}
+                      />
 
                       <div className="text-[#6b7280] text-[12.5px] mb-1">
                         {formattedTime}

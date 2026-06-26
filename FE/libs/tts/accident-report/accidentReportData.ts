@@ -3,7 +3,8 @@ export type AccidentReport = {
   ten: string;
   mst: string;
   ky: string;
-  tt: "Đang báo cáo" | "Đã nộp" | "Đã tiếp nhận";
+  tt: "Đang báo cáo" | "Đã nộp" | "Đã tiếp nhận" | "Từ chối";
+  rejectionReason?: string | null;
   province: string;
   ward: string;
   loaiHinh: string;
@@ -22,12 +23,19 @@ export type AccidentReport = {
   chiPhiTraLuong: number;
   boiThuongTroCap: number;
   thiethaiTaiSan: number;
+  // Tổng số liệu theo mã dòng báo cáo (key = mã, value = number[11])
+  rows?: Record<string, number[]>;
   // Phân loại phần II: key mã hạng mục "1".."24" -> number[13]
   phanLoaiRows?: Record<string, number[]>;
   submittedAt?: string;
   createdAt?: string;
   updatedAt?: string;
   nam?: string | null;
+  acceptedAt?: string | null;
+  acceptedBy?: string | null;
+  rejectedAt?: string | null;
+  rejectedBy?: string | null;
+  fileUrl?: string | null;
 };
 
 export type ReportRow =

@@ -10,6 +10,7 @@ import {
   getDnReportById,
   submitDnReport,
   updateDnReport,
+  uploadReportFile,
   type ReportTongHop,
 } from "@/libs/tts/accident-report/enterpriseReportApi";
 import { getReportConfigList } from "@/libs/tts/report-config/reportConfigApi";
@@ -36,11 +37,16 @@ type ReportRecord = {
   mst: string;
   ky: string;
   nam: string | null;
-  tt: "Đang báo cáo" | "Đã nộp";
+  tt: "Đang báo cáo" | "Đã nộp" | "Từ chối" | "Đã tiếp nhận";
   configId: number;
   submittedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  rejectedAt?: string | null;
+  rejectedBy?: string | null;
+  rejectionReason?: string | null;
+  acceptedAt?: string | null;
+  acceptedBy?: string | null;
 };
 
 const formatTime = (dStr?: string | null): string => {
@@ -323,6 +329,10 @@ export default function EnterpriseReportPage() {
     null,
   );
   const [activeReport, setActiveReport] = useState<ReportRecord | null>(null);
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const [timelineReport, setTimelineReport] = useState<ReportRecord | null>(
+    null,
+  );
 
   const matchedConfig = useMemo(() => {
     return availableConfigs.find(
@@ -457,13 +467,16 @@ export default function EnterpriseReportPage() {
   const [expandedIds, setExpandedIds] = useState<Record<number, boolean>>({});
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [triedSubmit, setTriedSubmit] = useState(false);
+  const [reportFileUrl, setReportFileUrl] = useState<string | null>(null);
   const originalReportRef = useRef<{
     tongHop: any;
     phanLoai: any;
     tongHopRows: any;
     chiTietRows: any;
+    fileUrl: string | null;
   } | null>(null);
   const isLoadingReportRef = useRef(false);
+  const reportFileInputRef = useRef<HTMLInputElement>(null);
 
   const mapCauseToCode = (cause: string): string => {
     if (!cause) return "16";
@@ -524,6 +537,14 @@ export default function EnterpriseReportPage() {
     return false;
   };
 
+  // Auto-compute tongChiPhi (tab 1) = chiPhiYTe + chiPhiLuong + chiPhiBTTC
+  useEffect(() => {
+    if (isLoadingReportRef.current) return;
+    const total = parseNum(chiPhiYTe) + parseNum(chiPhiLuong) + parseNum(chiPhiBTTC);
+    const formatted = String(total).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    setTongChiPhi(formatted);
+  }, [chiPhiYTe, chiPhiLuong, chiPhiBTTC]);
+
   const tcCrossValidations = useMemo(() => {
     const tongVu = parseNum(tcTongVu);
     const vuChet = parseNum(tcVuChet);
@@ -566,7 +587,8 @@ export default function EnterpriseReportPage() {
     const lao = parseNum(totalLao);
     const nu = parseNum(totalNu);
     return {
-      isNuGreaterThanLao: totalLao.trim() !== "" && totalNu.trim() !== "" && nu > lao,
+      isNuGreaterThanLao:
+        totalLao.trim() !== "" && totalNu.trim() !== "" && nu > lao,
     };
   }, [totalLao, totalNu]);
 
@@ -615,11 +637,23 @@ export default function EnterpriseReportPage() {
   const detailSumsMismatch = useMemo(() => {
     if (accidentDetails.length === 0) return null;
 
-    let sumVu = 0, sumVuChet = 0, sumVuNhieu = 0;
-    let sumNan = 0, sumNanNu = 0, sumChet = 0, sumThuong = 0;
-    let sumNanKQL = 0, sumNuKQL = 0, sumChetKQL = 0, sumThuongKQL = 0;
-    let sumYTe = 0, sumLuong = 0, sumBTTC = 0, sumTongTien = 0;
-    let sumNgayNghi = 0, sumThiHaiTS = 0;
+    let sumVu = 0,
+      sumVuChet = 0,
+      sumVuNhieu = 0;
+    let sumNan = 0,
+      sumNanNu = 0,
+      sumChet = 0,
+      sumThuong = 0;
+    let sumNanKQL = 0,
+      sumNuKQL = 0,
+      sumChetKQL = 0,
+      sumThuongKQL = 0;
+    let sumYTe = 0,
+      sumLuong = 0,
+      sumBTTC = 0,
+      sumTongTien = 0;
+    let sumNgayNghi = 0,
+      sumThiHaiTS = 0;
 
     accidentDetails.forEach((d) => {
       sumVu += parseNum(d.soVu);
@@ -642,7 +676,7 @@ export default function EnterpriseReportPage() {
     });
 
     const m = {
-      tongVu: parseNum(tcTongVu) !== sumVu,
+      tongVu: parseNum(tongVu) !== sumVu,
       vuChet: parseNum(vuChet) !== sumVuChet,
       vuNhieu: parseNum(vuNhieu) !== sumVuNhieu,
       tongNan: parseNum(tongNan) !== sumNan,
@@ -664,11 +698,24 @@ export default function EnterpriseReportPage() {
     const hasAny = Object.values(m).some(Boolean);
     return hasAny ? m : null;
   }, [
-    accidentDetails, tcTongVu, vuChet, vuNhieu,
-    tongNan, tongNanNu, tongChetNN, tongThuongNang,
-    nanKhongQL, nuKhongQL, chetKhongQL, thuongKhongQL,
-    chiPhiYTe, chiPhiLuong, chiPhiBTTC, tongChiPhi,
-    soNgayNghi, thiHaiTaiSan,
+    accidentDetails,
+    tongVu,
+    vuChet,
+    vuNhieu,
+    tongNan,
+    tongNanNu,
+    tongChetNN,
+    tongThuongNang,
+    nanKhongQL,
+    nuKhongQL,
+    chetKhongQL,
+    thuongKhongQL,
+    chiPhiYTe,
+    chiPhiLuong,
+    chiPhiBTTC,
+    tongChiPhi,
+    soNgayNghi,
+    thiHaiTaiSan,
   ]);
 
   useEffect(() => {
@@ -759,7 +806,7 @@ export default function EnterpriseReportPage() {
     setChiPhiYTe(formatCost(totalYTe));
     setChiPhiLuong(formatCost(totalLuong));
     setChiPhiBTTC(formatCost(totalBTTC));
-    setTongChiPhi(formatCost(totalTongTien));
+    setTongChiPhi(formatCost(totalYTe + totalLuong + totalBTTC));
     setSoNgayNghi(String(totalNgayNghi));
     setThiHaiTaiSan(formatCost(totalThiHaiTS));
 
@@ -985,7 +1032,9 @@ export default function EnterpriseReportPage() {
           phanLoai: res.form.phanLoaiRows || {},
           tongHopRows: res.form.tongSoRows || {},
           chiTietRows: normalizedChiTiet,
+          fileUrl: res.fileUrl || null,
         };
+        setReportFileUrl(res.fileUrl || null);
         setTotalLao(String(t.soLaoDong));
         setTongVu(String(t.soVu));
         setVuChet(String(t.soVuCoNguoiChet));
@@ -1073,9 +1122,13 @@ export default function EnterpriseReportPage() {
         }
         setPhanLoai(next);
         // Allow sync effect to run again after loading is complete
-        setTimeout(() => { isLoadingReportRef.current = false; }, 0);
+        setTimeout(() => {
+          isLoadingReportRef.current = false;
+        }, 0);
       })
-      .catch(() => { isLoadingReportRef.current = false; });
+      .catch(() => {
+        isLoadingReportRef.current = false;
+      });
   };
 
   const buildTongHop = (): ReportTongHop => ({
@@ -1764,6 +1817,8 @@ export default function EnterpriseReportPage() {
       if (!originalReportRef.current) return true;
       const orig = originalReportRef.current;
 
+      if (reportFileUrl !== (orig.fileUrl || null)) return true;
+
       const currentTH = buildTongHop();
       const keysToCheck: (keyof typeof currentTH)[] = [
         "soLaoDong",
@@ -1869,6 +1924,7 @@ export default function EnterpriseReportPage() {
         phanLoaiRows: buildPhanLoai(),
         tongSoRows: buildTongSoRows(),
         chiTietRows: accidentDetails,
+        fileUrl: reportFileUrl,
       });
       const list = await getDnReportList();
       setReports(list);
@@ -1882,13 +1938,29 @@ export default function EnterpriseReportPage() {
     }
   };
 
+  const handleReportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSaving(true);
+    try {
+      const res = await uploadReportFile(file);
+      setReportFileUrl(res.url);
+      setToast("Tải file lên thành công!");
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : "Tải file lên thất bại!");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const saveReport = () => submit("Đang báo cáo", "Lưu báo cáo thành công");
   const sendReport = () => submit("Đã nộp", "Gửi báo cáo thành công");
 
   const addDetail = () => {
     setAccidentDetails((prev) => {
       const next = [...prev, { id: Date.now(), ...EMPTY_DETAIL }];
-      setTcTongVu(String(next.length));
+      // Update tongVu (section 1) to match new count
+      setTongVu(String(next.length));
       return next;
     });
   };
@@ -1899,22 +1971,35 @@ export default function EnterpriseReportPage() {
     val: AccidentDetail[K],
   ) => {
     setAccidentDetails((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, [key]: val } : d)),
+      prev.map((d) => {
+        if (d.id !== id) return d;
+        const updated = { ...d, [key]: val };
+        // Auto-compute tongSoTien from the 3 cost columns
+        if (key === "chiPhiYTe" || key === "chiPhiLuong" || key === "chiPhiBTTC") {
+          const sum =
+            parseNum(key === "chiPhiYTe" ? String(val) : updated.chiPhiYTe) +
+            parseNum(key === "chiPhiLuong" ? String(val) : updated.chiPhiLuong) +
+            parseNum(key === "chiPhiBTTC" ? String(val) : updated.chiPhiBTTC);
+          updated.tongSoTien = String(sum).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+        return updated;
+      }),
     );
   };
 
   const removeDetail = (id: number) => {
     setAccidentDetails((prev) => {
       const next = prev.filter((d) => d.id !== id);
-      setTcTongVu(String(next.length));
+      // Update tongVu (section 1) to match new count
+      setTongVu(String(next.length));
       return next;
     });
   };
 
-  // Auto-sync accidentDetails count when tcTongVu changes
+  // Auto-sync accidentDetails count when tongVu (section 1 total) changes
   useEffect(() => {
     if (isLoadingReportRef.current) return;
-    const target = parseNum(tcTongVu);
+    const target = parseNum(tongVu);
     if (target < 0) return;
     setAccidentDetails((prev) => {
       const current = prev.length;
@@ -1932,7 +2017,7 @@ export default function EnterpriseReportPage() {
         return prev.slice(0, target);
       }
     });
-  }, [tcTongVu]);
+  }, [tongVu]);
 
   // Năm để lọc lấy từ chính dữ liệu báo cáo (report_configs.nam), đồng thời hiển thị đến năm hiện tại (2026).
   const yearOptions = useMemo(() => {
@@ -2067,6 +2152,28 @@ export default function EnterpriseReportPage() {
                               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTimelineReport(r);
+                              setTimelineOpen(true);
+                            }}
+                            title="Tiến độ xử lý"
+                            className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <circle cx="12" cy="12" r="10" />
+                              <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                          </button>
                         </div>
                       </td>
                       <td className="px-3.5 py-2.5 text-[#374151]">{r.ten}</td>
@@ -2084,7 +2191,17 @@ export default function EnterpriseReportPage() {
                       <td className="px-3.5 py-2.5">
                         <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
                           <span
-                            className={`h-2 w-2 rounded-full ${r.tt === "Đang báo cáo" ? "bg-[#d1d5db]" : "bg-[#3b82f6]"}`}
+                            className={`inline-block h-2 w-2 rounded-full ${
+                              r.tt === "Đang báo cáo"
+                                ? "bg-[#d1d5db]"
+                                : r.tt === "Đã nộp"
+                                  ? "bg-[#f59e0b]"
+                                  : r.tt === "Từ chối"
+                                    ? "bg-[#ef4444]"
+                                    : r.tt === "Đã tiếp nhận"
+                                      ? "bg-[#3b82f6]"
+                                      : "bg-[#3b82f6]"
+                            }`}
                           />
                           {r.tt}
                         </span>
@@ -2773,10 +2890,57 @@ export default function EnterpriseReportPage() {
                         theo từng bước
                       </div>
 
+                      {/* Mismatch banner: cảnh báo khi tổng tab (1) ≠ tổng chi tiết */}
+                      {detailSumsMismatch && accidentDetails.length > 0 && (
+                        <div className="mb-4 rounded-md border border-[#f59e0b] bg-[#fffbeb] px-4 py-3 text-[12.5px] text-[#92400e]">
+                          <div className="mb-1 font-semibold text-[#b45309]">
+                            ⚠️ Thông số không khớp giữa Tab (1) và Chi tiết các vụ
+                          </div>
+                          <ul className="list-inside list-disc space-y-0.5">
+                            {detailSumsMismatch.tongVu && (
+                              <li>Tổng số vụ (tab 1) không khớp với tổng số vụ của các chi tiết</li>
+                            )}
+                            {detailSumsMismatch.vuChet && (
+                              <li>Số vụ có người chết không khớp</li>
+                            )}
+                            {detailSumsMismatch.vuNhieu && (
+                              <li>Số vụ ≥ 2 người bị nạn không khớp</li>
+                            )}
+                            {detailSumsMismatch.tongNan && (
+                              <li>Tổng số người bị nạn không khớp</li>
+                            )}
+                            {detailSumsMismatch.tongChetNN && (
+                              <li>Tổng số người bị chết không khớp</li>
+                            )}
+                            {detailSumsMismatch.tongThuongNang && (
+                              <li>Tổng số người bị thương nặng không khớp</li>
+                            )}
+                            {detailSumsMismatch.chiPhiYTe && (
+                              <li>Chi phí y tế không khớp</li>
+                            )}
+                            {detailSumsMismatch.chiPhiLuong && (
+                              <li>Chi phí trả lương không khớp</li>
+                            )}
+                            {detailSumsMismatch.chiPhiBTTC && (
+                              <li>Chi phí bồi thường trợ cấp không khớp</li>
+                            )}
+                            {detailSumsMismatch.soNgayNghi && (
+                              <li>Tổng số ngày nghỉ không khớp</li>
+                            )}
+                            {detailSumsMismatch.thiHaiTaiSan && (
+                              <li>Thiệt hại tài sản không khớp</li>
+                            )}
+                          </ul>
+                          <div className="mt-2 text-[12px] text-[#78350f]">
+                            Vui lòng kiểm tra lại thông số ở Tab (1) hoặc điều chỉnh chi tiết từng vụ để khớp nhau.
+                          </div>
+                        </div>
+                      )}
+
                       {accidentDetails.length === 0 ? (
                         <div className="mb-4 rounded-md border border-dashed border-[#d1d5db] bg-[#f9fafb] py-8 text-center text-[13.5px] text-muted">
-                          Chưa có vụ tai nạn nào. Nhập &quot;Tổng số vụ&quot; ở tab
-                          (1) để tự động tạo chi tiết, hoặc nhấn &quot;Thêm
+                          Chưa có vụ tai nạn nào. Nhập &quot;Tổng số vụ&quot; ở
+                          tab (1) để tự động tạo chi tiết, hoặc nhấn &quot;Thêm
                           vụ&quot; bên dưới.
                         </div>
                       ) : (
@@ -2937,72 +3101,6 @@ export default function EnterpriseReportPage() {
                                       4. Chi tiết vụ tai nạn số {idx + 1}
                                     </div>
                                     <div className="grid grid-cols-4 gap-x-4 gap-y-5">
-                                      <InputField
-                                        label="Tổng số vụ"
-                                        value={d.soVu}
-                                        onChange={(v) =>
-                                          updateDetail(d.id, "soVu", v)
-                                        }
-                                        invalid={isInvalidValue(
-                                          triedSubmit,
-                                          d.soVu,
-                                          false,
-                                        )}
-                                        errorMsg={getErrorMsg(
-                                          triedSubmit,
-                                          d.soVu,
-                                          "Tổng số vụ",
-                                          false,
-                                        )}
-                                      />
-                                      <InputField
-                                        label="Tổng số vụ có người chết"
-                                        value={d.soVuCoNguoiChet}
-                                        onChange={(v) =>
-                                          updateDetail(
-                                            d.id,
-                                            "soVuCoNguoiChet",
-                                            v,
-                                          )
-                                        }
-                                        required
-                                        invalid={isInvalidValue(
-                                          triedSubmit,
-                                          d.soVuCoNguoiChet,
-                                          true,
-                                        )}
-                                        errorMsg={getErrorMsg(
-                                          triedSubmit,
-                                          d.soVuCoNguoiChet,
-                                          "Tổng số vụ có người chết",
-                                          true,
-                                        )}
-                                      />
-                                      <InputField
-                                        label="Tổng số vụ có 2 người bị nạn trở lên"
-                                        value={d.soVuCo2NguoiBiNan}
-                                        onChange={(v) =>
-                                          updateDetail(
-                                            d.id,
-                                            "soVuCo2NguoiBiNan",
-                                            v,
-                                          )
-                                        }
-                                        required
-                                        invalid={isInvalidValue(
-                                          triedSubmit,
-                                          d.soVuCo2NguoiBiNan,
-                                          true,
-                                        )}
-                                        errorMsg={getErrorMsg(
-                                          triedSubmit,
-                                          d.soVuCo2NguoiBiNan,
-                                          "Tổng số vụ có 2 người bị nạn trở lên",
-                                          true,
-                                        )}
-                                      />
-                                      <div />
-
                                       <InputField
                                         label="Tổng số người bị nạn"
                                         value={d.soNguoiBiNan}
@@ -3242,16 +3340,9 @@ export default function EnterpriseReportPage() {
                                         )}
                                       />
                                       <InputField
-                                        label="Tổng số tiền chi phí"
+                                        label="Tổng số tiền chi phí (tự tính)"
                                         value={d.tongSoTien}
-                                        onChange={(v) =>
-                                          updateDetail(
-                                            d.id,
-                                            "tongSoTien",
-                                            formatNumberString(v),
-                                          )
-                                        }
-                                        required
+                                        disabled
                                         suffix="(1.000đ)"
                                         invalid={isInvalidValue(
                                           triedSubmit,
@@ -3777,12 +3868,63 @@ export default function EnterpriseReportPage() {
                   {activeReport?.ky || "6 tháng"} năm{" "}
                   {activeReport?.nam || "2023"}
                 </div>
-                <p className="mb-4 text-[13px] text-muted">
+                <div className="mb-4 text-[13px] text-muted flex items-center gap-2 flex-wrap">
                   **Vui lòng đính kèm báo cáo TNLĐ có dấu mộc công ty:{" "}
-                  <a href="#" className="text-primary font-medium">
-                    baocaoTNLD.pdf
-                  </a>
-                </p>
+                  {isReadOnly ? (
+                    reportFileUrl ? (
+                      <a
+                        href={reportFileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary font-medium hover:underline flex items-center gap-1"
+                      >
+                        {reportFileUrl.split("/").pop()?.replace(/^[^-]+-[^-]+-/, "") || "baocaoTNLD.pdf"}
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 italic">(chưa có)</span>
+                    )
+                  ) : (
+                    <>
+                      <input
+                        type="file"
+                        ref={reportFileInputRef}
+                        onChange={handleReportFileChange}
+                        className="hidden"
+                        accept="application/pdf,image/*"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => reportFileInputRef.current?.click()}
+                        className="text-primary font-medium hover:underline focus:outline-none"
+                      >
+                        Tại đây
+                      </button>
+                      {reportFileUrl ? (
+                        <div className="flex items-center gap-1.5 ml-2 bg-[#f3f4f6] px-2 py-0.5 rounded border border-[#e5e7eb]">
+                          <a
+                            href={reportFileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary font-medium hover:underline text-[12px] truncate max-w-[200px]"
+                            title={reportFileUrl.split("/").pop()?.replace(/^[^-]+-[^-]+-/, "")}
+                          >
+                            {reportFileUrl.split("/").pop()?.replace(/^[^-]+-[^-]+-/, "") || "baocaoTNLD.pdf"}
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => setReportFileUrl(null)}
+                            className="text-red-500 hover:text-red-700 text-[14px] font-bold leading-none px-1 focus:outline-none"
+                            title="Xóa tệp đính kèm"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 italic ml-1">(chưa có)</span>
+                      )}
+                    </>
+                  )}
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-[11.5px] text-[#374151]">
                     <thead>
@@ -4042,6 +4184,106 @@ export default function EnterpriseReportPage() {
               Bạn đã tạo báo cáo cho năm {createYear} ({createKy}) rồi.
             </p>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={timelineOpen}
+        title="Tiến độ xử lý"
+        onClose={() => setTimelineOpen(false)}
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setTimelineOpen(false)}
+              className="h-9 rounded-md border border-line px-5 text-[13.5px] text-[#374151] hover:bg-[#f9fafb]"
+            >
+              Đóng
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-0">
+          {(() => {
+            // ← THAY TOÀN BỘ ĐOẠN NÀY
+            const events: {
+              time: string | null | undefined;
+              actor: string;
+              action: string;
+              isRed?: boolean;
+              isGreen?: boolean;
+            }[] = [];
+
+            if (timelineReport?.rejectedAt) {
+              events.push({
+                time: timelineReport.rejectedAt,
+                actor: timelineReport.rejectedBy ?? "Cơ quan quản lý",
+                action: `đã từ chối báo cáo${
+                  timelineReport.rejectionReason
+                    ? ` — Lý do: ${timelineReport.rejectionReason}`
+                    : ""
+                }`,
+                isRed: true,
+              });
+            }
+
+            if (timelineReport?.acceptedAt) {
+              events.push({
+                time: timelineReport.acceptedAt,
+                actor: timelineReport.acceptedBy ?? "Cơ quan quản lý",
+                action: "đã tiếp nhận báo cáo",
+                isGreen: true,
+              });
+            }
+
+            if (timelineReport?.submittedAt) {
+              events.push({
+                time: timelineReport.submittedAt,
+                actor: timelineReport.ten,
+                action: "đã gửi báo cáo",
+              });
+            }
+
+            if (timelineReport?.createdAt) {
+              events.push({
+                time: timelineReport.createdAt,
+                actor: timelineReport.ten,
+                action: "đã tạo bản nháp báo cáo",
+              });
+            }
+
+            return events.map((ev, idx) => (
+              <div key={idx} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`mt-1 h-3 w-3 rounded-full border-2 bg-white ${
+                      ev.isRed
+                        ? "border-[#ef4444]"
+                        : ev.isGreen
+                        ? "border-[#22c55e]"
+                        : "border-[#d1d5db]"
+                    }`}
+                  />
+                  {idx < events.length - 1 && (
+                    <div className="w-px flex-1 bg-[#e5e7eb]" />
+                  )}
+                </div>
+                <div className="pb-5">
+                  <p className="text-[12px] text-muted">
+                    {formatTime(ev.time)}
+                  </p>
+                  <p className="mt-0.5 text-[13.5px] text-ink">
+                    <span className="font-semibold">
+                      {ev.actor}
+                    </span>{" "}
+                    <span className="text-[#4b5563]">
+                      {ev.action}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            ));
+          })()}
         </div>
       </Modal>
     </>
