@@ -62,6 +62,10 @@ class ReportTongHopFieldsDto {
   @IsString()
   status?: string;
 
+  @IsOptional()
+  @IsString()
+  fileUrl?: string;
+
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) soLaoDong?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) soLDCoBaoHiem?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) soLDNu?: number;

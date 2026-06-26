@@ -130,6 +130,9 @@ export class AccidentReport {
   @Column({ name: 'submitted_at', type: 'timestamp', nullable: true })
   submittedAt: Date | null;
 
+  @Column({ name: 'file_url', type: 'text', nullable: true })
+  fileUrl: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

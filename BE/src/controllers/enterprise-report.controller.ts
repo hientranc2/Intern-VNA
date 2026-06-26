@@ -10,8 +10,13 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { AccidentReportService } from '../services/accident-report.service';
 import {
   CreateEnterpriseReportDto,
@@ -22,6 +27,29 @@ interface AuthRequest {
   user: { userId: string; username: string; role: string };
 }
 
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+const fileUploadOptions = {
+  storage: memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (_req: any, file: Express.Multer.File, cb: Function) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(
+        new BadRequestException('Chỉ chấp nhận file PDF, JPG, JPEG, PNG'),
+        false,
+      );
+    }
+  },
+};
+
 @Controller('enterprise-reports')
 @UseGuards(AuthGuard('jwt'))
 export class EnterpriseReportController {
@@ -30,6 +58,20 @@ export class EnterpriseReportController {
   @Get('my')
   findMy(@Request() req: AuthRequest) {
     return this.service.findMy(req.user.userId);
+  }
+
+  @Post('upload')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('file', fileUploadOptions))
+  async uploadFile(
+    @Request() req: AuthRequest,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn file để tải lên');
+    }
+    const url = await this.service.uploadReportFile(file, req.user.userId);
+    return { url };
   }
 
   @Get(':id')

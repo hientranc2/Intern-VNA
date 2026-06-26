@@ -258,6 +258,58 @@ export default function AccidentReportPage() {
     };
   }, [filtered]);
 
+  // Tính các dòng chi tiết cho view xem báo cáo phía Sở.
+  // Logic mirror với overviewRows của enterprise side.
+  const soDetailRows = useMemo(() => {
+    const r = viewingReport;
+    if (!r) return DETAIL_REPORT_ROWS;
+    const rows = r.rows ?? {};
+
+    const get11 = (ma: string): number[] => {
+      const raw = rows[ma];
+      if (!Array.isArray(raw)) return Array(11).fill(0);
+      // Chỉ lấy 11 cột đầu (tránh lồi cột do rows["10"] có 17 phần tử)
+      return Array(11).fill(0).map((_, i) => Number(raw[i] ?? 0));
+    };
+
+    // Section tổng (mã "1") dùng field tổng hợp của báo cáo.
+    const section1Vals = [
+      r.soVu, r.soVuCoNguoiChet, r.soVuCo2NguoiBiNan,
+      r.soNguoiBiNan, 0,
+      r.soLDNu, 0,
+      r.soNguoiBiChet, 0,
+      r.soNguoiBiThuongNang, 0,
+    ];
+
+    // Section "2. Tai nạn được hưởng trợ cấp..." = rows["10"] cột 0..10
+    const section2Vals = get11("10");
+
+    // Section "3. Tổng số" = section1 + section2
+    const section3Vals = section1Vals.map((v, i) => v + section2Vals[i]);
+
+    return DETAIL_REPORT_ROWS.map((row) => {
+      if (row.kind === "sub") return row;
+
+      let vals: number[];
+      if (row.label === "1. Tai nạn lao động") {
+        vals = section1Vals;
+      } else if (
+        row.label === "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ"
+      ) {
+        vals = section2Vals;
+      } else if (row.label === "Tổng số (3=1+2)") {
+        vals = section3Vals;
+      } else if ((row as { ma?: string }).ma) {
+        vals = get11((row as { ma?: string }).ma!);
+      } else {
+        vals = Array(11).fill(0);
+      }
+
+      return { ...row, vals };
+    });
+  }, [viewingReport]);
+
+
   const total = filtered.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(currentPage, lastPage);
@@ -653,14 +705,24 @@ export default function AccidentReportPage() {
           <div className="px-6 py-5">
             <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
               <div className="mb-1.5 text-[15px] font-bold text-ink">
-                Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo: 6
-                tháng năm 2023
+                Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo:{" "}
+                {viewingReport?.ky || "6 tháng"} năm{" "}
+                {viewingReport?.nam || "2023"}
               </div>
               <p className="mb-4 text-[13px] text-muted">
                 **Vui lòng đính kèm báo cáo TNLĐ có dấu mộc công ty:{" "}
-                <a href="#" className="text-primary">
-                  baocaoTNLD.pdf
-                </a>
+                {viewingReport?.fileUrl ? (
+                  <a
+                    href={viewingReport.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary font-medium hover:underline"
+                  >
+                    {viewingReport.fileUrl.split("/").pop()?.replace(/^[^-]+-[^-]+-/, "") || "baocaoTNLD.pdf"}
+                  </a>
+                ) : (
+                  <span className="text-gray-400 italic">(chưa có)</span>
+                )}
               </p>
               {viewingReport?.tt === "Từ chối" && (
                 <p className="mb-4 text-[13px] text-muted">
@@ -734,7 +796,7 @@ export default function AccidentReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {DETAIL_REPORT_ROWS.map((row, idx) => {
+                    {soDetailRows.map((row, idx) => {
                       if (row.kind === "sub") {
                         return (
                           <tr key={idx}>
@@ -748,10 +810,7 @@ export default function AccidentReportPage() {
                           </tr>
                         );
                       }
-                      const vals =
-                        row.vals && row.vals.length
-                          ? row.vals
-                          : EMPTY_VALS.map(() => "");
+                      const vals = (row.vals ?? []) as number[];
                       if (row.kind === "section") {
                         return (
                           <tr key={idx} className="bg-[#f9fafb]">
@@ -761,7 +820,7 @@ export default function AccidentReportPage() {
                             <td className={CT_TD} />
                             {vals.map((v, i) => (
                               <td key={i} className={`${CT_TD} font-bold`}>
-                                {v}
+                                {v ?? 0}
                               </td>
                             ))}
                           </tr>
@@ -770,10 +829,10 @@ export default function AccidentReportPage() {
                       return (
                         <tr key={idx}>
                           <td className={`${CT_TD} text-left`}>{row.label}</td>
-                          <td className={CT_TD}>{row.ma || ""}</td>
+                          <td className={CT_TD}>{(row as { ma?: string }).ma || ""}</td>
                           {vals.map((v, i) => (
                             <td key={i} className={CT_TD}>
-                              {v}
+                              {v ?? 0}
                             </td>
                           ))}
                         </tr>
@@ -822,12 +881,12 @@ export default function AccidentReportPage() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td className={CT_TD}>20</td>
-                      <td className={CT_TD}>6.000.000</td>
-                      <td className={CT_TD}>2.000.000</td>
-                      <td className={CT_TD}>2.000.000</td>
-                      <td className={CT_TD}>2.000.000</td>
-                      <td className={CT_TD}>20.000.000</td>
+                      <td className={CT_TD}>{viewingReport?.soNgayNghi ?? "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.tongSoTien) : "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.chiPhiYTe) : "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.chiPhiTraLuong) : "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.boiThuongTroCap) : "—"}</td>
+                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.thiethaiTaiSan) : "—"}</td>
                     </tr>
                   </tbody>
                 </table>

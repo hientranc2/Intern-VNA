@@ -2,9 +2,11 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
+import { createClient } from '@supabase/supabase-js';
 import { AccidentReport } from '../entities/accident-report.entity';
 import { Business } from '../entities/business.entity';
 import { ReportConfig } from '../entities/report-config.entity';
@@ -23,6 +25,11 @@ const STATUS_REJECTED = 'Từ chối';
 
 @Injectable()
 export class AccidentReportService {
+  private supabaseAdmin = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!,
+  );
+
   constructor(
     @InjectRepository(AccidentReport)
     private readonly repo: Repository<AccidentReport>,
@@ -33,6 +40,33 @@ export class AccidentReportService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
+
+  async uploadReportFile(
+    file: Express.Multer.File,
+    userId: string,
+  ): Promise<string> {
+    const business = await this.resolveBusiness(userId);
+    const taxCode = business.taxCode;
+    const ext = file.originalname.split('.').pop();
+    const fileName = `report-${taxCode}-${Date.now()}.${ext}`;
+    const fileBlob = new Blob([new Uint8Array(file.buffer)], {
+      type: file.mimetype,
+    });
+
+    const { error } = await this.supabaseAdmin.storage
+      .from('businesses')
+      .upload(fileName, fileBlob, { contentType: file.mimetype, upsert: true });
+
+    if (error) {
+      throw new BadRequestException('Lỗi khi tải file lên hệ thống!');
+    }
+
+    const { data } = this.supabaseAdmin.storage
+      .from('businesses')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  }
 
   // ===== Màn hình Sở =====
 
@@ -327,6 +361,7 @@ export class AccidentReportService {
       report.boiThuongTroCap = dto.boiThuongTroCap;
     if (dto.thiethaiTaiSan !== undefined)
       report.thiethaiTaiSan = dto.thiethaiTaiSan;
+    if (dto.fileUrl !== undefined) report.fileUrl = dto.fileUrl;
   }
 
   private async lookupFullName(userId: string): Promise<string | null> {
@@ -357,6 +392,7 @@ export class AccidentReportService {
       province: r.province,
       ward: r.ward,
       loaiHinh: r.loaiHinh,
+      rows: r.rows ?? {},
       phanLoaiRows: r.phanLoaiRows ?? {},
       soLaoDong: r.soLaoDong,
       soLDCoBaoHiem: r.soLDCoBaoHiem,
@@ -379,6 +415,7 @@ export class AccidentReportService {
       rejectedAt: r.rejectedAt,
       rejectedBy: r.rejectedBy,
       submittedAt: r.submittedAt,
+      fileUrl: r.fileUrl,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     };
@@ -399,6 +436,7 @@ export class AccidentReportService {
       rejectedAt: r.rejectedAt,
       rejectedBy: r.rejectedBy,
       submittedAt: r.submittedAt,
+      fileUrl: r.fileUrl,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     };

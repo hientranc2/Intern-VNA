@@ -1,5 +1,4 @@
-// API cho Role Doanh nghiệp: nộp và xem báo cáo TNLĐ.
-import { request } from "@/libs/tts/auth/apiClient";
+import { request, requestFormData } from "@/libs/tts/auth/apiClient";
 
 export type DnReportRecord = {
   id: number;
@@ -7,7 +6,7 @@ export type DnReportRecord = {
   mst: string;
   ky: string;
   nam: string | null;
-  tt: "Đang báo cáo" | "Đã nộp";
+  tt: "Đang báo cáo" | "Đã nộp" | "Từ chối" | "Đã tiếp nhận";
   configId: number;
   submittedAt?: string | null;
   createdAt?: string | null;
@@ -17,6 +16,7 @@ export type DnReportRecord = {
   acceptedBy?: string | null;
   rejectedAt?: string | null;
   rejectedBy?: string | null;
+  fileUrl?: string | null;
 };
 
 export type AccidentDetailRow = {
@@ -78,8 +78,8 @@ export type DnReportForm = {
   status?: string;
   tongSoRows: Record<string, number[]>;
   chiTietRows: AccidentDetailRow[];
-  // Phân loại phần II: key mã hạng mục "1".."24" -> number[13]
   phanLoaiRows?: Record<string, number[]>;
+  fileUrl?: string | null;
 } & Partial<ReportTongHop>;
 
 export type DnReportDetail = DnReportRecord & {
@@ -112,4 +112,10 @@ export function updateDnReport(id: number, input: Partial<DnReportForm>) {
     method: "PUT",
     body: input,
   });
+}
+
+export function uploadReportFile(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return requestFormData<{ url: string }>("/enterprise-reports/upload", fd, "POST");
 }

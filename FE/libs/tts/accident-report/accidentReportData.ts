@@ -23,6 +23,8 @@ export type AccidentReport = {
   chiPhiTraLuong: number;
   boiThuongTroCap: number;
   thiethaiTaiSan: number;
+  // Tổng số liệu theo mã dòng báo cáo (key = mã, value = number[11])
+  rows?: Record<string, number[]>;
   // Phân loại phần II: key mã hạng mục "1".."24" -> number[13]
   phanLoaiRows?: Record<string, number[]>;
   submittedAt?: string;
@@ -33,6 +35,7 @@ export type AccidentReport = {
   acceptedBy?: string | null;
   rejectedAt?: string | null;
   rejectedBy?: string | null;
+  fileUrl?: string | null;
 };
 
 export type ReportRow =
