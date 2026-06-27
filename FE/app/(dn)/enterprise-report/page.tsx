@@ -21,6 +21,7 @@ import {
   DETAIL_REPORT_ROWS,
   EMPTY_VALS,
 } from "@/libs/tts/accident-report/accidentReportData";
+import { exportDetailDocx } from "@/libs/tts/accident-report/exportDetailDocx";
 import { getBusinessId } from "@/libs/tts/auth/authApi";
 import {
   getBusinessById,
@@ -1108,6 +1109,15 @@ export default function EnterpriseReportPage() {
         setAccidentDetails(normalizedChiTiet);
         setSavedOverviewRows(res.form.tongSoRows || {});
 
+        const info = res.form.tongSoRows?.["company_info"];
+        if (Array.isArray(info)) {
+          setTotalNu(String(info[0] ?? 0));
+          setTongLuong(formatNumberString(String(info[1] ?? 0)));
+        } else {
+          setTotalNu("0");
+          setTongLuong("0");
+        }
+
         const tcVals = res.form.tongSoRows?.["10"];
         if (Array.isArray(tcVals)) {
           // 👉 THÊM VÀO ĐÂY: Kiểm tra xem báo cáo lấy từ API về đã có dữ liệu Mục 2 chưa
@@ -1490,6 +1500,8 @@ export default function EnterpriseReportPage() {
   const buildTongSoRows = (): Record<string, number[]> => {
     const result: Record<string, number[]> = { ...savedOverviewRows };
 
+    result["company_info"] = [parseNum(totalNu), parseNum(tongLuong)];
+
     result["1"] = [
       parseNum(tongVu),
       parseNum(vuChet),
@@ -1650,7 +1662,7 @@ export default function EnterpriseReportPage() {
 
       let vals = Array(11).fill(0);
 
-      if (row.label === "1. Tai nạn lao động") {
+      if (row.label === "Tai nạn lao động" && (row as any).ma === "1") {
         vals = [
           parseNum(tongVu),
           parseNum(vuChet),
@@ -1663,23 +1675,6 @@ export default function EnterpriseReportPage() {
           parseNum(chetKhongQL),
           parseNum(tongThuongNang),
           parseNum(thuongKhongQL),
-        ];
-      } else if (
-        row.label ===
-        "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ"
-      ) {
-        vals = [
-          parseNum(tcTongVu),
-          parseNum(tcVuChet),
-          parseNum(tcVuNhieu),
-          parseNum(tcTongNan),
-          parseNum(tcNanKhongQL),
-          parseNum(tcTongNanNu),
-          parseNum(tcNuKhongQL),
-          parseNum(tcTongChetNN),
-          parseNum(tcChetKhongQL),
-          parseNum(tcTongThuongNang),
-          parseNum(tcThuongKhongQL),
         ];
       } else if (row.label === "Tổng số (3=1+2)") {
         vals = [
@@ -2013,6 +2008,82 @@ export default function EnterpriseReportPage() {
   const saveReport = () => submit("Đang báo cáo", "Lưu báo cáo thành công");
   const sendReport = () => submit("Đã nộp", "Gửi báo cáo thành công");
 
+  const handleExport = async (report?: any) => {
+    try {
+      let dataToExport: any;
+      if (report) {
+        // Exporting from list view: fetch full details first
+        const fullReportRes = await getDnReportById(report.id);
+        const t = fullReportRes.form.tongHop;
+        dataToExport = {
+          id: report.id,
+          ten: report.ten,
+          mst: report.mst,
+          ky: report.ky,
+          nam: report.nam,
+          tt: report.tt,
+          province: report.province || businessDetail?.registeredProvince || "",
+          ward: report.ward || businessDetail?.registeredWard || "",
+          loaiHinh: report.loaiHinh || businessDetail?.businessType || "",
+          soLaoDong: t.soLaoDong,
+          soLDCoBaoHiem: t.soLDCoBaoHiem,
+          soLDNu: t.soLDNu,
+          soVu: t.soVu,
+          soVuCoNguoiChet: t.soVuCoNguoiChet,
+          soVuCo2NguoiBiNan: t.soVuCo2NguoiBiNan,
+          soNguoiBiNan: t.soNguoiBiNan,
+          soNguoiBiChet: t.soNguoiBiChet,
+          soNguoiBiThuongNang: t.soNguoiBiThuongNang,
+          soNgayNghi: t.soNgayNghi,
+          tongSoTien: t.tongSoTien,
+          chiPhiYTe: t.chiPhiYTe,
+          chiPhiTraLuong: t.chiPhiTraLuong,
+          boiThuongTroCap: t.boiThuongTroCap,
+          thiethaiTaiSan: t.thiethaiTaiSan,
+          rows: fullReportRes.form.tongSoRows || {},
+          phanLoaiRows: fullReportRes.form.phanLoaiRows || {},
+          chiTietRows: fullReportRes.form.chiTietRows || [],
+        };
+      } else {
+        // Exporting current active form state
+        dataToExport = {
+          id: editingId || 0,
+          ten: businessDetail?.businessName || "",
+          mst: businessDetail?.taxCode || "",
+          ky: activeReport?.ky || "6 tháng",
+          nam: activeReport?.nam || new Date().getFullYear().toString(),
+          tt: "Đang báo cáo",
+          province: businessDetail?.registeredProvince || "",
+          ward: businessDetail?.registeredWard || "",
+          loaiHinh: businessDetail?.businessType || "",
+          soLaoDong: parseNum(totalLao),
+          soLDCoBaoHiem: 0,
+          soLDNu: parseNum(tongNanNu),
+          soVu: parseNum(tongVu),
+          soVuCoNguoiChet: parseNum(vuChet),
+          soVuCo2NguoiBiNan: parseNum(vuNhieu),
+          soNguoiBiNan: parseNum(tongNan),
+          soNguoiBiChet: parseNum(tongChetNN),
+          soNguoiBiThuongNang: parseNum(tongThuongNang),
+          soNgayNghi: parseNum(soNgayNghi),
+          tongSoTien: parseNum(tongChiPhi),
+          chiPhiYTe: parseNum(chiPhiYTe),
+          chiPhiTraLuong: parseNum(chiPhiLuong),
+          boiThuongTroCap: parseNum(chiPhiBTTC),
+          thiethaiTaiSan: parseNum(thiHaiTaiSan),
+          rows: buildTongSoRows(),
+          phanLoaiRows: buildPhanLoai(),
+          chiTietRows: accidentDetails,
+        };
+      }
+
+      await exportDetailDocx(dataToExport, businessDetail);
+      setToast("In báo cáo Word thành công!");
+    } catch (e: any) {
+      setToast(e.message || "In báo cáo thất bại");
+    }
+  };
+
   const addDetail = () => {
     setAccidentDetails((prev) => {
       const next = [...prev, { id: Date.now(), ...EMPTY_DETAIL }];
@@ -2294,6 +2365,27 @@ export default function EnterpriseReportPage() {
               <span className="mr-2 flex h-[34px] items-center rounded-md border border-[#e5e7eb] bg-[#f9fafb] px-3.5 text-[13.5px] text-[#374151]">
                 {activeReport?.nam || "–"}
               </span>
+              {section === "tongquan" && (
+                <button
+                  type="button"
+                  onClick={() => handleExport()}
+                  className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  In báo cáo
+                </button>
+              )}
               {!isReadOnly && (
                 <button
                   type="button"
@@ -2313,9 +2405,9 @@ export default function EnterpriseReportPage() {
                     setView("list");
                     setActiveReport(null);
                   }}
-                  className="flex h-9 items-center justify-center rounded-md bg-[#3b82f6] px-4 text-[13px] font-semibold text-white hover:bg-[#2563eb]"
+                  className="flex h-9 items-center justify-center rounded-md border border-line px-4 text-[13.5px] font-medium text-[#374151] hover:bg-[#f9fafb] hover:text-ink"
                 >
-                  Quay lại danh sách
+                  Huỷ bỏ
                 </button>
               ) : (
                 <>
@@ -4141,15 +4233,12 @@ export default function EnterpriseReportPage() {
                         if (row.kind === "section") {
                           return (
                             <tr key={idx} className="bg-[#f9fafb]">
-                              <td className={`${CT_TD} text-left font-bold`}>
+                              <td
+                                className={`${CT_TD} text-left font-bold`}
+                                colSpan={13}
+                              >
                                 {row.label}
                               </td>
-                              <td className={CT_TD} />
-                              {vals.map((v, i) => (
-                                <td key={i} className={`${CT_TD} font-bold`}>
-                                  {v}
-                                </td>
-                              ))}
                             </tr>
                           );
                         }

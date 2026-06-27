@@ -36,6 +36,8 @@ export type AccidentReport = {
   rejectedAt?: string | null;
   rejectedBy?: string | null;
   fileUrl?: string | null;
+  enterpriseId?: string | null;
+  chiTietRows?: any[];
 };
 
 export type ReportRow =
@@ -77,7 +79,8 @@ export const INITIAL_ACCIDENT_REPORTS: AccidentReport[] = [
 ];
 
 export const DETAIL_REPORT_ROWS: ReportRow[] = [
-  { kind: "section", label: "1. Tai nạn lao động", vals: [2, 1, 1, 10, 0, 5, 0, 5, 0, 10, 0] },
+  { kind: "section", label: "1. Tai nạn lao động" },
+  { kind: "normal", label: "Tai nạn lao động", ma: "1", vals: EMPTY_VALS },
   { kind: "sub", label: "1.1 Phân theo nguyên nhân xảy ra TNLĐ", bold: true },
   { kind: "sub", label: "a. Do người sử dụng lao động" },
   { kind: "normal", label: "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn", ma: "1", vals: [1, 1, 1, 5, 0, 5, 0, 5, 0, 5, 0] },

@@ -384,6 +384,7 @@ export class AccidentReportService {
   private toListItem(r: AccidentReport, nam: string | null = null) {
     return {
       id: r.id,
+      enterpriseId: r.enterpriseId,
       ten: r.ten,
       mst: r.mst,
       ky: r.ky,

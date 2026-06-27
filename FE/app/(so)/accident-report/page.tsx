@@ -19,6 +19,7 @@ import {
 } from "@/libs/tts/accident-report/accidentReportApi";
 import { exportTonghopDocx } from "@/libs/tts/accident-report/exportTonghopDocx";
 import { exportDetailDocx } from "@/libs/tts/accident-report/exportDetailDocx";
+import { getBusinessById } from "@/libs/tts/enterprise/enterpriseApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 
@@ -89,6 +90,37 @@ export default function AccidentReportPage() {
     null,
   );
   const [rejectViewOpen, setRejectViewOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportDetail = async () => {
+    if (!viewingReport) return;
+    setExporting(true);
+    try {
+      let bizDetail = null;
+      if (viewingReport.enterpriseId) {
+        try {
+          bizDetail = await getBusinessById(viewingReport.enterpriseId);
+        } catch (err) {
+          console.error("Failed to fetch business details", err);
+        }
+      }
+      const dataToExport = {
+        ...viewingReport,
+        rows: viewingReport.rows || {},
+        phanLoaiRows: viewingReport.phanLoaiRows || {},
+        chiTietRows: viewingReport.chiTietRows || [],
+      };
+      await exportDetailDocx(dataToExport, bizDetail);
+      setToast({ message: "In báo cáo Word thành công!", variant: "success" });
+    } catch (e: any) {
+      setToast({
+        message: e.message || "In báo cáo thất bại",
+        variant: "error",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const deleteSelected = async () => {
     const ids = [...selectedIds];
@@ -269,16 +301,24 @@ export default function AccidentReportPage() {
       const raw = rows[ma];
       if (!Array.isArray(raw)) return Array(11).fill(0);
       // Chỉ lấy 11 cột đầu (tránh lồi cột do rows["10"] có 17 phần tử)
-      return Array(11).fill(0).map((_, i) => Number(raw[i] ?? 0));
+      return Array(11)
+        .fill(0)
+        .map((_, i) => Number(raw[i] ?? 0));
     };
 
     // Section tổng (mã "1") dùng field tổng hợp của báo cáo.
     const section1Vals = [
-      r.soVu, r.soVuCoNguoiChet, r.soVuCo2NguoiBiNan,
-      r.soNguoiBiNan, 0,
-      r.soLDNu, 0,
-      r.soNguoiBiChet, 0,
-      r.soNguoiBiThuongNang, 0,
+      r.soVu,
+      r.soVuCoNguoiChet,
+      r.soVuCo2NguoiBiNan,
+      r.soNguoiBiNan,
+      0,
+      r.soLDNu,
+      0,
+      r.soNguoiBiChet,
+      0,
+      r.soNguoiBiThuongNang,
+      0,
     ];
 
     // Section "2. Tai nạn được hưởng trợ cấp..." = rows["10"] cột 0..10
@@ -291,12 +331,8 @@ export default function AccidentReportPage() {
       if (row.kind === "sub") return row;
 
       let vals: number[];
-      if (row.label === "1. Tai nạn lao động") {
+      if (row.label === "Tai nạn lao động" && (row as any).ma === "1") {
         vals = section1Vals;
-      } else if (
-        row.label === "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ"
-      ) {
-        vals = section2Vals;
       } else if (row.label === "Tổng số (3=1+2)") {
         vals = section3Vals;
       } else if ((row as { ma?: string }).ma) {
@@ -308,7 +344,6 @@ export default function AccidentReportPage() {
       return { ...row, vals };
     });
   }, [viewingReport]);
-
 
   const total = filtered.length;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -552,27 +587,50 @@ export default function AccidentReportPage() {
                           />
                         </td>
                         <td className="px-3.5 py-2.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setViewingReport(r);
-                              setView("detail");
-                            }}
-                            title="Xem"
-                            className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewingReport(r);
+                                setView("detail");
+                              }}
+                              title="Xem"
+                              className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                             >
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                              <circle cx="12" cy="12" r="3" />
-                            </svg>
-                          </button>
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewingReport(r);
+                                setRejectViewOpen(true);
+                              }}
+                              title="Lịch sử xử lý"
+                              className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
+                            >
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                         <td className="px-3.5 py-2.5 text-[#374151]">
                           {r.ten}
@@ -683,8 +741,9 @@ export default function AccidentReportPage() {
               </button>
               <button
                 type="button"
-                onClick={() => exportDetailDocx()}
-                className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
+                onClick={handleExportDetail}
+                disabled={exporting}
+                className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <svg
                   width="14"
@@ -698,7 +757,7 @@ export default function AccidentReportPage() {
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
-                Xuất báo cáo
+                In báo cáo
               </button>
             </div>
           </div>
@@ -718,7 +777,10 @@ export default function AccidentReportPage() {
                     rel="noreferrer"
                     className="text-primary font-medium hover:underline"
                   >
-                    {viewingReport.fileUrl.split("/").pop()?.replace(/^[^-]+-[^-]+-/, "") || "baocaoTNLD.pdf"}
+                    {viewingReport.fileUrl
+                      .split("/")
+                      .pop()
+                      ?.replace(/^[^-]+-[^-]+-/, "") || "baocaoTNLD.pdf"}
                   </a>
                 ) : (
                   <span className="text-gray-400 italic">(chưa có)</span>
@@ -814,22 +876,21 @@ export default function AccidentReportPage() {
                       if (row.kind === "section") {
                         return (
                           <tr key={idx} className="bg-[#f9fafb]">
-                            <td className={`${CT_TD} text-left font-bold`}>
+                            <td
+                              className={`${CT_TD} text-left font-bold`}
+                              colSpan={13}
+                            >
                               {row.label}
                             </td>
-                            <td className={CT_TD} />
-                            {vals.map((v, i) => (
-                              <td key={i} className={`${CT_TD} font-bold`}>
-                                {v ?? 0}
-                              </td>
-                            ))}
                           </tr>
                         );
                       }
                       return (
                         <tr key={idx}>
                           <td className={`${CT_TD} text-left`}>{row.label}</td>
-                          <td className={CT_TD}>{(row as { ma?: string }).ma || ""}</td>
+                          <td className={CT_TD}>
+                            {(row as { ma?: string }).ma || ""}
+                          </td>
                           {vals.map((v, i) => (
                             <td key={i} className={CT_TD}>
                               {v ?? 0}
@@ -881,12 +942,34 @@ export default function AccidentReportPage() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td className={CT_TD}>{viewingReport?.soNgayNghi ?? "—"}</td>
-                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.tongSoTien) : "—"}</td>
-                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.chiPhiYTe) : "—"}</td>
-                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.chiPhiTraLuong) : "—"}</td>
-                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.boiThuongTroCap) : "—"}</td>
-                      <td className={CT_TD}>{viewingReport ? fmtMoney(viewingReport.thiethaiTaiSan) : "—"}</td>
+                      <td className={CT_TD}>
+                        {viewingReport?.soNgayNghi ?? "—"}
+                      </td>
+                      <td className={CT_TD}>
+                        {viewingReport
+                          ? fmtMoney(viewingReport.tongSoTien)
+                          : "—"}
+                      </td>
+                      <td className={CT_TD}>
+                        {viewingReport
+                          ? fmtMoney(viewingReport.chiPhiYTe)
+                          : "—"}
+                      </td>
+                      <td className={CT_TD}>
+                        {viewingReport
+                          ? fmtMoney(viewingReport.chiPhiTraLuong)
+                          : "—"}
+                      </td>
+                      <td className={CT_TD}>
+                        {viewingReport
+                          ? fmtMoney(viewingReport.boiThuongTroCap)
+                          : "—"}
+                      </td>
+                      <td className={CT_TD}>
+                        {viewingReport
+                          ? fmtMoney(viewingReport.thiethaiTaiSan)
+                          : "—"}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -1033,7 +1116,6 @@ export default function AccidentReportPage() {
                     </tr>
                     {TONGHOP_I_ROWS.map((name, i) => {
                       const row = tonghopStats.byLoaiHinh[i];
-                      const hasData = row.coSoTongSo > 0;
                       return (
                         <tr key={name}>
                           <td
@@ -1043,36 +1125,18 @@ export default function AccidentReportPage() {
                             {name}
                           </td>
                           <td className={CT_TD} />
+                          <td className={CT_TD}>{row.coSoTongSo}</td>
+                          <td className={CT_TD}>{row.coSoThamGia}</td>
+                          <td className={CT_TD}>{row.soLaoDong}</td>
+                          <td className={CT_TD}>{row.soLDCoBaoHiem}</td>
+                          <td className={CT_TD}>{row.soNguoiBiNan}</td>
+                          <td className={CT_TD}>{row.soNguoiBiChet}</td>
+                          <td className={CT_TD}>{row.soNguoiBiThuongNang}</td>
                           <td className={CT_TD}>
-                            {hasData ? row.coSoTongSo : ""}
+                            {fmtRate(row.soNguoiBiNan, row.soLaoDong)}
                           </td>
                           <td className={CT_TD}>
-                            {hasData ? row.coSoThamGia : ""}
-                          </td>
-                          <td className={CT_TD}>
-                            {hasData ? row.soLaoDong : ""}
-                          </td>
-                          <td className={CT_TD}>
-                            {hasData ? row.soLDCoBaoHiem : ""}
-                          </td>
-                          <td className={CT_TD}>
-                            {hasData ? row.soNguoiBiNan : ""}
-                          </td>
-                          <td className={CT_TD}>
-                            {hasData ? row.soNguoiBiChet : ""}
-                          </td>
-                          <td className={CT_TD}>
-                            {hasData ? row.soNguoiBiThuongNang : ""}
-                          </td>
-                          <td className={CT_TD}>
-                            {hasData
-                              ? fmtRate(row.soNguoiBiNan, row.soLaoDong)
-                              : ""}
-                          </td>
-                          <td className={CT_TD}>
-                            {hasData
-                              ? fmtRate(row.soNguoiBiChet, row.soLaoDong)
-                              : ""}
+                            {fmtRate(row.soNguoiBiChet, row.soLaoDong)}
                           </td>
                           <td className={CT_TD} />
                         </tr>
@@ -1205,12 +1269,11 @@ export default function AccidentReportPage() {
                             <td className={CT_TD}>{item.ma}</td>
                             {(() => {
                               const rowVals = tonghopStats.phanLoai[item.ma];
-                              const hasData = !!rowVals;
                               const displayVals =
                                 rowVals ?? Array.from({ length: 13 }, () => 0);
                               return displayVals.map((v, i) => (
                                 <td key={i} className={CT_TD}>
-                                  {hasData ? v : v || ""}
+                                  {v}
                                 </td>
                               ));
                             })()}
@@ -1413,8 +1476,8 @@ export default function AccidentReportPage() {
                           ev.isRed
                             ? "border-[#ef4444]"
                             : ev.isGreen
-                            ? "border-[#22c55e]"
-                            : "border-[#cbd5e1]"
+                              ? "border-[#22c55e]"
+                              : "border-[#cbd5e1]"
                         }`}
                       />
 
