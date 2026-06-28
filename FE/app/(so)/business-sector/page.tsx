@@ -60,7 +60,7 @@ export default function BusinessSectorPage() {
 
   const parentOptions = useMemo(
     () =>
-      items
+      buildTreeOrder(items)
         .filter((s) => s.cap < 4)
         .map((s) => ({
           value: s.ma,
@@ -98,8 +98,33 @@ export default function BusinessSectorPage() {
     {},
   );
 
+  function buildTreeOrder(items: BusinessSector[]): BusinessSector[] {
+    const roots = items.filter((x) => !x.cha || x.cha === "");
+    
+    function getChildren(maCha: string): BusinessSector[] {
+      const children = items.filter((x) => x.cha === maCha);
+      // sort anh em cùng cấp theo mã
+      children.sort((a, b) => a.ma.localeCompare(b.ma));
+      const result: BusinessSector[] = [];
+      for (const child of children) {
+        result.push(child);
+        result.push(...getChildren(child.ma));
+      }
+      return result;
+    }
+
+    roots.sort((a, b) => a.ma.localeCompare(b.ma));
+    const result: BusinessSector[] = [];
+    for (const root of roots) {
+      result.push(root);
+      result.push(...getChildren(root.ma));
+    }
+    return result;
+  }
+
   const filtered = useMemo(() => {
-    return items.filter(
+    const treeOrdered = buildTreeOrder(items);
+    return treeOrdered.filter(
       (r) =>
         r.ma.toLowerCase().includes(searchMa.toLowerCase()) &&
         r.ten.toLowerCase().includes(searchTen.toLowerCase()),
@@ -369,13 +394,13 @@ export default function BusinessSectorPage() {
       } else {
         const parent = items.find((x) => x.ma === inputCha);
         const cap = inputCha ? Math.min((parent?.cap ?? 0) + 1, 4) : 1;
-        const created = await createBusinessSector({
+        await createBusinessSector({
           ma,
           ten,
           cap,
           cha: inputCha || undefined,
         });
-        setItems((prev) => [...prev, created]);
+        await getBusinessSectorList().then(setItems);
       }
       setPanelOpen(false);
       setToast({ message: editId ? "Cập nhật thành công" : "Thêm mới thành công", variant: "success" });
@@ -577,7 +602,7 @@ export default function BusinessSectorPage() {
                         className="px-3.5 py-2.5 text-[#374151]"
                         style={{ paddingLeft: INDENT_PX[r.cap] }}
                       >
-                        {r.ten}
+                        {r.cap > 1 ? `– ${r.ten.replace(/^[–-]\s*/, "")}` : r.ten}
                       </td>
                       <td className="px-3.5 py-2.5">
                         <span
@@ -712,7 +737,8 @@ export default function BusinessSectorPage() {
             label="Tên ngành"
             value={inputTen}
             onChange={(e) => {
-              setInputTen(e.target.value);
+              const val = e.target.value.replace(/[^a-zA-Z0-9\sÀ-ỹà-ỹ]/g, "");
+              setInputTen(val);
               if (panelErrors.ten)
                 setPanelErrors((p) => ({ ...p, ten: undefined }));
             }}
