@@ -220,6 +220,7 @@ export class BusinessListDto {
   taxCode: string;
   businessType: string;
   mainIndustry: string;
+  registeredProvince?: string;
   registeredWard: string;
   isActive: boolean;
 }

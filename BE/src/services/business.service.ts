@@ -115,6 +115,7 @@ export class BusinessService {
       taxCode: entity.taxCode,
       businessType: entity.businessType,
       mainIndustry: entity.mainIndustry,
+      registeredProvince: entity.registeredProvince,
       registeredWard: entity.registeredWard,
       isActive: entity.isActive,
     };

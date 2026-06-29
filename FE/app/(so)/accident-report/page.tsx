@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import Tooltip from "@mui/material/Tooltip";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
@@ -133,7 +134,7 @@ export default function AccidentReportPage() {
   const [dbOccupations, setDbOccupations] = useState<
     { ten: string; ma: string }[]
   >([]);
-  const [dbSectors, setDbSectors] = useState<{ ten: string; ma: string }[]>([]);
+  const [dbSectors, setDbSectors] = useState<{ ten: string; ma: string; cap: number }[]>([]);
 
   useEffect(() => {
     getInjuryFactorList()
@@ -163,6 +164,7 @@ export default function AccidentReportPage() {
         const items = list.map((item) => ({
           ten: cleanName(item.ten),
           ma: item.ma,
+          cap: item.cap,
         }));
         setDbSectors(items);
       })
@@ -1474,13 +1476,13 @@ export default function AccidentReportPage() {
                   <thead>
                     <tr>
                       <th
-                        className={`${CT_TH} min-w-[140px] text-left`}
+                        className={`${CT_TH} min-w-[95px] max-w-[95px] text-left`}
                         rowSpan={3}
                       >
-                        Tên chỉ tiêu thống kê
+                        Phân loại
                       </th>
                       <th className={`${CT_TH} w-[50px]`} rowSpan={3}>
-                        Mã số
+                        mã số
                       </th>
                       <th className={CT_TH} colSpan={7}>
                         Phân loại TNLĐ theo mức độ thương tật
@@ -1496,34 +1498,34 @@ export default function AccidentReportPage() {
                       <th className={CT_TH} colSpan={4}>
                         Số người bị nạn (Người)
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: 45, minWidth: 45 }}>
                         Tổng số ngày nghỉ vì TNLĐ
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: 85, minWidth: 85 }}>
                         Tổng số tiền
                       </th>
                       <th className={CT_TH} colSpan={3}>
                         Tổng số ngày nghỉ vì TNLĐ
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: 85, minWidth: 85 }}>
                         Thiệt hại tài sản (1.000 đ)
                       </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>Số vụ có người chết</th>
-                      <th className={CT_TH}>
-                        Số vụ có từ 2 người bị nạn trở lên
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Số vụ có người chết</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>
+                        Số vụ ≥ 2 người bị nạn
                       </th>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>Số LĐ nữ</th>
-                      <th className={CT_TH}>Số người bị chết</th>
-                      <th className={CT_TH}>Số người bị thương nặng</th>
-                      <th className={CT_TH}>Y Tế</th>
-                      <th className={CT_TH}>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Số LĐ nữ</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Số người bị chết</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Số người bị thương nặng</th>
+                      <th className={CT_TH} style={{ width: 85, minWidth: 85 }}>Y tế</th>
+                      <th className={CT_TH} style={{ width: 85, minWidth: 85 }}>
                         Trả lương theo thời gian điều trị
                       </th>
-                      <th className={CT_TH}>Bồi thường/ Trợ cấp</th>
+                      <th className={CT_TH} style={{ width: 85, minWidth: 85 }}>Bồi thường/ Trợ cấp</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1566,48 +1568,65 @@ export default function AccidentReportPage() {
                         {fmtMoney(tonghopStats.total.thiethaiTaiSan)}
                       </td>
                     </tr>
-                    {TONGHOP_II_GROUPS.map((group) => (
-                      <Fragment key={group.category}>
-                        <tr className="bg-[#f1f5f9]">
-                          <td
-                            className={`${CT_TD} text-left font-semibold`}
-                            colSpan={15}
-                          >
-                            {group.category}
-                          </td>
-                        </tr>
-                        {group.items.map((item) => {
-                          let displayMa = item.ma;
-                          if (group.category === "Phân theo ngành nghề") {
-                            displayMa = matchCategoryCode(dbSectors, item.label, "sector") || item.ma;
-                          } else if (group.category === "Phân theo yếu tố gây chấn thương") {
-                            displayMa = matchCategoryCode(dbFactors, item.label, "factor") || item.ma;
-                          }
+                    {TONGHOP_II_GROUPS.map((group) => {
+                      const formatSectorName = (name: string): string => {
+                        if (!name) return "";
+                        const cleaned = name.trim();
+                        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+                      };
 
-                          return (
-                            <tr key={item.ma}>
+                      const items =
+                        group.category === "Phân theo ngành nghề"
+                          ? dbSectors
+                              .filter((s) => s.cap === 1)
+                              .sort((a, b) => a.ma.localeCompare(b.ma, undefined, { numeric: true }))
+                              .map((s) => ({ label: formatSectorName(s.ten), ma: s.ma }))
+                          : group.category === "Phân theo yếu tố gây chấn thương"
+                            ? dbFactors
+                                .sort((a, b) => a.ma.localeCompare(b.ma, undefined, { numeric: true }))
+                                .map((f) => ({ label: f.ten, ma: f.ma }))
+                            : group.items;
+
+                      return items.map((item, index) => {
+                        let displayMa = item.ma;
+
+                        const rowVals = tonghopStats.phanLoai[item.ma];
+                        const displayVals =
+                          rowVals ?? Array.from({ length: 13 }, () => 0);
+                        
+                        const dynamicVals = [...displayVals].map(Number);
+                        dynamicVals[8] = (dynamicVals[9] || 0) + (dynamicVals[10] || 0) + (dynamicVals[11] || 0);
+
+                        return (
+                          <tr key={`${group.category}_${item.ma}`}>
+                            {index === 0 && (
                               <td
-                                className={`${CT_TD} text-left`}
-                                style={{ paddingLeft: 20 }}
+                                className="border border-[#e5e7eb] p-2 text-center font-bold text-[#374151] align-middle bg-white"
+                                style={{
+                                  verticalAlign: "middle",
+                                  width: 95,
+                                  minWidth: 95,
+                                  maxWidth: 95,
+                                }}
+                                rowSpan={items.length}
                               >
-                                {item.label}
+                                {group.category}
                               </td>
-                              <td className={CT_TD}>{displayMa}</td>
-                              {(() => {
-                                const rowVals = tonghopStats.phanLoai[item.ma];
-                                const displayVals =
-                                  rowVals ?? Array.from({ length: 13 }, () => 0);
-                                return displayVals.map((v, i) => (
-                                  <td key={i} className={CT_TD}>
-                                    {v}
-                                  </td>
-                                ));
-                              })()}
-                            </tr>
-                          );
-                        })}
-                      </Fragment>
-                    ))}
+                            )}
+                            <td className={`${CT_TD} cursor-pointer hover:bg-slate-100`}>
+                              <Tooltip title={item.label} arrow placement="top">
+                                <span className="block w-full h-full">{displayMa}</span>
+                              </Tooltip>
+                            </td>
+                            {dynamicVals.map((v, i) => (
+                              <td key={i} className={CT_TD}>
+                                {i >= 8 ? fmtMoney(v) : v}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      });
+                    })}
                   </tbody>
                 </table>
               </div>

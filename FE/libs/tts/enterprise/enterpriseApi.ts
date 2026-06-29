@@ -6,6 +6,7 @@ export type Business = {
   taxCode: string;
   businessType: string;
   mainIndustry: string;
+  registeredProvince?: string;
   registeredWard: string;
   isActive: boolean;
 };

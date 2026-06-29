@@ -31,9 +31,10 @@ import {
   getBusinessById,
   type BusinessDetail,
 } from "@/libs/tts/enterprise/enterpriseApi";
+import { getBusinessSectorList } from "@/libs/tts/business-sector/businessSectorApi";
 
 type PageView = "list" | "form";
-type FormSection = "ttct" | "tnld" | "tnld_tc" | "phanloai" | "tongquan";
+type FormSection = "ttct" | "tnld" | "tnld_tc" | "tongquan";
 type SubTab = "tongSo" | "chiTiet";
 
 type ReportRecord = {
@@ -318,6 +319,18 @@ const EMPTY_DETAIL: Omit<AccidentDetail, "id"> = {
   thiethaiTaiSan: "0",
 };
 
+const getSectorCode = (sectorName: string): string => {
+  const cLabel = (sectorName || "").toLowerCase();
+  if (cLabel.includes("khai khoáng")) return "1";
+  if (cLabel.includes("chế biến") || cLabel.includes("chế tạo")) return "2";
+  if (cLabel.includes("điện") || cLabel.includes("khí đốt")) return "3";
+  if (cLabel.includes("nước") || cLabel.includes("rác thải") || cLabel.includes("thoát nước") || cLabel.includes("xử lý chất thải")) return "4";
+  if (cLabel.includes("xây dựng")) return "5";
+  if (cLabel.includes("vận tải") || cLabel.includes("kho bãi")) return "6";
+  if (cLabel.includes("nông nghiệp") || cLabel.includes("thủy sản") || cLabel.includes("lâm nghiệp")) return "7";
+  return "8"; // Ngành khác
+};
+
 const cleanName = (name: string): string => {
   return (name || "").replace(/^[–\-—\s\.\u2013\u2014]+/, "").trim();
 };
@@ -326,6 +339,7 @@ export default function EnterpriseReportPage() {
   const [view, setView] = useState<PageView>("list");
   const [dbFactors, setDbFactors] = useState<{ ten: string; ma: string }[]>([]);
   const [dbOccupations, setDbOccupations] = useState<{ ten: string; ma: string }[]>([]);
+  const [dbSectors, setDbSectors] = useState<{ ten: string; ma: string; cap: number; cha: string }[]>([]);
 
   const CAUSE_OPTIONS = useMemo(
     () => [
@@ -466,12 +480,28 @@ export default function EnterpriseReportPage() {
       .then(setReports)
       .catch(() => {});
 
+    getReportConfigList()
+      .then(setReportConfigs)
+      .catch(() => {});
+
     const bizId = getBusinessId();
     if (bizId) {
       getBusinessById(bizId)
         .then(setBusinessDetail)
         .catch(() => {});
     }
+
+    getBusinessSectorList()
+      .then((list) => {
+        const items = list.map((item) => ({
+          ten: cleanName(item.ten),
+          ma: item.ma,
+          cap: item.cap,
+          cha: item.cha || "",
+        }));
+        setDbSectors(items);
+      })
+      .catch((err) => console.error("Failed to load business sectors", err));
 
     getInjuryFactorList()
       .then((list) => {
@@ -504,6 +534,7 @@ export default function EnterpriseReportPage() {
 
   // Thông tin công ty
   const [totalLao, setTotalLao] = useState("0");
+  const [totalBaoHiem, setTotalBaoHiem] = useState("0");
   const [totalNu, setTotalNu] = useState("0");
   const [tongLuong, setTongLuong] = useState("0");
 
@@ -571,6 +602,7 @@ export default function EnterpriseReportPage() {
   const [saving, setSaving] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Record<number, boolean>>({});
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [reportConfigs, setReportConfigs] = useState<any[]>([]);
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [reportFileUrl, setReportFileUrl] = useState<string | null>(null);
   const originalReportRef = useRef<{
@@ -720,6 +752,109 @@ export default function EnterpriseReportPage() {
     thiHaiTaiSan,
   ]);
 
+  // Auto-calculate phanLoai rows 1-8 and 17-24
+  useEffect(() => {
+    if (isLoadingReportRef.current) return;
+
+    setPhanLoai((prev) => {
+      const next = { ...prev };
+
+      // 1. Sector rows (using the database numeric codes)
+      const bizSector = businessDetail?.mainIndustry || "";
+      const sectorCodeMatch = bizSector.match(/^(\d+|[a-zA-Z]+)/);
+      const rawCode = sectorCodeMatch ? sectorCodeMatch[0] : "";
+
+      const findLevel1Parent = (maCode: string, allSectors: any[]): any => {
+        let current = allSectors.find((s) => s.ma === maCode);
+        if (!current) return null;
+        while (current && current.cap !== 1 && current.cha) {
+          current = allSectors.find((s) => s.ma === current.cha);
+        }
+        return current && current.cap === 1 ? current : null;
+      };
+
+      const parentL1 = findLevel1Parent(rawCode, dbSectors);
+      const targetSectorCode = parentL1 ? parentL1.ma : "";
+
+      const sectorValues = [
+        tongVu,
+        vuChet,
+        vuNhieu,
+        tongNan,
+        tongNanNu,
+        tongChetNN,
+        tongThuongNang,
+        soNgayNghi,
+        tongChiPhi,
+        chiPhiYTe,
+        chiPhiLuong,
+        chiPhiBTTC,
+        thiHaiTaiSan,
+      ].map((v) => String(parseNum(v)));
+
+      const level1Sectors = dbSectors.filter((s) => s.cap === 1);
+      for (const s of level1Sectors) {
+        if (s.ma === targetSectorCode) {
+          next[s.ma] = sectorValues;
+        } else {
+          next[s.ma] = Array(13).fill("0");
+        }
+      }
+
+      // 2. Injury factor rows (dynamic based on DB factors)
+      const factorSums: Record<string, number[]> = {};
+      for (const f of dbFactors) {
+        factorSums[f.ma] = Array(13).fill(0);
+      }
+
+      for (const d of accidentDetails) {
+        const matchedFactor = dbFactors.find(
+          (f) => cleanName(f.ten) === cleanName(d.yeuTo),
+        );
+        if (matchedFactor) {
+          const code = matchedFactor.ma;
+          factorSums[code][0] += parseNum(d.soVu);
+          factorSums[code][1] += parseNum(d.soVuCoNguoiChet);
+          factorSums[code][2] += parseNum(d.soVuCo2NguoiBiNan);
+          factorSums[code][3] += parseNum(d.soNguoiBiNan);
+          factorSums[code][4] += parseNum(d.soLDNu);
+          factorSums[code][5] += parseNum(d.soNguoiBiChet);
+          factorSums[code][6] += parseNum(d.soNguoiBiThuongNang);
+          factorSums[code][7] += parseNum(d.soNgayNghi);
+          factorSums[code][8] += parseNum(d.tongSoTien);
+          factorSums[code][9] += parseNum(d.chiPhiYTe);
+          factorSums[code][10] += parseNum(d.chiPhiLuong);
+          factorSums[code][11] += parseNum(d.chiPhiBTTC);
+          factorSums[code][12] += parseNum(d.thiethaiTaiSan);
+        }
+      }
+
+      for (const f of dbFactors) {
+        next[f.ma] = factorSums[f.ma].map(String);
+      }
+
+      return next;
+    });
+  }, [
+    businessDetail?.businessType,
+    dbFactors,
+    dbSectors,
+    tongVu,
+    vuChet,
+    vuNhieu,
+    tongNan,
+    tongNanNu,
+    tongChetNN,
+    tongThuongNang,
+    soNgayNghi,
+    tongChiPhi,
+    chiPhiYTe,
+    chiPhiLuong,
+    chiPhiBTTC,
+    thiHaiTaiSan,
+    accidentDetails,
+  ]);
+
   const tcCrossValidations = useMemo(() => {
     const tongVu = parseNum(tcTongVu);
     const vuChet = parseNum(tcVuChet);
@@ -757,7 +892,6 @@ export default function EnterpriseReportPage() {
     tcThuongKhongQL,
   ]);
 
-  // Cross-validation for ttct section: totalNu <= totalLao
   const ttctCrossValidations = useMemo(() => {
     const lao = parseNum(totalLao);
     const nu = parseNum(totalNu);
@@ -1187,8 +1321,38 @@ export default function EnterpriseReportPage() {
     });
   };
 
+  const parseDateDDMMYYYY = (str: string): Date | null => {
+    if (!str) return null;
+    const parts = str.split("/");
+    if (parts.length !== 3) return null;
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  };
+
+  const isConfigActive = (config: any): boolean => {
+    if (!config.active) return false;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const start = parseDateDDMMYYYY(config.batDau);
+    const end = parseDateDDMMYYYY(config.ketThuc);
+    if (!start || !end) return false;
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    return now >= start && now <= end;
+  };
+
+  const canEditReport = (r: ReportRecord): boolean => {
+    if (r.tt === "Đang báo cáo" || r.tt === "Từ chối") {
+      return true;
+    }
+    return false;
+  };
+
   const openReport = (r: ReportRecord, readOnly: boolean = false) => {
-    setIsReadOnly(readOnly);
+    const enforceReadOnly = readOnly || !canEditReport(r);
+    setIsReadOnly(enforceReadOnly);
     setTriedSubmit(false);
     setEditingId(r.id);
     setActiveReport(r);
@@ -1211,6 +1375,7 @@ export default function EnterpriseReportPage() {
         };
         setReportFileUrl(res.fileUrl || null);
         setTotalLao(String(t.soLaoDong));
+        setTotalBaoHiem(String(t.soLDCoBaoHiem || 0));
         setTongVu(String(t.soVu));
         setVuChet(String(t.soVuCoNguoiChet));
         setVuNhieu(String(t.soVuCo2NguoiBiNan));
@@ -1325,7 +1490,7 @@ export default function EnterpriseReportPage() {
 
   const buildTongHop = (): ReportTongHop => ({
     soLaoDong: parseNum(totalLao),
-    soLDCoBaoHiem: 0,
+    soLDCoBaoHiem: parseNum(totalBaoHiem),
     soLDNu: parseNum(tongNanNu),
     soVu: parseNum(tongVu),
     soVuCoNguoiChet: parseNum(vuChet),
@@ -2260,7 +2425,7 @@ export default function EnterpriseReportPage() {
           ward: businessDetail?.registeredWard || "",
           loaiHinh: businessDetail?.businessType || "",
           soLaoDong: parseNum(totalLao),
-          soLDCoBaoHiem: 0,
+          soLDCoBaoHiem: parseNum(totalBaoHiem),
           soLDNu: parseNum(tongNanNu),
           soVu: parseNum(tongVu),
           soVuCoNguoiChet: parseNum(vuChet),
@@ -2484,24 +2649,26 @@ export default function EnterpriseReportPage() {
                               <circle cx="12" cy="12" r="3" />
                             </svg>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => openReport(r, false)}
-                            title="Nhập báo cáo"
-                            className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
+                          {canEditReport(r) && (
+                            <button
+                              type="button"
+                              onClick={() => openReport(r, false)}
+                              title="Nhập báo cáo"
+                              className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
                             >
-                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                          </button>
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -4228,86 +4395,6 @@ export default function EnterpriseReportPage() {
                       false,
                     )}
                   />
-                </div>
-              </div>
-            ) : section === "phanloai" ? (
-              <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-                <div className="mb-1 text-[14px] font-bold text-ink">
-                  3. Phân loại tai nạn lao động
-                </div>
-                <p className="mb-4 text-[12.5px] text-muted">
-                  Nhập số liệu theo từng hạng mục (để 0 nếu không có). Dữ liệu
-                  này tổng hợp vào báo cáo phần II của Sở.
-                </p>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-[11px]">
-                    <thead>
-                      <tr>
-                        <th
-                          className={`${CT_TH} sticky left-0 z-10 min-w-[220px] bg-[#f9fafb] text-left`}
-                        >
-                          Hạng mục
-                        </th>
-                        {PHAN_LOAI_COLS.map((c) => (
-                          <th key={c} className={`${CT_TH} min-w-[72px]`}>
-                            {c}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {TONGHOP_II_GROUPS.map((group) => (
-                        <Fragment key={group.category}>
-                          <tr className="bg-[#f1f5f9]">
-                            <td
-                              className={`${CT_TD} text-left font-semibold`}
-                              colSpan={PHAN_LOAI_COLS.length + 1}
-                            >
-                              {group.category}
-                            </td>
-                          </tr>
-                          {group.items.map((item) => (
-                            <tr key={item.ma}>
-                              <td
-                                className={`${CT_TD} sticky left-0 z-10 bg-white text-left`}
-                              >
-                                {item.label}
-                              </td>
-                              {PHAN_LOAI_COLS.map((_, col) => (
-                                <td
-                                  key={col}
-                                  className="border border-line p-0"
-                                >
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={phanLoai[item.ma]?.[col] ?? "0"}
-                                    onKeyDown={(e) => {
-                                      if (
-                                        ["-", "+", "e", "E", "."].includes(
-                                          e.key,
-                                        )
-                                      ) {
-                                        e.preventDefault();
-                                      }
-                                    }}
-                                    onChange={(e) =>
-                                      setPhanLoaiCell(
-                                        item.ma,
-                                        col,
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="h-8 w-full min-w-[64px] px-1.5 text-center text-[11px] text-ink outline-none focus:bg-[#eff6ff]"
-                                  />
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </Fragment>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
               </div>
             ) : (
