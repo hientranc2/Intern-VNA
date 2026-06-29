@@ -565,6 +565,8 @@ export default function AccountPage() {
                 <SearchableSelect
                   options={PROVINCES}
                   value={form.province}
+                  // Muốn bật lại thì xóa disabled đi
+                  disabled
                   onChange={(v) => {
                     setField("province", v);
                     setField("ward", "");

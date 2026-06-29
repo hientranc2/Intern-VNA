@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { FormHelperText } from "@mui/material";
 
 type Props = {
@@ -55,31 +55,40 @@ export function SearchableSelect({
       )
     : uniqueOptions;
 
-  useEffect(() => {
+useEffect(() => {
     if (open) {
       inputRef.current?.focus();
-      if (fixed && triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        setDropdownStyle(
-          dropUp
-            ? {
-                position: "fixed",
-                bottom: window.innerHeight - rect.top + 4,
-                left: rect.left,
-                width: rect.width,
-                zIndex: 9999,
-              }
-            : {
-                position: "fixed",
-                top: rect.bottom + 4,
-                left: rect.left,
-                width: rect.width,
-                zIndex: 9999,
-              },
-        );
-      }
     }
-  }, [open, fixed]);
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open || !fixed || !triggerRef.current) return;
+
+    const update = () => {
+      const rect = triggerRef.current!.getBoundingClientRect();
+      setDropdownStyle(
+        dropUp
+          ? {
+              position: "fixed",
+              bottom: window.innerHeight - rect.top + 4,
+              left: rect.left,
+              width: rect.width,
+              zIndex: 9999,
+            }
+          : {
+              position: "fixed",
+              top: rect.bottom + 4,
+              left: rect.left,
+              width: rect.width,
+              zIndex: 9999,
+            },
+      );
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(triggerRef.current);
+    return () => ro.disconnect();
+  }, [open, fixed, dropUp]);
 
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
