@@ -63,7 +63,10 @@ export class RoleController {
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermissions('SO_C_ROLE_DELETE')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthRequest,
+  ) {
+    return this.service.remove(id, req.user);
   }
 }

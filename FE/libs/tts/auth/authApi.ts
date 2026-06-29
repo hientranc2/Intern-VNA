@@ -8,6 +8,7 @@ const TOKEN_KEY = "tts_access_token";
 const BUSINESS_ID_KEY = "tts_business_id";
 const PERMISSIONS_KEY = "tts_permissions";
 const IS_SUPER_KEY = "tts_is_super";
+const ROLE_CODE_KEY = "tts_role_code";
 
 export type AuthUser = {
   id: string;
@@ -25,6 +26,7 @@ export type AuthUser = {
   isActive: boolean;
   permissions?: string[];
   roleName?: string;
+  roleCode?: string;
   isSuper?: boolean; // user là ADMIN hoặc giữ vai trò toàn quyền (CEO)
 };
 
@@ -46,6 +48,7 @@ export function clearToken(): void {
   window.localStorage.removeItem(BUSINESS_ID_KEY);
   window.localStorage.removeItem(PERMISSIONS_KEY);
   window.localStorage.removeItem(IS_SUPER_KEY);
+  window.localStorage.removeItem(ROLE_CODE_KEY);
 }
 
 export function setIsSuper(isSuper: boolean): void {
@@ -56,6 +59,17 @@ export function setIsSuper(isSuper: boolean): void {
 export function getIsSuper(): boolean {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem(IS_SUPER_KEY) === "1";
+}
+
+export function setRoleCode(roleCode: string | null | undefined): void {
+  if (typeof window === "undefined") return;
+  if (roleCode) window.localStorage.setItem(ROLE_CODE_KEY, roleCode);
+  else window.localStorage.removeItem(ROLE_CODE_KEY);
+}
+
+export function getRoleCode(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(ROLE_CODE_KEY);
 }
 
 export function setPermissions(perms: string[]): void {
