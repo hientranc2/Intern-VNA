@@ -103,9 +103,9 @@ const SELECT_TOP_CLASS =
   "h-9 min-w-[200px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none";
 
 const CT_TH =
-  "border border-line bg-[#f9fafb] px-2 py-1.5 text-center align-middle font-semibold text-[#374151]";
+  "border border-line bg-[#f9fafb] px-2 py-3 text-center align-middle font-semibold text-[#374151]";
 const CT_TD =
-  "border border-line px-2 py-1.5 text-center align-middle text-[#374151]";
+  "border border-line px-2 py-3 text-center align-middle text-[#374151]";
 
 const fmtMoney = (n: number) => n.toLocaleString("vi-VN");
 const fmtRate = (n: number, d: number) =>
@@ -1126,11 +1126,12 @@ export default function AccidentReportPage() {
                     <tr>
                       <th
                         className={`${CT_TH} min-w-[220px] text-left`}
+                        style={{ width: "30%" }}
                         rowSpan={4}
                       >
                         Tên chỉ tiêu thống kê
                       </th>
-                      <th className={`${CT_TH} w-[60px]`} rowSpan={4}>
+                      <th className={`${CT_TH} w-[60px]`} style={{ width: "5%" }} rowSpan={4}>
                         Mã số
                       </th>
                       <th className={CT_TH} colSpan={11}>
@@ -1146,14 +1147,14 @@ export default function AccidentReportPage() {
                       </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: "6%", minWidth: 45 }}>
                         Tổng số
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: "6%", minWidth: 45 }}>
                         Số vụ có người chết
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
-                        Số vụ có từ 2 người bị nạn trở lên
+                      <th className={CT_TH} rowSpan={2} style={{ width: "6%", minWidth: 45 }}>
+                        Số vụ ≥ 2 người bị nạn
                       </th>
                       <th className={CT_TH} colSpan={2}>
                         Tổng số
@@ -1169,14 +1170,14 @@ export default function AccidentReportPage() {
                       </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>NN không thuộc quyền quản lý</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1187,7 +1188,6 @@ export default function AccidentReportPage() {
                             <td
                               className={`${CT_TD} text-left ${row.bold ? "font-semibold" : "italic"}`}
                               colSpan={13}
-                              style={{ paddingLeft: row.bold ? 20 : 32 }}
                             >
                               {row.label}
                             </td>
