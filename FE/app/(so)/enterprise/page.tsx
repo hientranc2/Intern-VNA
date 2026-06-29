@@ -39,6 +39,7 @@ import {
 import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
 import { useCan } from "@/libs/tts/auth/abilityContext";
 import { LoadingOverlay } from "@/libs/shared/core/components/LoadingOverlay/LoadingOverlay";
+import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 import { FormHelperText } from "@mui/material";
 
 function filenameFromUrl(url?: string | null): string {
@@ -1981,17 +1982,16 @@ export default function EnterprisePage() {
               Khởi tạo mật khẩu cho tài khoản{" "}
               <strong>{resetTarget?.taxCode}</strong>
             </p>
-            <TextField
-              type="password"
+            <PasswordField
+              label="Mật khẩu mới"
               value={resetPwd}
-              onChange={(e) => {
-                setResetPwd(e.target.value);
+              onChange={(v) => {
+                setResetPwd(v);
                 if (resetPwdError) setResetPwdError(null);
               }}
-              error={!!resetPwdError}
-              helperText={resetPwdError}
-              size="small"
-              fullWidth
+              autoComplete="new-password"
+              hasError={!!resetPwdError}
+              helperText={resetPwdError ?? undefined}
             />
           </div>
           <div className="flex justify-end gap-3 px-6 pb-5">

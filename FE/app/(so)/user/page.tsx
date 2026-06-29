@@ -155,7 +155,7 @@ export default function UserPage() {
   const [fRoleId, setFRoleId] = useState("");
   const [fJobTitle, setFJobTitle] = useState("");
   const [fActive, setFActive] = useState("");
-  const [fProvince, setFProvince] = useState("Thành phố Hồ Chí Minh");
+  const [fProvince, setFProvince] = useState("");
 
   const [searchFullName, setSearchFullName] = useState("");
   const [searchUsername, setSearchUsername] = useState("");
@@ -187,7 +187,7 @@ export default function UserPage() {
     setFJobTitle("");
     setSearchJobTitle("");
     setFActive("");
-    setFProvince("Thành phố Hồ Chí Minh");
+    setFProvince("");
     setCurrentPage(1);
   };
 

@@ -541,7 +541,9 @@ export function EnterpriseWizard({
                   helperText={fieldErrors.registeredProvince}
                   options={PROVINCES}
                   value={form.registeredProvince}
-                  disabled={mode === "view"}
+                  // Nếu muốn mở lại thì xóa comment dòng này và xóa hoặc comment lại disabled
+                  // disabled={mode === "view"} 
+                  disabled
                   onChange={(v) => {
                     setField("registeredProvince", v);
                     setField("registeredWard", "");
