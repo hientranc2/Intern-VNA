@@ -448,7 +448,7 @@ export default function BusinessSectorPage() {
           <button
             type="button"
             onClick={() => importRef.current?.click()}
-            className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
+            className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
           >
             <svg
               width="14"

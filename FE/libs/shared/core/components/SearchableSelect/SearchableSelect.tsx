@@ -147,7 +147,8 @@ useEffect(() => {
               key={opt}
               type="button"
               onClick={() => select(opt)}
-              className={`w-full px-3 py-2 text-left text-[13px] hover:bg-[#f0f7ff] ${
+              className={`w-full px-3 py-2 text-left text-[13px] font-normal hover:bg-[#f0f7ff] ${
+              // Nếu muốn chữ in đậm thì xóa font-normal ở className là xong.
                 opt === value
                   ? "bg-[#eff6ff] font-medium text-primary"
                   : "text-ink"
