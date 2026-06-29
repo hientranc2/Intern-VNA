@@ -13,6 +13,10 @@ import {
   uploadReportFile,
   type ReportTongHop,
 } from "@/libs/tts/accident-report/enterpriseReportApi";
+import {
+  getInjuryFactorList,
+  getOccupationList,
+} from "@/libs/tts/category/categoryApi";
 import { getReportConfigList } from "@/libs/tts/report-config/reportConfigApi";
 import type { ReportConfig } from "@/libs/tts/report-config/reportConfigData";
 import {
@@ -211,6 +215,7 @@ const InputField = ({
   suffix = "",
   invalid = false,
   errorMsg = "",
+  type = "number",
 }: {
   label: string;
   value: string;
@@ -220,6 +225,7 @@ const InputField = ({
   suffix?: string;
   invalid?: boolean;
   errorMsg?: string;
+  type?: "text" | "number";
 }) => {
   return (
     <div className="relative flex flex-col mt-2">
@@ -228,8 +234,8 @@ const InputField = ({
       </label>
       <div className="relative flex items-center w-full">
         <input
-          type={suffix ? "text" : "number"}
-          min={suffix ? undefined : 0}
+          type={type === "text" || suffix ? "text" : "number"}
+          min={type === "text" || suffix ? undefined : 0}
           className={`${FC} w-full h-[40px] pt-1 ${suffix ? "pr-16" : ""} ${invalid ? "border-danger border-2" : ""}`}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
@@ -286,7 +292,7 @@ const EMPTY_DETAIL: Omit<AccidentDetail, "id"> = {
   hoTen: "",
   ngaySinh: "",
   gioiTinh: "Nam",
-  ngheNghiep: "Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương",
+  ngheNghiep: "Lao động xây dựng và lao động liên quan",
   loaiHopDong: "Hợp đồng xác định thời hạn",
   mucDo: "Thương nhẹ",
   ngayXayRa: "",
@@ -312,11 +318,81 @@ const EMPTY_DETAIL: Omit<AccidentDetail, "id"> = {
   thiethaiTaiSan: "0",
 };
 
+const cleanName = (name: string): string => {
+  return (name || "").replace(/^[–\-—\s\.\u2013\u2014]+/, "").trim();
+};
+
 export default function EnterpriseReportPage() {
   const [view, setView] = useState<PageView>("list");
+  const [dbFactors, setDbFactors] = useState<{ ten: string; ma: string }[]>([]);
+  const [dbOccupations, setDbOccupations] = useState<{ ten: string; ma: string }[]>([]);
+
+  const CAUSE_OPTIONS = useMemo(
+    () => [
+      "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an sau",
+      "Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt",
+      "Tổ chức lao động không hợp lý",
+      "Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ",
+      "Không có quy trình an toàn hoặc biện pháp làm việc an toàn",
+      "Điều kiện làm việc không tốt",
+      "Quy phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn",
+      "Không sử dụng phương tiện bảo vệ cá nhân",
+      "Khách quan khó tránh/ Nguyên nhân chưa kể đến",
+    ],
+    [],
+  );
+
+  const DEFAULT_FACTOR_OPTIONS = useMemo(
+    () => [
+      "Ngã",
+      "Vật rơi, vật văng bắn",
+      "Máy, thiết bị",
+      "Phương tiện vận tải",
+      "Điện giật",
+      "Chất độc hại",
+      "Bỏng",
+      "Thiết bị nâng",
+    ],
+    [],
+  );
+
+  const DEFAULT_OCCUPATION_OPTIONS = useMemo(
+    () => [
+      "Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương",
+      "Công nhân",
+    ],
+    [],
+  );
+
+  const standardFactors = useMemo(() => {
+    return dbFactors.length > 0 ? dbFactors.map((f) => f.ten) : DEFAULT_FACTOR_OPTIONS;
+  }, [dbFactors, DEFAULT_FACTOR_OPTIONS]);
+
+  const FACTOR_OPTIONS = useMemo(() => {
+    return [...standardFactors, "Khác"];
+  }, [standardFactors]);
+
+  const standardOccupations = useMemo(() => {
+    return dbOccupations.length > 0
+      ? dbOccupations.map((o) => o.ten)
+      : DEFAULT_OCCUPATION_OPTIONS;
+  }, [dbOccupations, DEFAULT_OCCUPATION_OPTIONS]);
+
+  const OCCUPATION_OPTIONS = useMemo(() => {
+    return [...standardOccupations, "Khác"];
+  }, [standardOccupations]);
   const [section, setSection] = useState<FormSection>("ttct");
   const [subTab, setSubTab] = useState<SubTab>("tongSo");
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToastState] = useState<{ message: string; variant: "success" | "warning" | "error" } | null>(null);
+  const setToast = (msg: string | { message: string; variant: "success" | "warning" | "error" } | null) => {
+    if (msg === null) {
+      setToastState(null);
+    } else if (typeof msg === "string") {
+      setToastState({ message: msg, variant: "success" });
+    } else {
+      setToastState(msg);
+    }
+  };
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [filterYear, setFilterYear] = useState("");
 
@@ -396,6 +472,34 @@ export default function EnterpriseReportPage() {
         .then(setBusinessDetail)
         .catch(() => {});
     }
+
+    getInjuryFactorList()
+      .then((list) => {
+        console.log("getInjuryFactorList loaded:", list);
+        const items = list
+          .filter((item) => item.active)
+          .map((item) => ({
+            ten: cleanName(item.ten),
+            ma: item.ma,
+          }));
+        setDbFactors(items);
+      })
+      .catch((err) => {
+        console.error("getInjuryFactorList failed:", err);
+      });
+
+    getOccupationList()
+      .then((list) => {
+        console.log("getOccupationList loaded:", list);
+        const items = list.map((item) => ({
+          ten: cleanName(item.ten),
+          ma: item.ma,
+        }));
+        setDbOccupations(items);
+      })
+      .catch((err) => {
+        console.error("getOccupationList failed:", err);
+      });
   }, []);
 
   // Thông tin công ty
@@ -493,13 +597,36 @@ export default function EnterpriseReportPage() {
   };
 
   const mapYeuToToCode = (yeuTo: string): string => {
-    if (yeuTo === "Ngã") return "17";
-    if (yeuTo === "Vật rơi, vật văng bắn") return "18";
-    if (yeuTo === "Máy, thiết bị") return "19";
-    if (yeuTo === "Phương tiện vận tải") return "20";
-    if (yeuTo === "Điện giật") return "21";
-    if (yeuTo === "Chất độc hại") return "22";
-    if (yeuTo === "Bỏng") return "23";
+    const low = (yeuTo || "").toLowerCase();
+    if (low === "ngã" || low.includes("ngã")) return "17";
+    if (
+      low.includes("vật rơi") ||
+      low.includes("vật văng bắn") ||
+      low.includes("văng bắn") ||
+      low.includes("vật rơi, đổ, sập")
+    )
+      return "18";
+    if (
+      low.includes("máy") ||
+      low.includes("thiết bị") ||
+      low.includes("áp lực") ||
+      low.includes("nâng")
+    )
+      return "19";
+    if (
+      low.includes("phương tiện") ||
+      low.includes("vận tải") ||
+      low.includes("xe")
+    )
+      return "20";
+    if (low.includes("điện")) return "21";
+    if (
+      low.includes("độc") ||
+      low.includes("phóng xạ") ||
+      low.includes("hóa chất")
+    )
+      return "22";
+    if (low.includes("bỏng") || low.includes("nhiệt")) return "23";
     return "24";
   };
 
@@ -1642,27 +1769,119 @@ export default function EnterpriseReportPage() {
     };
 
     if (accidentDetails.length > 0) {
-      result["101"] = getVictimRow((d) => d.yeuTo === "Thiết bị nâng");
-      result["102"] = getVictimRow((d) =>
-        d.ngheNghiep.toLowerCase().includes("lãnh đạo"),
-      );
-      result["103"] = getVictimRow((d) =>
-        d.ngheNghiep.toLowerCase().includes("công nhân"),
-      );
+      const activeFactors = new Set<string>();
+      const activeOccupations = new Set<string>();
+
+      accidentDetails.forEach((d) => {
+        if (d.yeuTo) activeFactors.add(cleanName(d.yeuTo));
+        if (d.ngheNghiep) activeOccupations.add(cleanName(d.ngheNghiep));
+      });
+
+      // Clear legacy static keys
+      delete result["101"];
+      delete result["102"];
+      delete result["103"];
+
+      // Clean up old dynamic keys
+      Object.keys(result).forEach((key) => {
+        if (key.startsWith("factor_") && !activeFactors.has(cleanName(key.replace("factor_", "")))) {
+          delete result[key];
+        }
+        if (key.startsWith("occupation_") && !activeOccupations.has(cleanName(key.replace("occupation_", "")))) {
+          delete result[key];
+        }
+      });
+
+      // Populate current active keys
+      activeFactors.forEach((factor) => {
+        result[`factor_${factor}`] = getVictimRow((d) => cleanName(d.yeuTo || "") === factor);
+      });
+      activeOccupations.forEach((occ) => {
+        result[`occupation_${occ}`] = getVictimRow((d) => cleanName(d.ngheNghiep || "") === occ);
+      });
     }
 
     return result;
   };
 
   const overviewRows = useMemo(() => {
-    return DETAIL_REPORT_ROWS.map((row) => {
+    // 1. Get the list of factors and occupations dynamically from accidentDetails (or savedOverviewRows keys)
+    const activeFactors = new Set<string>();
+    const activeOccupations = new Set<string>();
+
+    if (accidentDetails.length > 0) {
+      accidentDetails.forEach((d) => {
+        if (d.yeuTo) activeFactors.add(cleanName(d.yeuTo));
+        if (d.ngheNghiep) activeOccupations.add(cleanName(d.ngheNghiep));
+      });
+    } else {
+      // If no details, default to "Thiết bị nâng" and standard ones
+      activeFactors.add("Thiết bị nâng");
+      activeOccupations.add("Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương");
+      activeOccupations.add("Công nhân");
+    }
+
+    // Also look at savedOverviewRows to preserve any loaded/saved rows that might not be in accidentDetails currently
+    Object.keys(savedOverviewRows).forEach((key) => {
+      if (key.startsWith("factor_")) {
+        activeFactors.add(cleanName(key.replace("factor_", "")));
+      }
+      if (key.startsWith("occupation_")) {
+        activeOccupations.add(cleanName(key.replace("occupation_", "")));
+      }
+    });
+
+    // Build the dynamic rows array
+    const dynamicRows: { kind: "normal" | "sub" | "section"; label: string; ma: string; bold?: boolean }[] = [];
+
+    // Prefix: up to 1.1 Do người lao động
+    dynamicRows.push(
+      { kind: "section", label: "1. Tai nạn lao động", ma: "" },
+      { kind: "normal", label: "Tai nạn lao động", ma: "1" },
+      { kind: "sub", label: "1.1 Phân theo nguyên nhân xảy ra TNLĐ", ma: "", bold: true },
+      { kind: "sub", label: "a. Do người sử dụng lao động", ma: "" },
+      { kind: "normal", label: "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn", ma: "1" },
+      { kind: "normal", label: "Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt", ma: "2" },
+      { kind: "normal", label: "Tổ chức lao động không hợp lý", ma: "3" },
+      { kind: "normal", label: "Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ", ma: "4" },
+      { kind: "normal", label: "Không có quy trình an toàn hoặc biện pháp làm việc an toàn", ma: "5" },
+      { kind: "normal", label: "Điều kiện làm việc không tốt", ma: "6" },
+      { kind: "sub", label: "b. Do người lao động", ma: "" },
+      { kind: "normal", label: "Quy phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn", ma: "7" },
+      { kind: "normal", label: "Không sử dụng phương tiện bảo vệ cá nhân", ma: "8" },
+      { kind: "normal", label: "Khách quan khó tránh/ Nguyên nhân chưa kể đến", ma: "9" },
+    );
+
+    // 1.2 Phân theo yếu tố gây chấn thương
+    dynamicRows.push({ kind: "sub", label: "1.2. Phân theo yếu tố gây chấn thương", ma: "", bold: true });
+    Array.from(activeFactors).forEach((factor) => {
+      dynamicRows.push({ kind: "normal", label: factor, ma: `factor_${factor}` });
+    });
+
+    // 1.3 Phân theo nghề nghiệp
+    dynamicRows.push({ kind: "sub", label: "1.3 Phân theo nghề nghiệp", ma: "", bold: true });
+    Array.from(activeOccupations).forEach((occ) => {
+      dynamicRows.push({ kind: "normal", label: occ, ma: `occupation_${occ}` });
+    });
+
+    // 2 & 3 Sections
+    dynamicRows.push(
+      { kind: "section", label: "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ", ma: "" },
+      { kind: "normal", label: "Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ", ma: "10" },
+      { kind: "section", label: "3. Tổng số", ma: "" },
+      { kind: "normal", label: "Tổng số (3=1+2)", ma: "total" },
+    );
+
+    // Now map over dynamicRows and calculate values for each row
+    return dynamicRows.map((row) => {
       if (row.kind !== "normal" && row.kind !== "section") {
         return row;
       }
 
       let vals = Array(11).fill(0);
+      const ma = row.ma;
 
-      if (row.label === "Tai nạn lao động" && (row as any).ma === "1") {
+      if (row.label === "Tai nạn lao động" && ma === "1") {
         vals = [
           parseNum(tongVu),
           parseNum(vuChet),
@@ -1676,7 +1895,7 @@ export default function EnterpriseReportPage() {
           parseNum(tongThuongNang),
           parseNum(thuongKhongQL),
         ];
-      } else if (row.label === "Tổng số (3=1+2)") {
+      } else if (row.label === "Tổng số (3=1+2)" && ma === "total") {
         vals = [
           parseNum(tongVu) + parseNum(tcTongVu),
           parseNum(vuChet) + parseNum(tcVuChet),
@@ -1690,143 +1909,121 @@ export default function EnterpriseReportPage() {
           parseNum(tongThuongNang) + parseNum(tcTongThuongNang),
           parseNum(thuongKhongQL) + parseNum(tcThuongKhongQL),
         ];
-      } else if (row.kind === "normal" && row.ma) {
-        const ma = row.ma;
-        if (ma === "10") {
+      } else if (ma === "10") {
+        vals = [
+          parseNum(tcTongVu),
+          parseNum(tcVuChet),
+          parseNum(tcVuNhieu),
+          parseNum(tcTongNan),
+          parseNum(tcNanKhongQL),
+          parseNum(tcTongNanNu),
+          parseNum(tcNuKhongQL),
+          parseNum(tcTongChetNN),
+          parseNum(tcChetKhongQL),
+          parseNum(tcTongThuongNang),
+          parseNum(tcThuongKhongQL),
+        ];
+      } else if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(ma)) {
+        const gridKeyMap: Record<string, string> = {
+          "1": "9",
+          "2": "10",
+          "3": "11",
+          "4": "12",
+          "5": "13",
+          "6": "14",
+          "7": "13",
+          "8": "15",
+          "9": "16",
+        };
+        const gridKey = gridKeyMap[ma];
+        const rowVal = phanLoai[gridKey] || Array(13).fill("0");
+        vals = [
+          parseNum(rowVal[0]),
+          parseNum(rowVal[1]),
+          parseNum(rowVal[2]),
+          parseNum(rowVal[3]),
+          0,
+          parseNum(rowVal[4]),
+          0,
+          parseNum(rowVal[5]),
+          0,
+          parseNum(rowVal[6]),
+          0,
+        ];
+      } else if (ma.startsWith("factor_")) {
+        const factorName = ma.replace("factor_", "");
+        if (accidentDetails.length > 0) {
+          const filtered = accidentDetails.filter((d) => cleanName(d.yeuTo || "") === factorName);
+          const countVu = new Set(filtered.map((d) => d.id)).size;
+          const countChet = filtered.filter((d) => d.mucDo === "Chết").length;
+          const countVuChet = countChet > 0 ? 1 : 0;
+          const countVuNhieu = countVu >= 2 ? 1 : 0;
+          const countNan = filtered.length;
+          const countNu = filtered.filter((d) => d.gioiTinh === "Nữ").length;
+          const countThuongNang = filtered.filter((d) => d.mucDo === "Thương nặng").length;
           vals = [
-            parseNum(tcTongVu),
-            parseNum(tcVuChet),
-            parseNum(tcVuNhieu),
-            parseNum(tcTongNan),
-            parseNum(tcNanKhongQL),
-            parseNum(tcTongNanNu),
-            parseNum(tcNuKhongQL),
-            parseNum(tcTongChetNN),
-            parseNum(tcChetKhongQL),
-            parseNum(tcTongThuongNang),
-            parseNum(tcThuongKhongQL),
+            countVu,
+            countVuChet,
+            countVuNhieu,
+            countNan,
+            0,
+            countNu,
+            0,
+            countChet,
+            0,
+            countThuongNang,
+            0,
           ];
-        } else if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(ma)) {
-          const gridKeyMap: Record<string, string> = {
-            "1": "9",
-            "2": "10",
-            "3": "11",
-            "4": "12",
-            "5": "13",
-            "6": "14",
-            "7": "13",
-            "8": "15",
-            "9": "16",
-          };
-          const gridKey = gridKeyMap[ma];
-          const rowVal = phanLoai[gridKey] || Array(13).fill("0");
+        } else {
+          vals = savedOverviewRows[ma] || Array(11).fill(0);
+        }
+      } else if (ma.startsWith("occupation_")) {
+        const occName = ma.replace("occupation_", "");
+        if (accidentDetails.length > 0) {
+          const filtered = accidentDetails.filter((d) => cleanName(d.ngheNghiep || "") === occName);
+          const countVu = new Set(filtered.map((d) => d.id)).size;
+          const countChet = filtered.filter((d) => d.mucDo === "Chết").length;
+          const countVuChet = countChet > 0 ? 1 : 0;
+          const countVuNhieu = countVu >= 2 ? 1 : 0;
+          const countNan = filtered.length;
+          const countNu = filtered.filter((d) => d.gioiTinh === "Nữ").length;
+          const countThuongNang = filtered.filter((d) => d.mucDo === "Thương nặng").length;
           vals = [
-            parseNum(rowVal[0]),
-            parseNum(rowVal[1]),
-            parseNum(rowVal[2]),
-            parseNum(rowVal[3]),
+            countVu,
+            countVuChet,
+            countVuNhieu,
+            countNan,
             0,
-            parseNum(rowVal[4]),
+            countNu,
             0,
-            parseNum(rowVal[5]),
+            countChet,
             0,
-            parseNum(rowVal[6]),
+            countThuongNang,
             0,
           ];
-        } else if (ma === "101") {
-          if (accidentDetails.length > 0) {
-            const filtered = accidentDetails.filter(
-              (d) => d.yeuTo === "Thiết bị nâng",
-            );
-            const countVu = new Set(filtered.map((d) => d.id)).size;
-            const countChet = filtered.filter((d) => d.mucDo === "Chết").length;
-            const countVuChet = countChet > 0 ? 1 : 0;
-            const countVuNhieu = countVu >= 2 ? 1 : 0;
-            const countNan = filtered.length;
-            const countNu = filtered.filter((d) => d.gioiTinh === "Nữ").length;
-            const countThuongNang = filtered.filter(
-              (d) => d.mucDo === "Thương nặng",
-            ).length;
-            vals = [
-              countVu,
-              countVuChet,
-              countVuNhieu,
-              countNan,
-              0,
-              countNu,
-              0,
-              countChet,
-              0,
-              countThuongNang,
-              0,
-            ];
-          } else {
-            vals = savedOverviewRows["101"] || Array(11).fill(0);
-          }
-        } else if (ma === "102") {
-          if (accidentDetails.length > 0) {
-            const filtered = accidentDetails.filter((d) =>
-              d.ngheNghiep.toLowerCase().includes("lãnh đạo"),
-            );
-            const countVu = new Set(filtered.map((d) => d.id)).size;
-            const countChet = filtered.filter((d) => d.mucDo === "Chết").length;
-            const countVuChet = countChet > 0 ? 1 : 0;
-            const countVuNhieu = countVu >= 2 ? 1 : 0;
-            const countNan = filtered.length;
-            const countNu = filtered.filter((d) => d.gioiTinh === "Nữ").length;
-            const countThuongNang = filtered.filter(
-              (d) => d.mucDo === "Thương nặng",
-            ).length;
-            vals = [
-              countVu,
-              countVuChet,
-              countVuNhieu,
-              countNan,
-              0,
-              countNu,
-              0,
-              countChet,
-              0,
-              countThuongNang,
-              0,
-            ];
-          } else {
-            vals = savedOverviewRows["102"] || Array(11).fill(0);
-          }
-        } else if (ma === "103") {
-          if (accidentDetails.length > 0) {
-            const filtered = accidentDetails.filter((d) =>
-              d.ngheNghiep.toLowerCase().includes("công nhân"),
-            );
-            const countVu = new Set(filtered.map((d) => d.id)).size;
-            const countChet = filtered.filter((d) => d.mucDo === "Chết").length;
-            const countVuChet = countChet > 0 ? 1 : 0;
-            const countVuNhieu = countVu >= 2 ? 1 : 0;
-            const countNan = filtered.length;
-            const countNu = filtered.filter((d) => d.gioiTinh === "Nữ").length;
-            const countThuongNang = filtered.filter(
-              (d) => d.mucDo === "Thương nặng",
-            ).length;
-            vals = [
-              countVu,
-              countVuChet,
-              countVuNhieu,
-              countNan,
-              0,
-              countNu,
-              0,
-              countChet,
-              0,
-              countThuongNang,
-              0,
-            ];
-          } else {
-            vals = savedOverviewRows["103"] || Array(11).fill(0);
-          }
+        } else {
+          vals = savedOverviewRows[ma] || Array(11).fill(0);
         }
       }
 
-      return { ...row, vals };
+      let displayMa = row.ma;
+      if (row.ma === "total") {
+        displayMa = "";
+      } else if (row.ma.startsWith("factor_")) {
+        const factorName = row.ma.replace("factor_", "");
+        const found = dbFactors.find((f) => f.ten === factorName);
+        displayMa = found ? found.ma : "";
+      } else if (row.ma.startsWith("occupation_")) {
+        const occName = row.ma.replace("occupation_", "");
+        const found = dbOccupations.find((o) => o.ten === occName);
+        displayMa = found ? found.ma : "";
+      }
+
+      return {
+        ...row,
+        ma: displayMa,
+        vals,
+      };
     });
   }, [
     tongVu,
@@ -1854,9 +2051,15 @@ export default function EnterpriseReportPage() {
     phanLoai,
     accidentDetails,
     savedOverviewRows,
+    dbFactors,
+    dbOccupations,
   ]);
 
   const submit = async (status: string, successMsg: string) => {
+    if (status === "Đã nộp" && !reportFileUrl) {
+      setToast({ message: "Vui lòng đính kèm báo cáo TNLĐ có dấu mộc công ty trước khi gửi!", variant: "warning" });
+      return;
+    }
     if (!validateReport()) return;
     if (editingId == null) {
       setToast("Không xác định được báo cáo để lưu");
@@ -2078,7 +2281,6 @@ export default function EnterpriseReportPage() {
       }
 
       await exportDetailDocx(dataToExport, businessDetail);
-      setToast("In báo cáo Word thành công!");
     } catch (e: any) {
       setToast(e.message || "In báo cáo thất bại");
     }
@@ -2171,9 +2373,20 @@ export default function EnterpriseReportPage() {
     ? reports.filter((r) => r.nam === filterYear)
     : reports;
 
+  console.log("Factors/Occupations current state:", {
+    dbFactors,
+    dbOccupations,
+    standardFactors,
+    standardOccupations,
+  });
+
   return (
     <>
-      <Toast message={toast} onDone={() => setToast(null)} />
+      <Toast
+        message={toast ? toast.message : null}
+        variant={toast ? toast.variant : "success"}
+        onDone={() => setToast(null)}
+      />
 
       {view === "list" ? (
         <>
@@ -3044,63 +3257,11 @@ export default function EnterpriseReportPage() {
                   </>
                 ) : (
                   <>
-                    <div className="rounded-lg border-2 border-[#2563eb] p-6 bg-white shadow-sm">
-                      <div className="mb-4 text-[13px] font-bold text-[#2563eb] uppercase tracking-wide">
+                    <div className="rounded-lg border border-line p-6 bg-white shadow-sm">
+                      <div className="mb-4 text-[13px] font-bold text-ink uppercase tracking-wide">
                         **** Doanh nghiệp xảy ra tai nạn lao động vui lòng nhập
                         theo từng bước
                       </div>
-
-                      {/* Mismatch banner: cảnh báo khi tổng tab (1) ≠ tổng chi tiết */}
-                      {detailSumsMismatch && accidentDetails.length > 0 && (
-                        <div className="mb-4 rounded-md border border-[#f59e0b] bg-[#fffbeb] px-4 py-3 text-[12.5px] text-[#92400e]">
-                          <div className="mb-1 font-semibold text-[#b45309]">
-                            ⚠️ Thông số không khớp giữa Tab (1) và Chi tiết các
-                            vụ
-                          </div>
-                          <ul className="list-inside list-disc space-y-0.5">
-                            {detailSumsMismatch.tongVu && (
-                              <li>
-                                Tổng số vụ (tab 1) không khớp với tổng số vụ của
-                                các chi tiết
-                              </li>
-                            )}
-                            {detailSumsMismatch.vuChet && (
-                              <li>Số vụ có người chết không khớp</li>
-                            )}
-                            {detailSumsMismatch.vuNhieu && (
-                              <li>Số vụ ≥ 2 người bị nạn không khớp</li>
-                            )}
-                            {detailSumsMismatch.tongNan && (
-                              <li>Tổng số người bị nạn không khớp</li>
-                            )}
-                            {detailSumsMismatch.tongChetNN && (
-                              <li>Tổng số người bị chết không khớp</li>
-                            )}
-                            {detailSumsMismatch.tongThuongNang && (
-                              <li>Tổng số người bị thương nặng không khớp</li>
-                            )}
-                            {detailSumsMismatch.chiPhiYTe && (
-                              <li>Chi phí y tế không khớp</li>
-                            )}
-                            {detailSumsMismatch.chiPhiLuong && (
-                              <li>Chi phí trả lương không khớp</li>
-                            )}
-                            {detailSumsMismatch.chiPhiBTTC && (
-                              <li>Chi phí bồi thường trợ cấp không khớp</li>
-                            )}
-                            {detailSumsMismatch.soNgayNghi && (
-                              <li>Tổng số ngày nghỉ không khớp</li>
-                            )}
-                            {detailSumsMismatch.thiHaiTaiSan && (
-                              <li>Thiệt hại tài sản không khớp</li>
-                            )}
-                          </ul>
-                          <div className="mt-2 text-[12px] text-[#78350f]">
-                            Vui lòng kiểm tra lại thông số ở Tab (1) hoặc điều
-                            chỉnh chi tiết từng vụ để khớp nhau.
-                          </div>
-                        </div>
-                      )}
 
                       {accidentDetails.length === 0 ? (
                         <div className="mb-4 rounded-md border border-dashed border-[#d1d5db] bg-[#f9fafb] py-8 text-center text-[13.5px] text-muted">
@@ -3118,39 +3279,26 @@ export default function EnterpriseReportPage() {
                             }));
                           };
 
-                          const CAUSE_OPTIONS = [
-                            "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
-                            "Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt",
-                            "Tổ chức lao động không hợp lý",
-                            "Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ",
-                            "Không có quy trình an toàn hoặc biện pháp làm việc an toàn",
-                            "Điều kiện làm việc không tốt",
-                            "Quy phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn",
-                            "Không sử dụng phương tiện bảo vệ cá nhân",
-                            "Khách quan khó tránh/ Nguyên nhân chưa kể đến",
-                          ];
+                          const nan = parseNum(d.soNguoiBiNan);
+                          const nu = parseNum(d.soLDNu);
+                          const chet = parseNum(d.soNguoiBiChet);
+                          const thuong = parseNum(d.soNguoiBiThuongNang);
+                          const nanKQL = parseNum(d.nanKhongQL);
+                          const nuKQL = parseNum(d.nuKhongQL);
+                          const chetKQL = parseNum(d.chetKhongQL);
+                          const thuongKQL = parseNum(d.thuongKhongQL);
 
-                          const FACTOR_OPTIONS = [
-                            "Ngã",
-                            "Vật rơi, vật văng bắn",
-                            "Máy, thiết bị",
-                            "Phương tiện vận tải",
-                            "Điện giật",
-                            "Chất độc hại",
-                            "Bỏng",
-                            "Thiết bị nâng",
-                            "Khác",
-                          ];
-
-                          const OCCUPATION_OPTIONS = [
-                            "Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương",
-                            "Công nhân",
-                          ];
+                          const isNuGreater = nan < nu;
+                          const isChetGreater = nan < chet;
+                          const isThuongGreater = nan < thuong;
+                          const isNuKQLGreater = nanKQL < nuKQL;
+                          const isChetKQLGreater = nanKQL < chetKQL;
+                          const isThuongKQLGreater = nanKQL < thuongKQL;
 
                           return (
                             <div
                               key={d.id}
-                              className="mb-4 rounded-lg border border-dotted border-[#3b82f6] p-5 bg-white"
+                              className="mb-4 rounded-lg border border-line p-5 bg-white"
                             >
                               <div
                                 className="flex items-center justify-between border-b border-dashed border-[#e5e7eb] pb-3 mb-4 cursor-pointer"
@@ -3217,14 +3365,19 @@ export default function EnterpriseReportPage() {
                                       </label>
                                       <select
                                         className={SC}
-                                        value={d.yeuTo}
-                                        onChange={(e) =>
-                                          updateDetail(
-                                            d.id,
-                                            "yeuTo",
-                                            e.target.value,
-                                          )
+                                        value={
+                                          standardFactors.includes(d.yeuTo)
+                                            ? d.yeuTo
+                                            : "Khác"
                                         }
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          if (val === "Khác") {
+                                            updateDetail(d.id, "yeuTo", "Khác");
+                                          } else {
+                                            updateDetail(d.id, "yeuTo", val);
+                                          }
+                                        }}
                                       >
                                         {FACTOR_OPTIONS.map((opt) => (
                                           <option key={opt} value={opt}>
@@ -3232,6 +3385,33 @@ export default function EnterpriseReportPage() {
                                           </option>
                                         ))}
                                       </select>
+                                      {(!standardFactors.includes(d.yeuTo) ||
+                                        d.yeuTo === "Khác") && (
+                                        <div className="mt-1">
+                                          <InputField
+                                            label="Yếu tố chấn thương khác (ghi cụ thể)"
+                                            value={
+                                              d.yeuTo === "Khác" ? "" : d.yeuTo
+                                            }
+                                            onChange={(v) =>
+                                              updateDetail(d.id, "yeuTo", v)
+                                            }
+                                            required
+                                            type="text"
+                                            invalid={isInvalidValue(
+                                              triedSubmit,
+                                              d.yeuTo === "Khác" ? "" : d.yeuTo,
+                                              true,
+                                            )}
+                                            errorMsg={getErrorMsg(
+                                              triedSubmit,
+                                              d.yeuTo === "Khác" ? "" : d.yeuTo,
+                                              "Yếu tố chấn thương khác",
+                                              true,
+                                            )}
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
 
@@ -3242,14 +3422,29 @@ export default function EnterpriseReportPage() {
                                       </label>
                                       <select
                                         className={SC}
-                                        value={d.ngheNghiep}
-                                        onChange={(e) =>
-                                          updateDetail(
-                                            d.id,
-                                            "ngheNghiep",
-                                            e.target.value,
+                                        value={
+                                          standardOccupations.includes(
+                                            d.ngheNghiep,
                                           )
+                                            ? d.ngheNghiep
+                                            : "Khác"
                                         }
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          if (val === "Khác") {
+                                            updateDetail(
+                                              d.id,
+                                              "ngheNghiep",
+                                              "Khác",
+                                            );
+                                          } else {
+                                            updateDetail(
+                                              d.id,
+                                              "ngheNghiep",
+                                              val,
+                                            );
+                                          }
+                                        }}
                                       >
                                         {OCCUPATION_OPTIONS.map((opt) => (
                                           <option key={opt} value={opt}>
@@ -3257,6 +3452,45 @@ export default function EnterpriseReportPage() {
                                           </option>
                                         ))}
                                       </select>
+                                      {(!standardOccupations.includes(
+                                        d.ngheNghiep,
+                                      ) ||
+                                        d.ngheNghiep === "Khác") && (
+                                        <div className="mt-1">
+                                          <InputField
+                                            label="Nghề nghiệp khác (ghi cụ thể)"
+                                            value={
+                                              d.ngheNghiep === "Khác"
+                                                ? ""
+                                                : d.ngheNghiep
+                                            }
+                                            onChange={(v) =>
+                                              updateDetail(
+                                                d.id,
+                                                "ngheNghiep",
+                                                v,
+                                              )
+                                            }
+                                            required
+                                            type="text"
+                                            invalid={isInvalidValue(
+                                              triedSubmit,
+                                              d.ngheNghiep === "Khác"
+                                                ? ""
+                                                : d.ngheNghiep,
+                                              true,
+                                            )}
+                                            errorMsg={getErrorMsg(
+                                              triedSubmit,
+                                              d.ngheNghiep === "Khác"
+                                                ? ""
+                                                : d.ngheNghiep,
+                                              "Nghề nghiệp khác",
+                                              true,
+                                            )}
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                     <div />
                                   </div>
@@ -3273,12 +3507,12 @@ export default function EnterpriseReportPage() {
                                           updateDetail(d.id, "soNguoiBiNan", v)
                                         }
                                         required
-                                        invalid={isInvalidValue(
+                                        invalid={isNuGreater || isChetGreater || isThuongGreater || isInvalidValue(
                                           triedSubmit,
                                           d.soNguoiBiNan,
                                           true,
                                         )}
-                                        errorMsg={getErrorMsg(
+                                        errorMsg={isNuGreater ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số lao động nữ bị nạn" : isChetGreater ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người chết" : isThuongGreater ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người bị thương nặng" : getErrorMsg(
                                           triedSubmit,
                                           d.soNguoiBiNan,
                                           "Tổng số người bị nạn",
@@ -3292,12 +3526,12 @@ export default function EnterpriseReportPage() {
                                           updateDetail(d.id, "soLDNu", v)
                                         }
                                         required
-                                        invalid={isInvalidValue(
+                                        invalid={isNuGreater || isInvalidValue(
                                           triedSubmit,
                                           d.soLDNu,
                                           true,
                                         )}
-                                        errorMsg={getErrorMsg(
+                                        errorMsg={isNuGreater ? "Tổng số lao động nữ bị nạn phải nhỏ hơn hoặc bằng tổng số người bị nạn" : getErrorMsg(
                                           triedSubmit,
                                           d.soLDNu,
                                           "Tổng số lao động nữ bị nạn",
@@ -3311,12 +3545,12 @@ export default function EnterpriseReportPage() {
                                           updateDetail(d.id, "soNguoiBiChet", v)
                                         }
                                         required
-                                        invalid={isInvalidValue(
+                                        invalid={isChetGreater || isInvalidValue(
                                           triedSubmit,
                                           d.soNguoiBiChet,
                                           true,
                                         )}
-                                        errorMsg={getErrorMsg(
+                                        errorMsg={isChetGreater ? "Tổng số người chết phải nhỏ hơn hoặc bằng tổng số người bị nạn" : getErrorMsg(
                                           triedSubmit,
                                           d.soNguoiBiChet,
                                           "Tổng số người chết",
@@ -3334,12 +3568,12 @@ export default function EnterpriseReportPage() {
                                           )
                                         }
                                         required
-                                        invalid={isInvalidValue(
+                                        invalid={isThuongGreater || isInvalidValue(
                                           triedSubmit,
                                           d.soNguoiBiThuongNang,
                                           true,
                                         )}
-                                        errorMsg={getErrorMsg(
+                                        errorMsg={isThuongGreater ? "Tổng số người bị thương nặng phải nhỏ hơn hoặc bằng tổng số người bị nạn" : getErrorMsg(
                                           triedSubmit,
                                           d.soNguoiBiThuongNang,
                                           "Tổng số người bị thương nặng",
@@ -3354,12 +3588,12 @@ export default function EnterpriseReportPage() {
                                           updateDetail(d.id, "nanKhongQL", v)
                                         }
                                         required
-                                        invalid={isInvalidValue(
+                                        invalid={isNuKQLGreater || isChetKQLGreater || isThuongKQLGreater || isInvalidValue(
                                           triedSubmit,
                                           d.nanKhongQL,
                                           true,
                                         )}
-                                        errorMsg={getErrorMsg(
+                                        errorMsg={isNuKQLGreater ? "Số người bị nạn không QL phải lớn hơn hoặc bằng lao động nữ bị nạn không QL" : isChetKQLGreater ? "Số người bị nạn không QL phải lớn hơn hoặc bằng số người chết không QL" : isThuongKQLGreater ? "Số người bị nạn không QL phải lớn hơn hoặc bằng người bị thương nặng không QL" : getErrorMsg(
                                           triedSubmit,
                                           d.nanKhongQL,
                                           "Số người bị nạn không QL",
@@ -3373,12 +3607,12 @@ export default function EnterpriseReportPage() {
                                           updateDetail(d.id, "nuKhongQL", v)
                                         }
                                         required
-                                        invalid={isInvalidValue(
+                                        invalid={isNuKQLGreater || isInvalidValue(
                                           triedSubmit,
                                           d.nuKhongQL,
                                           true,
                                         )}
-                                        errorMsg={getErrorMsg(
+                                        errorMsg={isNuKQLGreater ? "Lao động nữ bị nạn không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL" : getErrorMsg(
                                           triedSubmit,
                                           d.nuKhongQL,
                                           "Lao động nữ bị nạn không QL",
@@ -3392,12 +3626,12 @@ export default function EnterpriseReportPage() {
                                           updateDetail(d.id, "chetKhongQL", v)
                                         }
                                         required
-                                        invalid={isInvalidValue(
+                                        invalid={isChetKQLGreater || isInvalidValue(
                                           triedSubmit,
                                           d.chetKhongQL,
                                           true,
                                         )}
-                                        errorMsg={getErrorMsg(
+                                        errorMsg={isChetKQLGreater ? "Số người chết không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL" : getErrorMsg(
                                           triedSubmit,
                                           d.chetKhongQL,
                                           "Số người chết không QL",
@@ -3411,12 +3645,12 @@ export default function EnterpriseReportPage() {
                                           updateDetail(d.id, "thuongKhongQL", v)
                                         }
                                         required
-                                        invalid={isInvalidValue(
+                                        invalid={isThuongKQLGreater || isInvalidValue(
                                           triedSubmit,
                                           d.thuongKhongQL,
                                           true,
                                         )}
-                                        errorMsg={getErrorMsg(
+                                        errorMsg={isThuongKQLGreater ? "Người bị thương nặng không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL" : getErrorMsg(
                                           triedSubmit,
                                           d.thuongKhongQL,
                                           "Người bị thương nặng không QL",
@@ -4212,43 +4446,43 @@ export default function EnterpriseReportPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {overviewRows.map((row, idx) => {
+                      {overviewRows.map((row: any, idx) => {
                         if (row.kind === "sub") {
-                          return (
-                            <tr key={idx}>
-                              <td
-                                className={`${CT_TD} text-left ${row.bold ? "font-semibold" : "italic"}`}
-                                colSpan={13}
-                                style={{ paddingLeft: row.bold ? 20 : 32 }}
-                              >
-                                {row.label}
-                              </td>
-                            </tr>
-                          );
-                        }
-                        const vals =
-                          row.vals && row.vals.length
-                            ? row.vals
-                            : EMPTY_VALS.map(() => 0);
-                        if (row.kind === "section") {
-                          return (
-                            <tr key={idx} className="bg-[#f9fafb]">
-                              <td
-                                className={`${CT_TD} text-left font-bold`}
-                                colSpan={13}
-                              >
-                                {row.label}
-                              </td>
-                            </tr>
-                          );
-                        }
-                        return (
-                          <tr key={idx}>
-                            <td className={`${CT_TD} text-left`}>
-                              {row.label}
-                            </td>
-                            <td className={CT_TD}>{row.ma || ""}</td>
-                            {vals.map((v, i) => (
+                           return (
+                             <tr key={idx}>
+                               <td
+                                 className={`${CT_TD} text-left ${row.bold ? "font-semibold" : "italic"}`}
+                                 colSpan={13}
+                                 style={{ paddingLeft: row.bold ? 20 : 32 }}
+                               >
+                                 {row.label}
+                               </td>
+                             </tr>
+                           );
+                         }
+                         const vals =
+                           row.vals && row.vals.length
+                             ? row.vals
+                             : EMPTY_VALS.map(() => 0);
+                         if (row.kind === "section") {
+                           return (
+                             <tr key={idx} className="bg-[#f9fafb]">
+                               <td
+                                 className={`${CT_TD} text-left font-bold`}
+                                 colSpan={13}
+                               >
+                                 {row.label}
+                               </td>
+                             </tr>
+                           );
+                         }
+                         return (
+                           <tr key={idx}>
+                             <td className={`${CT_TD} text-left`}>
+                               {row.label}
+                             </td>
+                             <td className={CT_TD}>{row.ma || ""}</td>
+                             {(vals as number[]).map((v, i) => (
                               <td key={i} className={CT_TD}>
                                 {v}
                               </td>

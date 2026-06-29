@@ -112,14 +112,7 @@ export class AccidentReportService {
     const report = await this.repo.findOne({ where: { id } });
     if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
 
-    return {
-      id: report.id,
-      enterpriseId: report.enterpriseId,
-      configId: report.configId,
-      rows: report.rows,
-      submittedAt: report.submittedAt,
-      status: report.status,
-    };
+    return report;
   }
 
   async approve(id: number, userId?: string): Promise<{ message: string }> {

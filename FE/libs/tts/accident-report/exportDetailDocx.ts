@@ -14,6 +14,11 @@ import {
   WidthType,
 } from "docx";
 import { DETAIL_REPORT_ROWS, type AccidentReport } from "./accidentReportData";
+import { getInjuryFactorList, getOccupationList } from "../category/categoryApi";
+
+const cleanName = (name: string): string => {
+  return (name || "").replace(/^[–\-—\s\.\u2013\u2014]+/, "").trim();
+};
 
 type VMerge = (typeof VerticalMergeType)[keyof typeof VerticalMergeType];
 
@@ -187,7 +192,11 @@ export function validateAccidentReportData(report: AccidentReport): string[] {
 }
 
 // ─── Bảng I – Phân loại TNLĐ theo mức độ thương tật ─────────────────────────
-function buildTable1(report: AccidentReport): Table {
+function buildTable1(
+  report: AccidentReport,
+  dbFactors: { ten: string; ma: string }[],
+  dbOccupations: { ten: string; ma: string }[],
+): Table {
   // Columns widths allocation (Total: 13960 dxa)
   const W_COL1 = 4500; // Tên chỉ tiêu thống kê
   const W_COL2 = 500;  // Mã số
@@ -265,7 +274,74 @@ function buildTable1(report: AccidentReport): Table {
   const section2Vals = get11("10");
   const section3Vals = section1Vals.map((v, i) => v + section2Vals[i]);
 
-  const dataRows = DETAIL_REPORT_ROWS.map((row) => {
+  // 1. Get the list of factors and occupations dynamically from accidentDetails (or savedOverviewRows keys)
+  const activeFactors = new Set<string>();
+  const activeOccupations = new Set<string>();
+
+  details.forEach((d: any) => {
+    if (d.yeuTo) activeFactors.add(cleanName(d.yeuTo));
+    if (d.ngheNghiep) activeOccupations.add(cleanName(d.ngheNghiep));
+  });
+
+  // Also include any saved keys from rows
+  Object.keys(rows).forEach((key) => {
+    if (key.startsWith("factor_")) {
+      activeFactors.add(cleanName(key.replace("factor_", "")));
+    }
+    if (key.startsWith("occupation_")) {
+      activeOccupations.add(cleanName(key.replace("occupation_", "")));
+    }
+  });
+
+  // If both are empty (for example, no details and no saved rows), default to "Thiết bị nâng" and standard occupations
+  if (activeFactors.size === 0 && activeOccupations.size === 0) {
+    activeFactors.add("Thiết bị nâng");
+    activeOccupations.add("Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương");
+    activeOccupations.add("Công nhân");
+  }
+
+  // Build the dynamic rows array for docx
+  const dynamicRows: { kind: string; label: string; ma: string; bold?: boolean }[] = [];
+
+  // Prefix: up to 1.1 Do người lao động
+  dynamicRows.push(
+    { kind: "section", label: "1. Tai nạn lao động", ma: "" },
+    { kind: "normal", label: "Tai nạn lao động", ma: "1" },
+    { kind: "sub", label: "1.1 Phân theo nguyên nhân xảy ra TNLĐ", ma: "", bold: true },
+    { kind: "sub", label: "a. Do người sử dụng lao động", ma: "" },
+    { kind: "normal", label: "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn", ma: "1" },
+    { kind: "normal", label: "Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt", ma: "2" },
+    { kind: "normal", label: "Tổ chức lao động không hợp lý", ma: "3" },
+    { kind: "normal", label: "Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ", ma: "4" },
+    { kind: "normal", label: "Không có quy trình an toàn hoặc biện pháp làm việc an toàn", ma: "5" },
+    { kind: "normal", label: "Điều kiện làm việc không tốt", ma: "6" },
+    { kind: "sub", label: "b. Do người lao động", ma: "" },
+    { kind: "normal", label: "Quy phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn", ma: "7" },
+    { kind: "normal", label: "Không sử dụng phương tiện bảo vệ cá nhân", ma: "8" },
+    { kind: "normal", label: "Khách quan khó tránh/ Nguyên nhân chưa kể đến", ma: "9" },
+  );
+
+  // 1.2 Phân theo yếu tố gây chấn thương
+  dynamicRows.push({ kind: "sub", label: "1.2. Phân theo yếu tố gây chấn thương", ma: "", bold: true });
+  Array.from(activeFactors).forEach((factor) => {
+    dynamicRows.push({ kind: "normal", label: factor, ma: `factor_${factor}` });
+  });
+
+  // 1.3 Phân theo nghề nghiệp
+  dynamicRows.push({ kind: "sub", label: "1.3 Phân theo nghề nghiệp", ma: "", bold: true });
+  Array.from(activeOccupations).forEach((occ) => {
+    dynamicRows.push({ kind: "normal", label: occ, ma: `occupation_${occ}` });
+  });
+
+  // 2 & 3 Sections
+  dynamicRows.push(
+    { kind: "section", label: "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ", ma: "" },
+    { kind: "normal", label: "Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ", ma: "10" },
+    { kind: "section", label: "3. Tổng số", ma: "" },
+    { kind: "normal", label: "Tổng số (3=1+2)", ma: "total" },
+  );
+
+  const dataRows = dynamicRows.map((row) => {
     if (row.kind === "sub") {
       return new TableRow({
         children: [
@@ -281,12 +357,12 @@ function buildTable1(report: AccidentReport): Table {
     }
 
     let vals = Array(11).fill(0);
-    if (row.label === "Tai nạn lao động" && (row as any).ma === "1") {
+    if (row.label === "Tai nạn lao động" && row.ma === "1") {
       vals = section1Vals;
-    } else if (row.label === "Tổng số (3=1+2)") {
+    } else if (row.label === "Tổng số (3=1+2)" && row.ma === "total") {
       vals = section3Vals;
-    } else if ((row as { ma?: string }).ma) {
-      vals = get11((row as { ma?: string }).ma!);
+    } else if (row.ma) {
+      vals = get11(row.ma);
     }
 
     const v = (i: number) => (vals[i] !== undefined && vals[i] !== 0 ? String(vals[i]) : "0");
@@ -305,10 +381,23 @@ function buildTable1(report: AccidentReport): Table {
       });
     }
 
+    let displayMa = row.ma;
+    if (row.ma === "total") {
+      displayMa = "";
+    } else if (row.ma.startsWith("factor_")) {
+      const factorName = row.ma.replace("factor_", "");
+      const found = dbFactors.find((f) => f.ten === factorName);
+      displayMa = found ? found.ma : "";
+    } else if (row.ma.startsWith("occupation_")) {
+      const occName = row.ma.replace("occupation_", "");
+      const found = dbOccupations.find((o) => o.ten === occName);
+      displayMa = found ? found.ma : "";
+    }
+
     return new TableRow({
       children: [
         dCell(row.label, false, true, 200, W_COL1),
-        dCell((row as { ma?: string }).ma ?? "", false, false, 0, W_COL2),
+        dCell(displayMa, false, false, 0, W_COL2),
         ...Array.from({ length: 11 }, (_, i) => dCell(v(i), false, false, 0, W_VAL)),
       ],
     });
@@ -384,6 +473,29 @@ function buildTable2(report: AccidentReport): Table {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 export async function exportDetailDocx(report: AccidentReport, businessDetail?: any): Promise<void> {
+  let dbFactors: { ten: string; ma: string }[] = [];
+  let dbOccupations: { ten: string; ma: string }[] = [];
+
+  try {
+    const list = await getInjuryFactorList();
+    dbFactors = list.filter((item) => item.active).map((item) => ({
+      ten: cleanName(item.ten),
+      ma: item.ma,
+    }));
+  } catch (err) {
+    console.error("Error fetching factors for docx export:", err);
+  }
+
+  try {
+    const list = await getOccupationList();
+    dbOccupations = list.map((item) => ({
+      ten: cleanName(item.ten),
+      ma: item.ma,
+    }));
+  } catch (err) {
+    console.error("Error fetching occupations for docx export:", err);
+  }
+
   const errors = validateAccidentReportData(report);
   if (errors.length > 0) {
     throw new Error("Dữ liệu không khớp:\n" + errors.join("\n"));
@@ -809,7 +921,7 @@ export async function exportDetailDocx(report: AccidentReport, businessDetail?: 
               }),
             ],
           }),
-          buildTable1(report),
+          buildTable1(report, dbFactors, dbOccupations),
           new Paragraph({ children: [] }),
           new Paragraph({
             spacing: { before: 120, after: 60 },

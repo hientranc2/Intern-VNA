@@ -39,7 +39,7 @@ export function getAccidentReportList(params?: {
 }
 
 export function getAccidentReportById(id: number) {
-  return request<AccidentReportDetail>(`/accident-reports/${id}`);
+  return request<AccidentReport>(`/accident-reports/${id}`);
 }
 
 export function approveAccidentReport(id: number) {
