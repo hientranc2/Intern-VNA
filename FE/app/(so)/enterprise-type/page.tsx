@@ -465,7 +465,6 @@ export default function EnterpriseTypePage() {
                 <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] pl-3.5 pr-1 py-2.5 text-left">
                   <TriCheckbox
                     checked={allPageChecked}
-                    indeterminate={selectedIds.size > 0 && !allPageChecked}
                     onChange={toggleAll}
                   />
                 </th>

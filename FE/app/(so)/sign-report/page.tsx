@@ -401,7 +401,6 @@ export default function SignReportPage() {
                       <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5">
                         <TriCheckbox
                           checked={allSelected}
-                          indeterminate={!allSelected && someSelected}
                           onChange={toggleSelectAll}
                         />
                       </th>
