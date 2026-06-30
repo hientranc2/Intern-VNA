@@ -305,6 +305,8 @@ export default function AccidentReportPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   const toggleSelect = (id: number) => {
+    const report = reports.find((r) => r.id === id);
+    if (!report || (report.tt !== "Đã nộp" && report.tt !== "Đã tiếp nhận")) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -406,14 +408,25 @@ export default function AccidentReportPage() {
     const r = viewingReport;
     if (!r) return DETAIL_REPORT_ROWS;
     const rows = r.rows ?? {};
+    const phanLoai = r.phanLoaiRows ?? {};
     const details = r.chiTietRows ?? [];
 
     const get11 = (ma: string): number[] => {
-      const raw = rows[ma];
+      const raw = phanLoai[ma];
       if (!Array.isArray(raw)) return Array(11).fill(0);
-      return Array(11)
-        .fill(0)
-        .map((_, i) => Number(raw[i] ?? 0));
+      return [
+        Number(raw[0] ?? 0),
+        Number(raw[1] ?? 0),
+        Number(raw[2] ?? 0),
+        Number(raw[3] ?? 0),
+        0,
+        Number(raw[4] ?? 0),
+        0,
+        Number(raw[5] ?? 0),
+        0,
+        Number(raw[6] ?? 0),
+        0,
+      ];
     };
 
     const section1Vals = [
@@ -443,7 +456,7 @@ export default function AccidentReportPage() {
     });
 
     // Also look at savedOverviewRows to preserve any loaded/saved rows that might not be in details currently
-    Object.keys(rows).forEach((key) => {
+    Object.keys(phanLoai).forEach((key) => {
       if (key.startsWith("factor_")) {
         activeFactors.add(cleanName(key.replace("factor_", "")));
       }
@@ -564,7 +577,7 @@ export default function AccidentReportPage() {
         ma: "10",
       },
       { kind: "section", label: "3. Tổng số", ma: "" },
-      { kind: "normal", label: "Tổng số (3=1+2)", ma: "" },
+      { kind: "normal", label: "Tổng số (3=1+2)", ma: "total" },
     );
 
     return dynamicRows.map((row) => {
@@ -609,48 +622,56 @@ export default function AccidentReportPage() {
   const dynamicThiethai = useMemo(() => {
     if (!viewingReport) return null;
     const details = viewingReport.chiTietRows || [];
-    if (details.length === 0) {
-      return {
-        soNgayNghi: viewingReport.soNgayNghi,
-        tongSoTien: viewingReport.tongSoTien,
-        chiPhiYTe: viewingReport.chiPhiYTe,
-        chiPhiTraLuong: viewingReport.chiPhiTraLuong,
-        boiThuongTroCap: viewingReport.boiThuongTroCap,
-        thiethaiTaiSan: viewingReport.thiethaiTaiSan,
-      };
+
+    let s1NgayNghi = 0;
+    let s1YTe = 0;
+    let s1Luong = 0;
+    let s1BTTC = 0;
+    let s1ThiHai = 0;
+
+    if (details.length > 0) {
+      details.forEach((d: any) => {
+        const getVal = (v: any) => {
+          if (typeof v === "number") return v;
+          const clean = String(v || "0")
+            .trim()
+            .replace(/\./g, "")
+            .replace(/,/g, ".");
+          return parseFloat(clean) || 0;
+        };
+        s1YTe += getVal(d.chiPhiYTe);
+        s1Luong += getVal(d.chiPhiLuong);
+        s1BTTC += getVal(d.chiPhiBTTC);
+        s1NgayNghi += getVal(d.soNgayNghi);
+        s1ThiHai += getVal(d.thiethaiTaiSan);
+      });
+    } else {
+      s1NgayNghi = Number(viewingReport.soNgayNghi) || 0;
+      s1YTe = Number(viewingReport.chiPhiYTe) || 0;
+      s1Luong = Number(viewingReport.chiPhiTraLuong) || 0;
+      s1BTTC = Number(viewingReport.boiThuongTroCap) || 0;
+      s1ThiHai = Number(viewingReport.thiethaiTaiSan) || 0;
     }
 
-    let totalNgayNghi = 0;
-    let totalYTe = 0;
-    let totalLuong = 0;
-    let totalBTTC = 0;
-    let totalTongTien = 0;
-    let totalThiHaiTS = 0;
+    const s1TongChiPhi = s1YTe + s1Luong + s1BTTC;
 
-    details.forEach((d: any) => {
-      const getVal = (v: any) => {
-        if (typeof v === "number") return v;
-        const clean = String(v || "0")
-          .trim()
-          .replace(/\./g, "")
-          .replace(/,/g, ".");
-        return parseFloat(clean) || 0;
-      };
-      totalYTe += getVal(d.chiPhiYTe);
-      totalLuong += getVal(d.chiPhiLuong);
-      totalBTTC += getVal(d.chiPhiBTTC);
-      totalTongTien += getVal(d.tongSoTien);
-      totalNgayNghi += getVal(d.soNgayNghi);
-      totalThiHaiTS += getVal(d.thiethaiTaiSan);
-    });
+    const tcRow = viewingReport.rows?.["10"];
+    const hasTc = Array.isArray(tcRow) && tcRow.length >= 17;
+
+    const s2NgayNghi = hasTc ? (Number(tcRow[11]) || 0) : 0;
+    const s2TongChiPhi = hasTc ? (Number(tcRow[12]) || 0) : 0;
+    const s2YTe = hasTc ? (Number(tcRow[13]) || 0) : 0;
+    const s2Luong = hasTc ? (Number(tcRow[14]) || 0) : 0;
+    const s2BTTC = hasTc ? (Number(tcRow[15]) || 0) : 0;
+    const s2ThiHai = hasTc ? (Number(tcRow[16]) || 0) : 0;
 
     return {
-      soNgayNghi: totalNgayNghi,
-      tongSoTien: totalTongTien,
-      chiPhiYTe: totalYTe,
-      chiPhiTraLuong: totalLuong,
-      boiThuongTroCap: totalBTTC,
-      thiethaiTaiSan: totalThiHaiTS,
+      soNgayNghi: s1NgayNghi + s2NgayNghi,
+      tongSoTien: s1TongChiPhi + s2TongChiPhi,
+      chiPhiYTe: s1YTe + s2YTe,
+      chiPhiTraLuong: s1Luong + s2Luong,
+      boiThuongTroCap: s1BTTC + s2BTTC,
+      thiethaiTaiSan: s1ThiHai + s2ThiHai,
     };
   }, [viewingReport]);
 
@@ -661,9 +682,13 @@ export default function AccidentReportPage() {
   const end = Math.min(start + pageSize, total);
   const paged = filtered.slice(start, end);
 
+  const enabledPaged = useMemo(() => {
+    return paged.filter((r) => r.tt === "Đã nộp" || r.tt === "Đã tiếp nhận");
+  }, [paged]);
+
   const allPageSelected =
-    paged.length > 0 && paged.every((r) => selectedIds.has(r.id));
-  const somePageSelected = paged.some((r) => selectedIds.has(r.id));
+    enabledPaged.length > 0 && enabledPaged.every((r) => selectedIds.has(r.id));
+  const somePageSelected = enabledPaged.some((r) => selectedIds.has(r.id));
 
   // Các báo cáo đang được chọn — dùng để validate trạng thái trước khi duyệt/từ chối.
   const selectedReports = useMemo(
@@ -675,14 +700,16 @@ export default function AccidentReportPage() {
   // "Đã tiếp nhận" = đã duyệt rồi → không cho duyệt lại.
   // "Từ chối" rồi → không cho từ chối lại.
   const disableApprove = selectedReports.some((r) => r.tt !== "Đã nộp");
-  const disableReject = selectedReports.some((r) => r.tt !== "Đã nộp");
+  const disableReject = selectedReports.some(
+    (r) => r.tt !== "Đã nộp" && r.tt !== "Đã tiếp nhận",
+  );
 
   const toggleSelectAll = () => {
-    const allIds = paged.map((r) => r.id);
+    const enabledIds = enabledPaged.map((r) => r.id);
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (allPageSelected) allIds.forEach((id) => next.delete(id));
-      else allIds.forEach((id) => next.add(id));
+      if (allPageSelected) enabledIds.forEach((id) => next.delete(id));
+      else enabledIds.forEach((id) => next.add(id));
       return next;
     });
   };
@@ -758,13 +785,14 @@ export default function AccidentReportPage() {
                         checked={allPageSelected}
                         indeterminate={!allPageSelected && somePageSelected}
                         onChange={toggleSelectAll}
+                        disabled={enabledPaged.length === 0}
                       />
                     </th>
                     <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]" />
                     <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Tên doanh nghiệp
                     </th>
-                    <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151] whitespace-nowrap">
                       Mã số thuế
                     </th>
                     <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
@@ -775,9 +803,6 @@ export default function AccidentReportPage() {
                     </th>
                     <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Ngày cập nhật
-                    </th>
-                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
-                      Ngày nộp
                     </th>
                     <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Trạng thái
@@ -845,7 +870,6 @@ export default function AccidentReportPage() {
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
-                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                       <select
                         className={FILTER_SELECT_CLASS}
@@ -877,7 +901,7 @@ export default function AccidentReportPage() {
                   {paged.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={8}
                         className="px-3.5 py-8 text-center text-[13.5px] text-muted"
                       >
                         Không có dữ liệu
@@ -893,6 +917,7 @@ export default function AccidentReportPage() {
                           <TriCheckbox
                             checked={selectedIds.has(r.id)}
                             onChange={() => toggleSelect(r.id)}
+                            disabled={r.tt !== "Đã nộp" && r.tt !== "Đã tiếp nhận"}
                           />
                         </td>
                         <td className="px-3.5 py-2.5">
@@ -957,7 +982,7 @@ export default function AccidentReportPage() {
                         <td className="px-3.5 py-2.5 text-[#374151]">
                           {r.ten}
                         </td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">
+                        <td className="px-3.5 py-2.5 text-[#374151] whitespace-nowrap">
                           {r.mst}
                         </td>
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
@@ -966,9 +991,6 @@ export default function AccidentReportPage() {
                         </td>
                         <td className="px-3.5 py-2.5 text-[#374151]">
                           {formatTime(r.updatedAt)}
-                        </td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">
-                          {formatTime(r.submittedAt)}
                         </td>
                         <td className="px-3.5 py-2.5">
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
