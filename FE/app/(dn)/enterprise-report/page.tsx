@@ -410,12 +410,6 @@ export default function EnterpriseReportPage() {
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [filterYear, setFilterYear] = useState("");
 
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [availableConfigs, setAvailableConfigs] = useState<ReportConfig[]>([]);
-  const [createYear, setCreateYear] = useState("");
-  const [createKy, setCreateKy] = useState("6 tháng");
-  const [creating, setCreating] = useState(false);
-
   const [businessDetail, setBusinessDetail] = useState<BusinessDetail | null>(
     null,
   );
@@ -424,56 +418,6 @@ export default function EnterpriseReportPage() {
   const [timelineReport, setTimelineReport] = useState<ReportRecord | null>(
     null,
   );
-
-  const matchedConfig = useMemo(() => {
-    return availableConfigs.find(
-      (c) => c.nam === createYear && c.ky === createKy,
-    );
-  }, [availableConfigs, createYear, createKy]);
-
-  const isAlreadyCreated = useMemo(() => {
-    return reports.some((r) => r.nam === createYear && r.ky === createKy);
-  }, [reports, createYear, createKy]);
-
-  const openCreateModal = async () => {
-    try {
-      const allConfigs = await getReportConfigList();
-      const activeConfigs = allConfigs.filter((c) => c.active);
-      setAvailableConfigs(activeConfigs);
-      setCreateYear(String(new Date().getFullYear()));
-      setCreateKy("6 tháng");
-      setCreateModalOpen(true);
-    } catch {
-      setToast("Không tải được danh sách kỳ báo cáo");
-    }
-  };
-
-  const confirmCreateReport = async () => {
-    if (isAlreadyCreated) {
-      setToast("Bạn đã tạo báo cáo cho kỳ này rồi");
-      return;
-    }
-    setCreating(true);
-    try {
-      const created = await submitDnReport({
-        configId: matchedConfig?.id,
-        nam: createYear,
-        ky: createKy,
-        tongSoRows: {},
-        chiTietRows: [],
-        status: "Đang báo cáo",
-      });
-      setCreateModalOpen(false);
-      setToast("Tạo báo cáo thành công");
-      const list = await getDnReportList();
-      setReports(list);
-      openReport(created);
-    } catch (e) {
-      setToast(e instanceof Error ? e.message : "Tạo báo cáo thất bại");
-    } finally {
-      setCreating(false);
-    }
-  };
 
   useEffect(() => {
     getDnReportList()
@@ -1344,10 +1288,21 @@ export default function EnterpriseReportPage() {
   };
 
   const canEditReport = (r: ReportRecord): boolean => {
-    if (r.tt === "Đang báo cáo" || r.tt === "Từ chối") {
-      return true;
+    if (r.tt !== "Đang báo cáo" && r.tt !== "Từ chối") {
+      return false;
     }
-    return false;
+    const config = reportConfigs.find((c) => c.id === r.configId);
+    if (config) {
+      if (!config.active) return false;
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const end = parseDateDDMMYYYY(config.ketThuc);
+      if (end) {
+        end.setHours(23, 59, 59, 999);
+        if (now > end) return false;
+      }
+    }
+    return true;
   };
 
   const openReport = (r: ReportRecord, readOnly: boolean = false) => {
@@ -2572,24 +2527,7 @@ export default function EnterpriseReportPage() {
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                onClick={openCreateModal}
-                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af]"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Thêm mới
-              </button>
+
             </div>
           </div>
           <div className="px-6 py-5">
@@ -4660,77 +4598,7 @@ export default function EnterpriseReportPage() {
         </>
       )}
 
-      <Modal
-        open={createModalOpen}
-        title="Thêm mới báo cáo định kỳ"
-        onClose={() => setCreateModalOpen(false)}
-        footer={
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setCreateModalOpen(false)}
-              disabled={creating}
-              className="h-9 rounded-md border border-line px-[18px] text-[13.5px] text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="button"
-              onClick={confirmCreateReport}
-              disabled={creating || isAlreadyCreated}
-              className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[13.5px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {creating ? "Đang tạo..." : "Bắt đầu khai báo"}
-            </button>
-          </div>
-        }
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12.5px] font-medium text-[#374151]">
-              Năm báo cáo <span className="text-danger">*</span>
-            </label>
-            <select
-              className={SC}
-              value={createYear}
-              onChange={(e) => setCreateYear(e.target.value)}
-            >
-              {(() => {
-                const maxYear = new Date().getFullYear();
-                const years = [];
-                for (let y = maxYear; y >= 2022; y--) {
-                  years.push(String(y));
-                }
-                return years.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ));
-              })()}
-            </select>
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12.5px] font-medium text-[#374151]">
-              Kỳ báo cáo <span className="text-danger">*</span>
-            </label>
-            <select
-              className={SC}
-              value={createKy}
-              onChange={(e) => setCreateKy(e.target.value)}
-            >
-              <option value="6 tháng">6 tháng</option>
-              <option value="Cả năm">Cả năm</option>
-            </select>
-          </div>
-
-          {isAlreadyCreated && (
-            <p className="text-[12.5px] text-danger font-medium">
-              Bạn đã tạo báo cáo cho năm {createYear} ({createKy}) rồi.
-            </p>
-          )}
-        </div>
-      </Modal>
 
       <Modal
         open={timelineOpen}

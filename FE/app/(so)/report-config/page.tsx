@@ -5,7 +5,7 @@ import { MenuItem, TextField } from "@mui/material";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
-import { SlidePanel } from "@/libs/shared/core/components/SlidePanel/SlidePanel";
+import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import {
   REPORT_NAME_OPTIONS,
   KY_OPTIONS,
@@ -22,6 +22,26 @@ import { useCan } from "@/libs/tts/auth/abilityContext";
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
 const FILTER_SELECT_CLASS = `${FILTER_INPUT_CLASS} cursor-pointer appearance-none bg-white bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_8px_center] bg-no-repeat pr-6`;
+
+const dateToIso = (dateStr: string): string => {
+  if (!dateStr) return "";
+  if (dateStr.includes("-")) return dateStr;
+  const parts = dateStr.split("/");
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  return "";
+};
+
+const isoToDate = (isoStr: string): string => {
+  if (!isoStr) return "";
+  if (isoStr.includes("/")) return isoStr;
+  const parts = isoStr.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return "";
+};
 
 export default function ReportConfigPage() {
   const canCreate = useCan("create", "REPORT_CONFIG");
@@ -103,8 +123,8 @@ export default function ReportConfigPage() {
     setInputTen(r.ten);
     setInputNam(r.nam);
     setInputKy(r.ky);
-    setInputBatDau("");
-    setInputKetThuc("");
+    setInputBatDau(dateToIso(r.batDau));
+    setInputKetThuc(dateToIso(r.ketThuc));
     setInputActive(r.active ? "1" : "0");
     setPanelErrors({});
     setPanelOpen(true);
@@ -140,8 +160,8 @@ export default function ReportConfigPage() {
           ky: inputKy,
           active,
         };
-        if (inputBatDau) payload.batDau = inputBatDau;
-        if (inputKetThuc) payload.ketThuc = inputKetThuc;
+        if (inputBatDau) payload.batDau = isoToDate(inputBatDau);
+        if (inputKetThuc) payload.ketThuc = isoToDate(inputKetThuc);
         const updated = await updateReportConfig(editId, payload);
         setItems((prev) => prev.map((r) => (r.id === editId ? updated : r)));
       } else {
@@ -149,8 +169,8 @@ export default function ReportConfigPage() {
           nam: inputNam,
           ten: inputTen,
           ky: inputKy,
-          batDau: inputBatDau,
-          ketThuc: inputKetThuc,
+          batDau: isoToDate(inputBatDau),
+          ketThuc: isoToDate(inputKetThuc),
           active,
         });
         setItems((prev) => [created, ...prev]);
@@ -398,13 +418,12 @@ export default function ReportConfigPage() {
         </div>
       </div>
 
-      <SlidePanel
+      <Modal
         open={panelOpen}
         title={editId ? "Chỉnh sửa" : "Thêm mới"}
         onClose={() => setPanelOpen(false)}
-        width={400}
         footer={
-          <>
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={() => setPanelOpen(false)}
@@ -433,7 +452,7 @@ export default function ReportConfigPage() {
               </svg>
               {saving ? "Đang lưu..." : "Lưu"}
             </button>
-          </>
+          </div>
         }
       >
         <div className="mb-4">
@@ -458,6 +477,11 @@ export default function ReportConfigPage() {
                 {o}
               </MenuItem>
             ))}
+            {inputTen && !REPORT_NAME_OPTIONS.includes(inputTen) && (
+              <MenuItem value={inputTen}>
+                {inputTen}
+              </MenuItem>
+            )}
           </TextField>
         </div>
         <div className="mb-4 grid grid-cols-2 gap-3.5">
@@ -499,44 +523,30 @@ export default function ReportConfigPage() {
           </TextField>
         </div>
         <div className="mb-4 grid grid-cols-2 gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12.5px] font-medium text-[#374151]">
-              Ngày bắt đầu <span className="text-danger">*</span>
-            </label>
-            <DateInput
-              value={inputBatDau}
-              onChange={(v) => {
-                setInputBatDau(v);
-                if (panelErrors.batDau)
-                  setPanelErrors((p) => ({ ...p, batDau: undefined }));
-              }}
-              error={!!panelErrors.batDau}
-            />
-            {panelErrors.batDau && (
-              <p className="mt-0.5 text-[11px] text-danger">
-                {panelErrors.batDau}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12.5px] font-medium text-[#374151]">
-              Ngày kết thúc <span className="text-danger">*</span>
-            </label>
-            <DateInput
-              value={inputKetThuc}
-              onChange={(v) => {
-                setInputKetThuc(v);
-                if (panelErrors.ketThuc)
-                  setPanelErrors((p) => ({ ...p, ketThuc: undefined }));
-              }}
-              error={!!panelErrors.ketThuc}
-            />
-            {panelErrors.ketThuc && (
-              <p className="mt-0.5 text-[11px] text-danger">
-                {panelErrors.ketThuc}
-              </p>
-            )}
-          </div>
+          <DateInput
+            label="Ngày bắt đầu"
+            required
+            value={inputBatDau}
+            onChange={(v) => {
+              setInputBatDau(v);
+              if (panelErrors.batDau)
+                setPanelErrors((p) => ({ ...p, batDau: undefined }));
+            }}
+            error={!!panelErrors.batDau}
+            helperText={panelErrors.batDau}
+          />
+          <DateInput
+            label="Ngày kết thúc"
+            required
+            value={inputKetThuc}
+            onChange={(v) => {
+              setInputKetThuc(v);
+              if (panelErrors.ketThuc)
+                setPanelErrors((p) => ({ ...p, ketThuc: undefined }));
+            }}
+            error={!!panelErrors.ketThuc}
+            helperText={panelErrors.ketThuc}
+          />
         </div>
         <div className="mb-4">
           <TextField
@@ -551,7 +561,7 @@ export default function ReportConfigPage() {
             <MenuItem value="0">Ngừng hoạt động</MenuItem>
           </TextField>
         </div>
-      </SlidePanel>
+      </Modal>
 
       <Toast message={toast} onDone={() => setToast(null)} />
     </>

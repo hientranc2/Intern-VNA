@@ -33,6 +33,7 @@ const GROUPS: NavGroup[] = [
     label: "Tai nạn lao động",
     children: [
       { label: "Danh mục chung", href: "/category" },
+      { label: "Cấu hình báo cáo", href: "/report-config" },
       { label: "TNLĐ theo HĐLĐ", href: "/accident-report" },
     ],
   },
