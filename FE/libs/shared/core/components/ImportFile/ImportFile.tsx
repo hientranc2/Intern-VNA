@@ -24,6 +24,22 @@ export function ImportFile({
 }: ImportFileProps) {
   const importRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      if (onDownloadTemplate) {
+        await onDownloadTemplate();
+      } else {
+        downloadTemplate();
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleFile = (file: File) => {
     onFileReady(file, file.name);
@@ -142,22 +158,22 @@ export function ImportFile({
             </div>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onDownloadTemplate) {
-                  onDownloadTemplate();
-                } else {
-                  downloadTemplate();
-                }
-              }}
-              className="flex-shrink-0 flex items-center gap-1.5 border border-primary rounded-md bg-white px-4 py-2 text-[13px] font-semibold text-primary hover:bg-[#eff6ff] transition-colors"
+              onClick={handleDownloadClick}
+              disabled={downloading}
+              className="flex-shrink-0 flex items-center gap-1.5 border border-primary rounded-md bg-white px-4 py-2 text-[13px] font-semibold text-primary hover:bg-[#eff6ff] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Tải về
+              {downloading ? (
+                <span className="text-[13px]">Đang tải...</span>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Tải về
+                </>
+              )}
             </button>
           </div>
         </div>

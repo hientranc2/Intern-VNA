@@ -379,39 +379,77 @@ export default function EnterprisePage() {
       const rowErrs: Record<string, string> = {};
       const businessName = (row["Tên doanh nghiệp"] || "").toString().trim();
       let taxCode = (row["Mã số thuế"] || "").toString().trim();
-      // Người dùng nhập liền 11-15 số thì tự thêm dấu "-"
       if (/^\d{11,15}$/.test(taxCode)) {
         taxCode = `${taxCode.slice(0, 10)}-${taxCode.slice(10)}`;
-        // Cập nhật lại dữ liệu để lúc import lưu luôn giá trị đã chuẩn hóa
         row["Mã số thuế"] = taxCode;
       }
-      const businessType = (row["Loại hình kinh doanh"] || "")
-        .toString()
-        .trim();
-      const mainIndustry = (row["Ngành nghề kinh doanh"] || "")
-        .toString()
-        .trim();
+      const businessType = (row["Loại hình kinh doanh"] || "").toString().trim();
+      const mainIndustry = (row["Ngành nghề kinh doanh"] || "").toString().trim();
       const registeredProvince = (row["Tỉnh ĐKKD"] || "").toString().trim();
       const registeredWard = (row["Phường ĐKKD"] || "").toString().trim();
       const email = (row["Email"] || "").toString().trim().toLowerCase();
       const officePhone = (row["SĐT văn phòng"] || "").toString().trim();
       const representativePhone = (row["SĐT đại diện"] || "").toString().trim();
+      const operatingProvince = (row["Tỉnh hoạt động"] || "").toString().trim();
+      const operatingWard = (row["Phường hoạt động"] || "").toString().trim();
 
+      // Tên doanh nghiệp
       if (!businessName) rowErrs["Tên doanh nghiệp"] = "Thiếu tên doanh nghiệp";
 
+      // Mã số thuế
       if (!taxCode) {
         rowErrs["Mã số thuế"] = "Thiếu mã số thuế";
       } else if (!/^\d{10}(-\d{1,5})?$/.test(taxCode.trim())) {
         rowErrs["Mã số thuế"] =
           "Mã số thuế gồm 10 chữ số, hoặc 10 chữ số + dấu gạch + tối đa 5 số";
+      } else if (seenTaxCodes.has(taxCode)) {
+        rowErrs["Mã số thuế"] = "Trùng mã số thuế trong file";
+      } else {
+        seenTaxCodes.add(taxCode);
       }
 
-      if (!businessType)
+      // Loại hình kinh doanh - phải khớp danh sách hợp lệ
+      if (!businessType) {
         rowErrs["Loại hình kinh doanh"] = "Thiếu loại hình kinh doanh";
-      if (!mainIndustry) rowErrs["Ngành nghề kinh doanh"] = "Thiếu ngành nghề";
-      if (!registeredProvince) rowErrs["Tỉnh ĐKKD"] = "Thiếu tỉnh ĐKKD";
-      if (!registeredWard) rowErrs["Phường ĐKKD"] = "Thiếu phường ĐKKD";
+      } else if (
+        loaiHinhOptions.length > 0 &&
+        !loaiHinhOptions.some(
+          (opt) => opt.trim().toLowerCase() === businessType.toLowerCase(),
+        )
+      ) {
+        rowErrs["Loại hình kinh doanh"] = "Loại hình không có trong hệ thống";
+      }
 
+      // Ngành nghề kinh doanh - phải khớp danh sách hợp lệ
+      if (!mainIndustry) {
+        rowErrs["Ngành nghề kinh doanh"] = "Thiếu ngành nghề";
+      } else if (
+        nganhCap4Options.length > 0 &&
+        !nganhCap4Options.some(
+          (opt) => opt.trim().toLowerCase() === mainIndustry.toLowerCase(),
+        )
+      ) {
+        rowErrs["Ngành nghề kinh doanh"] = "Ngành nghề không có trong hệ thống";
+      }
+
+      // Tỉnh ĐKKD - phải thuộc danh sách PROVINCES
+      if (!registeredProvince) {
+        rowErrs["Tỉnh ĐKKD"] = "Thiếu tỉnh ĐKKD";
+      } else if (!PROVINCES.includes(registeredProvince)) {
+        rowErrs["Tỉnh ĐKKD"] = "Tỉnh/thành phố không hợp lệ";
+      }
+
+      // Phường ĐKKD - phải thuộc đúng tỉnh đã chọn
+      if (!registeredWard) {
+        rowErrs["Phường ĐKKD"] = "Thiếu phường ĐKKD";
+      } else if (registeredProvince && PROVINCES.includes(registeredProvince)) {
+        const validWards = WARDS_BY_PROVINCE[registeredProvince] ?? [];
+        if (validWards.length > 0 && !validWards.includes(registeredWard)) {
+          rowErrs["Phường ĐKKD"] = `Phường/xã không thuộc ${registeredProvince}`;
+        }
+      }
+
+      // Email
       if (!email) {
         rowErrs["Email"] = "Thiếu email";
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -422,11 +460,31 @@ export default function EnterprisePage() {
         seenEmails.add(email);
       }
 
+      // SĐT văn phòng
       if (officePhone && !/^0\d{9,10}$/.test(officePhone)) {
         rowErrs["SĐT văn phòng"] = "SĐT không hợp lệ";
       }
+
+      // SĐT đại diện
       if (representativePhone && !/^0\d{9,10}$/.test(representativePhone)) {
         rowErrs["SĐT đại diện"] = "SĐT không hợp lệ";
+      }
+
+      // Tỉnh hoạt động (không bắt buộc, nhưng nếu có thì phải hợp lệ)
+      if (operatingProvince && !PROVINCES.includes(operatingProvince)) {
+        rowErrs["Tỉnh hoạt động"] = "Tỉnh/thành phố không hợp lệ";
+      }
+
+      // Phường hoạt động (không bắt buộc, nhưng nếu có thì phải thuộc đúng tỉnh)
+      if (
+        operatingWard &&
+        operatingProvince &&
+        PROVINCES.includes(operatingProvince)
+      ) {
+        const validOpWards = WARDS_BY_PROVINCE[operatingProvince] ?? [];
+        if (validOpWards.length > 0 && !validOpWards.includes(operatingWard)) {
+          rowErrs["Phường hoạt động"] = `Phường/xã không thuộc ${operatingProvince}`;
+        }
       }
 
       if (Object.keys(rowErrs).length > 0) {
@@ -2287,23 +2345,56 @@ export default function EnterprisePage() {
                           ].map((col, colIdx) => {
                             const err = rowErrs[col];
                             const isLast = colIdx === 15;
+
+                            const SELECT_COLS: Record<string, string[]> = {
+                              "Loại hình kinh doanh": loaiHinhOptions,
+                              "Ngành nghề kinh doanh": nganhCap4Options,
+                              "Tỉnh ĐKKD": PROVINCES,
+                              "Phường ĐKKD": WARDS_BY_PROVINCE[row["Tỉnh ĐKKD"]] ?? [],
+                              "Tỉnh hoạt động": PROVINCES,
+                              "Phường hoạt động": WARDS_BY_PROVINCE[row["Tỉnh hoạt động"]] ?? [],
+                            };
+
+                            const isSelectCol = col in SELECT_COLS;
+
                             return (
                               <td
                                 key={col}
-                                className={`p-2 relative align-top ${isLast ? "" : "border-r border-line"}`}
+                                className={`p-2 align-top overflow-visible ${isLast ? "" : "border-r border-line"}`}
                               >
-                                <input
-                                  type="text"
-                                  value={row[col] || ""}
-                                  onChange={(e) =>
-                                    handleCellChange(idx, col, e.target.value)
-                                  }
-                                  className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
-                                    err
-                                      ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
-                                      : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
-                                  }`}
-                                />
+                                {isSelectCol ? (
+                                  <div className="h-8">
+                                    <SearchableSelect
+                                      fixed
+                                      compact
+                                      error={!!err}
+                                      options={SELECT_COLS[col]}
+                                      value={row[col] || ""}
+                                      onChange={(v) => {
+                                        handleCellChange(idx, col, v);
+                                        if (col === "Tỉnh ĐKKD") {
+                                          handleCellChange(idx, "Phường ĐKKD", "");
+                                        }
+                                        if (col === "Tỉnh hoạt động") {
+                                          handleCellChange(idx, "Phường hoạt động", "");
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={row[col] || ""}
+                                    onChange={(e) =>
+                                      handleCellChange(idx, col, e.target.value)
+                                    }
+                                    className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                      err
+                                        ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                        : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                    }`}
+                                  />
+                                )}
                                 {err && (
                                   <div className="text-[11px] text-danger font-medium mt-1.5 leading-tight">
                                     {err}

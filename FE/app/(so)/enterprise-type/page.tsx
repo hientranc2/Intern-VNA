@@ -19,6 +19,7 @@ import {
 } from "@/libs/tts/enterprise-type/enterpriseTypeApi";
 import { ApiError } from "@/libs/tts/auth/apiClient";
 import { useCan } from "@/libs/tts/auth/abilityContext";
+import { EnterpriseTypeImportForm } from "@/libs/tts/enterprise-type/EnterpriseTypeImportForm";
 
 
 const FILTER_INPUT_CLASS =
@@ -45,6 +46,7 @@ export default function EnterpriseTypePage() {
   const [importErrors, setImportErrors] = useState<Record<number, Record<string, string>>>({});
   const [isImportSubmitting, setIsImportSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   useEffect(() => {
     getEnterpriseTypeList().then(setItems).catch(() => {});
@@ -182,19 +184,15 @@ export default function EnterpriseTypePage() {
 
   const normalizeEnterpriseTypeRows = (rawRows: any[]) => {
     return rawRows.map((row) => {
-      const pick = (candidates: string[]) => {
-        for (const k of Object.keys(row)) {
-          if (candidates.map(c => c.toLowerCase().trim()).includes(k.toLowerCase().trim())) {
-            return String(row[k] ?? "").trim();
-          }
-        }
-        return "";
-      };
-
+      const normalizedRow: Record<string, string> = {};
+      for (const k of Object.keys(row)) {
+        const cleanKey = k.replace(/\s*\*\s*$/, "").trim();
+        normalizedRow[cleanKey] = String(row[k] ?? "").trim();
+      }
       return {
-        'Mã loại hình': pick(['Mã loại hình', 'Mã']),
-        'Tên loại hình': pick(['Tên loại hình', 'Tên']),
-        'Trạng thái': pick(['Trạng thái', 'Kích hoạt', 'Active']),
+        'Mã loại hình': normalizedRow['Mã loại hình'] || normalizedRow['Mã'] || "",
+        'Tên loại hình': normalizedRow['Tên loại hình'] || normalizedRow['Tên'] || "",
+        'Trạng thái': normalizedRow['Trạng thái'] || normalizedRow['Kích hoạt'] || normalizedRow['Active'] || "",
       };
     });
   };
@@ -236,11 +234,8 @@ export default function EnterpriseTypePage() {
     return errs;
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImportFileName(file.name);
+  const handleFileDrop = (file: File, fileName: string) => {
+    setImportFileName(fileName);
     setIsLoading(true);
 
     const reader = new FileReader();
@@ -254,10 +249,24 @@ export default function EnterpriseTypePage() {
         if (!sheetName) throw new Error("File không có sheet nào");
 
         const sheet = workbook.Sheets[sheetName];
-        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "" });
+        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "", blankrows: false });
         if (rawRows.length === 0) throw new Error("File không có dòng dữ liệu nào");
 
-        const normalized = normalizeEnterpriseTypeRows(rawRows);
+        const dataRows = rawRows.filter((row) => {
+          const importantKeys = ["Mã loại hình *", "Mã loại hình", "Tên loại hình *", "Tên loại hình"];
+          const hasRealValue = importantKeys.some(
+            (k) => String(row[k] ?? "").trim() !== ""
+          );
+          if (!hasRealValue) return false;
+
+          const ma = String(row["Mã loại hình *"] || row["Mã loại hình"] || "").trim();
+          const ten = String(row["Tên loại hình *"] || row["Tên loại hình"] || "").trim();
+          return !(ma === "TNHH" && ten === "Trách nhiệm hữu hạn");
+        });
+
+        if (dataRows.length === 0) throw new Error("File không có dòng dữ liệu nào");
+
+        const normalized = normalizeEnterpriseTypeRows(dataRows);
         const errs = validateEnterpriseTypeImport(normalized);
 
         setImportRows(normalized);
@@ -267,7 +276,6 @@ export default function EnterpriseTypePage() {
         setToast({ message: err instanceof Error ? err.message : "Đọc file Excel thất bại", variant: "error" });
       } finally {
         setIsLoading(false);
-        if (importRef.current) importRef.current.value = "";
       }
     };
 
@@ -406,16 +414,10 @@ export default function EnterpriseTypePage() {
               Xóa bộ lọc
             </button>
           )}
-          <input
-            ref={importRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-            onChange={handleImport}
-          />
+
           <button
             type="button"
-            onClick={() => importRef.current?.click()}
+            onClick={() => setImportModalOpen(true)}
             className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
           >
             <svg
@@ -819,6 +821,16 @@ export default function EnterpriseTypePage() {
           chọn? Hành động này không thể hoàn tác.
         </p>
       </Modal>
+
+      {importModalOpen && (
+        <EnterpriseTypeImportForm
+          onClose={() => setImportModalOpen(false)}
+          onFileReady={(file, fileName) => {
+            setImportModalOpen(false);
+            handleFileDrop(file, fileName);
+          }}
+        />
+      )}
 
       {/* Modal Preview Import */}
       {importPreviewOpen && (

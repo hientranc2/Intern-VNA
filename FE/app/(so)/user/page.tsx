@@ -42,6 +42,7 @@ import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect
 import { localISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
+import { UserImportForm } from "@/libs/tts/user/UserImportForm";
 
 type ViewMode = "list" | "detail";
 
@@ -141,6 +142,7 @@ export default function UserPage() {
   const [importRows, setImportRows] = useState<any[]>([]);
   const [importErrors, setImportErrors] = useState<Record<number, Record<string, string>>>({});
   const [isImportSubmitting, setIsImportSubmitting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Server-side pagination
   const [pageSize, setPageSize] = useState(10);
@@ -397,7 +399,11 @@ export default function UserPage() {
     return rawRows.map((row) => {
       const pick = (candidates: string[]) => {
         for (const k of Object.keys(row)) {
-          if (candidates.map(c => c.toLowerCase().trim()).includes(k.toLowerCase().trim())) {
+          if (
+            candidates
+              .map((c) => c.toLowerCase().trim().replace(/\s*\*$/, ""))
+              .includes(k.toLowerCase().trim().replace(/\s*\*$/, ""))
+          ) {
             return String(row[k] ?? "").trim();
           }
         }
@@ -430,6 +436,9 @@ export default function UserPage() {
       const email = (row['Email'] || '').toString().trim().toLowerCase();
       const fullName = (row['Họ và tên'] || '').toString().trim();
       const roleMa = (row['Vai trò'] || '').toString().trim();
+      const province = (row['Tỉnh/Thành'] || '').toString().trim();
+      const ward = (row['Phường/Xã'] || '').toString().trim();
+      const gender = (row['Giới tính'] || '').toString().trim();
 
       if (!username) {
         rowErrs['Tên đăng nhập'] = 'Thiếu tên đăng nhập';
@@ -453,13 +462,30 @@ export default function UserPage() {
 
       if (!fullName) {
         rowErrs['Họ và tên'] = 'Thiếu họ và tên';
+      } else if (/\d/.test(fullName)) {
+        rowErrs['Họ và tên'] = 'Họ và tên không được chứa số';
       }
 
       if (roleMa) {
-        const roleExists = roles.some((r) => r.ma === roleMa);
+        const roleExists = roles.some((r) => r.ten === roleMa);
         if (!roleExists) {
           rowErrs['Vai trò'] = `Vai trò "${roleMa}" không tồn tại`;
         }
+      }
+
+      if (province && !PROVINCES.includes(province)) {
+        rowErrs['Tỉnh/Thành'] = 'Tỉnh/thành phố không hợp lệ';
+      }
+
+      if (ward && province && PROVINCES.includes(province)) {
+        const validWards = WARDS_BY_PROVINCE[province] ?? [];
+        if (validWards.length > 0 && !validWards.includes(ward)) {
+          rowErrs['Phường/Xã'] = `Phường/xã không thuộc ${province}`;
+        }
+      }
+
+      if (gender && !GENDER_OPTIONS.includes(gender)) {
+        rowErrs['Giới tính'] = 'Giới tính không hợp lệ';
       }
 
       if (Object.keys(rowErrs).length > 0) {
@@ -470,11 +496,8 @@ export default function UserPage() {
     return errs;
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImportFileName(file.name);
+  const handleFileDrop = (file: File, fileName: string) => {
+    setImportFileName(fileName);
     setIsLoading(true);
 
     const reader = new FileReader();
@@ -482,16 +505,30 @@ export default function UserPage() {
       try {
         const data = evt.target?.result;
         if (!data) throw new Error("Không đọc được dữ liệu file");
-        
+
         const workbook = XLSX.read(new Uint8Array(data as ArrayBuffer), { type: "array" });
-        const sheetName = workbook.SheetNames[0];
+        const sheetName = workbook.SheetNames.find((name) => name === "Người dùng") ?? workbook.SheetNames[0];
         if (!sheetName) throw new Error("File không có sheet nào");
 
         const sheet = workbook.Sheets[sheetName];
-        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "" });
+        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "", blankrows: false });
         if (rawRows.length === 0) throw new Error("File không có dòng dữ liệu nào");
 
-        const normalized = normalizeUserRows(rawRows);
+        const dataRows = rawRows.filter((row) => {
+          const importantKeys = ["Tên đăng nhập *", "Tên đăng nhập", "Email *", "Email"];
+          const hasRealValue = importantKeys.some(
+            (k) => String(row[k] ?? "").trim() !== ""
+          );
+          if (!hasRealValue) return false;
+
+          const username = String(row["Tên đăng nhập *"] || row["Tên đăng nhập"] || "").trim();
+          const email = String(row["Email *"] || row["Email"] || "").trim();
+          return !(username === "nguyenvana" && email === "nguyenvana@example.com");
+        });
+
+        if (dataRows.length === 0) throw new Error("File không có dòng dữ liệu nào");
+
+        const normalized = normalizeUserRows(dataRows);
         const errs = validateUserImport(normalized);
 
         setImportRows(normalized);
@@ -504,7 +541,6 @@ export default function UserPage() {
         });
       } finally {
         setIsLoading(false);
-        if (importRef.current) importRef.current.value = "";
       }
     };
 
@@ -514,6 +550,12 @@ export default function UserPage() {
     };
 
     reader.readAsArrayBuffer(file);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleFileDrop(file, file.name);
   };
 
   const handleCellChange = (rowIdx: number, field: string, val: string) => {
@@ -558,7 +600,12 @@ export default function UserPage() {
 
     setIsImportSubmitting(true);
     try {
-      const worksheet = XLSX.utils.json_to_sheet(importRows);
+      const rowsForSubmit = importRows.map((row) => {
+        const roleTen = (row["Vai trò"] || "").toString().trim();
+        const role = roles.find((r) => r.ten === roleTen);
+        return { ...row, "Vai trò": role ? role.ma : roleTen };
+      });
+      const worksheet = XLSX.utils.json_to_sheet(rowsForSubmit);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
       const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
@@ -870,7 +917,7 @@ export default function UserPage() {
               />
               <button
                 type="button"
-                onClick={() => importRef.current?.click()}
+                onClick={() => setImportModalOpen(true)}
                 disabled={!canCreate}
                 title={canCreate ? undefined : "Bạn không có quyền thêm mới người dùng"}
                 className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
@@ -1784,6 +1831,16 @@ export default function UserPage() {
         </div>
       </div>
 
+      {importModalOpen && (
+        <UserImportForm
+          onClose={() => setImportModalOpen(false)}
+          onFileReady={(file, fileName) => {
+            setImportModalOpen(false);
+            handleFileDrop(file, fileName);
+          }}
+        />
+      )}
+
       {/* Modal Preview & Sửa lỗi Import */}
       {importPreviewOpen && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/45 transition-opacity duration-200">
@@ -1850,18 +1907,46 @@ export default function UserPage() {
                           ].map((field, colIdx) => {
                             const err = rowErrs[field.key];
                             const isLast = colIdx === 9;
+
+                            const SELECT_COLS: Record<string, string[]> = {
+                              "Vai trò": roles.map((r) => r.ten),
+                              "Tỉnh/Thành": PROVINCES,
+                              "Phường/Xã": WARDS_BY_PROVINCE[row["Tỉnh/Thành"]] ?? [],
+                              "Giới tính": GENDER_OPTIONS,
+                            };
+
+                            const isSelectCol = field.key in SELECT_COLS;
+
                             return (
-                              <td key={field.key} className={`p-2 relative align-top ${isLast ? "" : "border-r border-line"}`}>
-                                <input
-                                  type="text"
-                                  value={row[field.key] || ""}
-                                  onChange={(e) => handleCellChange(idx, field.key, e.target.value)}
-                                  className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
-                                    err
-                                      ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
-                                      : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
-                                  }`}
-                                />
+                              <td key={field.key} className={`p-2 align-top overflow-visible ${isLast ? "" : "border-r border-line"}`}>
+                                {isSelectCol ? (
+                                  <div className="h-8">
+                                    <SearchableSelect
+                                      fixed
+                                      compact
+                                      error={!!err}
+                                      options={SELECT_COLS[field.key]}
+                                      value={row[field.key] || ""}
+                                      onChange={(v) => {
+                                        handleCellChange(idx, field.key, v);
+                                        if (field.key === "Tỉnh/Thành") {
+                                          handleCellChange(idx, "Phường/Xã", "");
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={row[field.key] || ""}
+                                    onChange={(e) => handleCellChange(idx, field.key, e.target.value)}
+                                    className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                      err
+                                        ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                        : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                    }`}
+                                  />
+                                )}
                                 {err && (
                                   <div className="text-[11px] text-danger font-medium mt-1.5 leading-tight">{err}</div>
                                 )}
