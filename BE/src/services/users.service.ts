@@ -182,13 +182,6 @@ export class UsersService {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
 
-    // Không cho đặt lại trùng mật khẩu hiện tại.
-    const isSame = await bcrypt.compare(dto.newPassword, user.password);
-    if (isSame)
-      throw new BadRequestException(
-        'Mật khẩu mới không được trùng mật khẩu cũ',
-      );
-
     user.password = await bcrypt.hash(dto.newPassword, 10);
     // Vô hiệu phiên cũ — buộc người dùng đăng nhập lại bằng mật khẩu mới.
     user.passwordChangedAt = new Date();

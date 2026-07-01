@@ -137,10 +137,7 @@ const formatNumberString = (val: string): string => {
 };
 
 const normalizeDetail = (d: any): AccidentDetail => {
-  const gioiTinh = d.gioiTinh || "Nam";
-  const mucDo = d.mucDo || "Thương nhẹ";
-
-  const parseStr = (val: any, def: string): string => {
+  const parseStr = (val: any, def: string = ""): string => {
     if (val === undefined || val === null) return def;
     const s = String(val).trim();
     return s === "" || s === "null" || s === "undefined" ? def : s;
@@ -148,27 +145,25 @@ const normalizeDetail = (d: any): AccidentDetail => {
 
   return {
     id: d.id,
-    hoTen: d.hoTen || "",
-    ngaySinh: d.ngaySinh || "",
-    gioiTinh,
-    ngheNghiep: d.ngheNghiep || "Công nhân",
-    loaiHopDong: d.loaiHopDong || "Hợp đồng xác định thời hạn",
-    mucDo,
-    ngayXayRa: d.ngayXayRa || "",
-    diaDiem: d.diaDiem || "",
+    hoTen: parseStr(d.hoTen),
+    ngaySinh: parseStr(d.ngaySinh),
+    gioiTinh: parseStr(d.gioiTinh),
+    ngheNghiep: parseStr(d.ngheNghiep),
+    loaiHopDong: parseStr(d.loaiHopDong),
+    mucDo: parseStr(d.mucDo),
+    ngayXayRa: parseStr(d.ngayXayRa),
+    diaDiem: parseStr(d.diaDiem),
 
-    nguyenNhan:
-      d.nguyenNhan ||
-      "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
-    yeuTo: d.yeuTo || "Thiết bị nâng",
+    nguyenNhan: parseStr(d.nguyenNhan),
+    yeuTo: parseStr(d.yeuTo),
 
-    soVu: "1", // A detail row always represents exactly 1 accident/victim
-    soVuCoNguoiChet: mucDo === "Chết" ? "1" : "0",
-    soVuCo2NguoiBiNan: "0", // A single victim row cannot be a multi-victim accident by itself
-    soNguoiBiNan: "1",
-    soLDNu: gioiTinh === "Nữ" ? "1" : "0",
-    soNguoiBiChet: mucDo === "Chết" ? "1" : "0",
-    soNguoiBiThuongNang: mucDo === "Thương nặng" ? "1" : "0",
+    soVu: parseStr(d.soVu, "0"),
+    soVuCoNguoiChet: parseStr(d.soVuCoNguoiChet, "0"),
+    soVuCo2NguoiBiNan: parseStr(d.soVuCo2NguoiBiNan, "0"),
+    soNguoiBiNan: parseStr(d.soNguoiBiNan, "0"),
+    soLDNu: parseStr(d.soLDNu, "0"),
+    soNguoiBiChet: parseStr(d.soNguoiBiChet, "0"),
+    soNguoiBiThuongNang: parseStr(d.soNguoiBiThuongNang, "0"),
 
     nanKhongQL: parseStr(d.nanKhongQL, "0"),
     nuKhongQL: parseStr(d.nuKhongQL, "0"),
@@ -318,18 +313,18 @@ const CT_TD =
 const EMPTY_DETAIL: Omit<AccidentDetail, "id"> = {
   hoTen: "",
   ngaySinh: "",
-  gioiTinh: "Nam",
-  ngheNghiep: "Lao động xây dựng và lao động liên quan",
-  loaiHopDong: "Hợp đồng xác định thời hạn",
-  mucDo: "Thương nhẹ",
+  gioiTinh: "",
+  ngheNghiep: "",
+  loaiHopDong: "",
+  mucDo: "",
   ngayXayRa: "",
   diaDiem: "",
-  yeuTo: "Thiết bị nâng",
-  nguyenNhan: "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
-  soVu: "1",
+  yeuTo: "",
+  nguyenNhan: "",
+  soVu: "0",
   soVuCoNguoiChet: "0",
   soVuCo2NguoiBiNan: "0",
-  soNguoiBiNan: "1",
+  soNguoiBiNan: "0",
   soLDNu: "0",
   soNguoiBiChet: "0",
   soNguoiBiThuongNang: "0",
@@ -961,6 +956,120 @@ export default function EnterpriseReportPage() {
     thiHaiTaiSan,
   ]);
 
+  const detailSumsValidation = useMemo(() => {
+    let sumVu = 0,
+      sumVuChet = 0,
+      sumVuNhieu = 0;
+    let sumNan = 0,
+      sumNanNu = 0,
+      sumChet = 0,
+      sumThuong = 0;
+    let sumNanKQL = 0,
+      sumNuKQL = 0,
+      sumChetKQL = 0,
+      sumThuongKQL = 0;
+    let sumYTe = 0,
+      sumLuong = 0,
+      sumBTTC = 0,
+      sumTongTien = 0;
+    let sumNgayNghi = 0,
+      sumThiHaiTS = 0;
+
+    accidentDetails.forEach((d) => {
+      sumVu += parseNum(d.soVu);
+      sumVuChet += parseNum(d.soVuCoNguoiChet);
+      sumVuNhieu += parseNum(d.soVuCo2NguoiBiNan);
+      sumNan += parseNum(d.soNguoiBiNan);
+      sumNanNu += parseNum(d.soLDNu);
+      sumChet += parseNum(d.soNguoiBiChet);
+      sumThuong += parseNum(d.soNguoiBiThuongNang);
+      sumNanKQL += parseNum(d.nanKhongQL);
+      sumNuKQL += parseNum(d.nuKhongQL);
+      sumChetKQL += parseNum(d.chetKhongQL);
+      sumThuongKQL += parseNum(d.thuongKhongQL);
+      sumYTe += parseNum(d.chiPhiYTe);
+      sumLuong += parseNum(d.chiPhiLuong);
+      sumBTTC += parseNum(d.chiPhiBTTC);
+      sumTongTien += parseNum(d.tongSoTien);
+      sumNgayNghi += parseNum(d.soNgayNghi);
+      sumThiHaiTS += parseNum(d.thiethaiTaiSan);
+    });
+
+    const pTongVu = parseNum(tongVu);
+    const pVuChet = parseNum(vuChet);
+    const pVuNhieu = parseNum(vuNhieu);
+    const pTongNan = parseNum(tongNan);
+    const pTongNanNu = parseNum(tongNanNu);
+    const pTongChetNN = parseNum(tongChetNN);
+    const pTongThuongNang = parseNum(tongThuongNang);
+    const pNanKhongQL = parseNum(nanKhongQL);
+    const pNuKhongQL = parseNum(nuKhongQL);
+    const pChetKhongQL = parseNum(chetKhongQL);
+    const pThuongKhongQL = parseNum(thuongKhongQL);
+    const pChiPhiYTe = parseNum(chiPhiYTe);
+    const pChiPhiLuong = parseNum(chiPhiLuong);
+    const pChiPhiBTTC = parseNum(chiPhiBTTC);
+    const pTongChiPhi = parseNum(tongChiPhi);
+    const pSoNgayNghi = parseNum(soNgayNghi);
+    const pThiHaiTaiSan = parseNum(thiHaiTaiSan);
+
+    const formatCost = (num: number): string => {
+      return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    };
+
+    return {
+      sumNan,
+      sumNanNu,
+      sumChet,
+      sumThuong,
+      sumNanKQL,
+      sumNuKQL,
+      sumChetKQL,
+      sumThuongKQL,
+      sumYTe,
+      sumLuong,
+      sumBTTC,
+      sumTongTien,
+      sumNgayNghi,
+      sumThiHaiTS,
+      formatCost,
+      
+      isNanExceeded: sumNan > pTongNan,
+      isNanNuExceeded: sumNanNu > pTongNanNu,
+      isChetNNExceeded: sumChet > pTongChetNN,
+      isThuongNangExceeded: sumThuong > pTongThuongNang,
+      isNanKQLExceeded: sumNanKQL > pNanKhongQL,
+      isNuKQLExceeded: sumNuKQL > pNuKhongQL,
+      isChetKQLExceeded: sumChetKQL > pChetKhongQL,
+      isThuongKQLExceeded: sumThuongKQL > pThuongKhongQL,
+      isChiPhiYTeExceeded: sumYTe > pChiPhiYTe,
+      isChiPhiLuongExceeded: sumLuong > pChiPhiLuong,
+      isChiPhiBTTCExceeded: sumBTTC > pChiPhiBTTC,
+      isTongChiPhiExceeded: sumTongTien > pTongChiPhi,
+      isSoNgayNghiExceeded: sumNgayNghi > pSoNgayNghi,
+      isThiHaiTaiSanExceeded: sumThiHaiTS > pThiHaiTaiSan,
+    };
+  }, [
+    accidentDetails,
+    tongVu,
+    vuChet,
+    vuNhieu,
+    tongNan,
+    tongNanNu,
+    tongChetNN,
+    tongThuongNang,
+    nanKhongQL,
+    nuKhongQL,
+    chetKhongQL,
+    thuongKhongQL,
+    chiPhiYTe,
+    chiPhiLuong,
+    chiPhiBTTC,
+    tongChiPhi,
+    soNgayNghi,
+    thiHaiTaiSan,
+  ]);
+
   useEffect(() => {
     if (!checkDetailsChanged()) return;
 
@@ -1056,35 +1165,7 @@ export default function EnterpriseReportPage() {
     const hasDetailVuNhieu = accidentDetails.some((d) => parseNum(d.soVuCo2NguoiBiNan) > 0);
 
 
-    const hasDetailVu = accidentDetails.some((d) => parseNum(d.soVu) > 0);
-    if (hasDetailVu) {
-      setTongVu(String(totalV));
-      setVuChet(String(vChetCount));
-      setVuNhieu(String(vNhieuCount));
-    }
-    if (hasDetailNan) setTongNan(String(totalN));
-    if (hasDetailNu) setTongNanNu(String(totalN_Nu));
-    if (hasDetailChet) setTongChetNN(String(totalChet));
-    if (hasDetailThuong) setTongThuongNang(String(totalThuong));
 
-    if (hasDetailKQL) {
-      setNanKhongQL(String(totalNanKQL));
-      setNuKhongQL(String(totalNuKQL));
-      setChetKhongQL(String(totalChetKQL));
-      setThuongKhongQL(String(totalThuongKQL));
-    }
-
-    if (hasDetailCosts) {
-      setChiPhiYTe(formatCost(totalYTe));
-      setChiPhiLuong(formatCost(totalLuong));
-      setChiPhiBTTC(formatCost(totalBTTC));
-      setTongChiPhi(formatCost(totalYTe + totalLuong + totalBTTC));
-      setThiHaiTaiSan(formatCost(totalThiHaiTS));
-    }
-
-    if (hasDetailDays) {
-      setSoNgayNghi(String(totalNgayNghi));
-    }
 
     setPhanLoai((prev) => {
       const next = { ...prev };
@@ -1649,6 +1730,27 @@ export default function EnterpriseReportPage() {
           return false;
         }
       }
+
+      const hasDetailExceededError = 
+        detailSumsValidation.isNanExceeded ||
+        detailSumsValidation.isNanNuExceeded ||
+        detailSumsValidation.isChetNNExceeded ||
+        detailSumsValidation.isThuongNangExceeded ||
+        detailSumsValidation.isNanKQLExceeded ||
+        detailSumsValidation.isNuKQLExceeded ||
+        detailSumsValidation.isChetKQLExceeded ||
+        detailSumsValidation.isThuongKQLExceeded ||
+        detailSumsValidation.isChiPhiYTeExceeded ||
+        detailSumsValidation.isChiPhiLuongExceeded ||
+        detailSumsValidation.isChiPhiBTTCExceeded ||
+        detailSumsValidation.isTongChiPhiExceeded ||
+        detailSumsValidation.isSoNgayNghiExceeded ||
+        detailSumsValidation.isThiHaiTaiSanExceeded;
+
+      if (hasDetailExceededError) {
+        setSubTab("chiTiet");
+        return false;
+      }
     } else if (sec === "tnld_tc") {
       const tcFields: [string, string][] = [
         ["Tổng số vụ", tcTongVu],
@@ -1806,6 +1908,28 @@ export default function EnterpriseReportPage() {
         setExpandedIds((prev) => ({ ...prev, [d.id]: true }));
         return false;
       }
+    }
+
+    const hasDetailExceededError = 
+      detailSumsValidation.isNanExceeded ||
+      detailSumsValidation.isNanNuExceeded ||
+      detailSumsValidation.isChetNNExceeded ||
+      detailSumsValidation.isThuongNangExceeded ||
+      detailSumsValidation.isNanKQLExceeded ||
+      detailSumsValidation.isNuKQLExceeded ||
+      detailSumsValidation.isChetKQLExceeded ||
+      detailSumsValidation.isThuongKQLExceeded ||
+      detailSumsValidation.isChiPhiYTeExceeded ||
+      detailSumsValidation.isChiPhiLuongExceeded ||
+      detailSumsValidation.isChiPhiBTTCExceeded ||
+      detailSumsValidation.isTongChiPhiExceeded ||
+      detailSumsValidation.isSoNgayNghiExceeded ||
+      detailSumsValidation.isThiHaiTaiSanExceeded;
+
+    if (hasDetailExceededError) {
+      setSection("tnld");
+      setSubTab("chiTiet");
+      return false;
     }
 
     const negative = [...ttctFields, ...tnldFields, ...tcFields].find(
@@ -3516,6 +3640,76 @@ export default function EnterpriseReportPage() {
                           const isChetKQLGreater = nanKQL < chetKQL;
                           const isThuongKQLGreater = nanKQL < thuongKQL;
 
+                          const limitNan = parseNum(tongNan);
+                          const sumNanOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.soNguoiBiNan), 0);
+                          const maxNan = Math.max(0, limitNan - sumNanOthers);
+                          const isNanExceeded = parseNum(d.soNguoiBiNan) > maxNan;
+
+                          const limitNanNu = parseNum(tongNanNu);
+                          const sumNanNuOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.soLDNu), 0);
+                          const maxNanNu = Math.max(0, limitNanNu - sumNanNuOthers);
+                          const isNanNuExceeded = parseNum(d.soLDNu) > maxNanNu;
+
+                          const limitChetNN = parseNum(tongChetNN);
+                          const sumChetOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.soNguoiBiChet), 0);
+                          const maxChetNN = Math.max(0, limitChetNN - sumChetOthers);
+                          const isChetNNExceeded = parseNum(d.soNguoiBiChet) > maxChetNN;
+
+                          const limitThuongNang = parseNum(tongThuongNang);
+                          const sumThuongOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.soNguoiBiThuongNang), 0);
+                          const maxThuongNang = Math.max(0, limitThuongNang - sumThuongOthers);
+                          const isThuongNangExceeded = parseNum(d.soNguoiBiThuongNang) > maxThuongNang;
+
+                          const limitNanKQL = parseNum(nanKhongQL);
+                          const sumNanKQLOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.nanKhongQL), 0);
+                          const maxNanKQL = Math.max(0, limitNanKQL - sumNanKQLOthers);
+                          const isNanKQLExceeded = parseNum(d.nanKhongQL) > maxNanKQL;
+
+                          const limitNuKQL = parseNum(nuKhongQL);
+                          const sumNuKQLOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.nuKhongQL), 0);
+                          const maxNuKQL = Math.max(0, limitNuKQL - sumNuKQLOthers);
+                          const isNuKQLExceeded = parseNum(d.nuKhongQL) > maxNuKQL;
+
+                          const limitChetKQL = parseNum(chetKhongQL);
+                          const sumChetKQLOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.chetKhongQL), 0);
+                          const maxChetKQL = Math.max(0, limitChetKQL - sumChetKQLOthers);
+                          const isChetKQLExceeded = parseNum(d.chetKhongQL) > maxChetKQL;
+
+                          const limitThuongKQL = parseNum(thuongKhongQL);
+                          const sumThuongKQLOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.thuongKhongQL), 0);
+                          const maxThuongKQL = Math.max(0, limitThuongKQL - sumThuongKQLOthers);
+                          const isThuongKQLExceeded = parseNum(d.thuongKhongQL) > maxThuongKQL;
+
+                          const limitYTe = parseNum(chiPhiYTe);
+                          const sumYTeOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.chiPhiYTe), 0);
+                          const maxYTe = Math.max(0, limitYTe - sumYTeOthers);
+                          const isChiPhiYTeExceeded = parseNum(d.chiPhiYTe) > maxYTe;
+
+                          const limitLuong = parseNum(chiPhiLuong);
+                          const sumLuongOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.chiPhiLuong), 0);
+                          const maxLuong = Math.max(0, limitLuong - sumLuongOthers);
+                          const isChiPhiLuongExceeded = parseNum(d.chiPhiLuong) > maxLuong;
+
+                          const limitBTTC = parseNum(chiPhiBTTC);
+                          const sumBTTCOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.chiPhiBTTC), 0);
+                          const maxBTTC = Math.max(0, limitBTTC - sumBTTCOthers);
+                          const isChiPhiBTTCExceeded = parseNum(d.chiPhiBTTC) > maxBTTC;
+
+                          const limitTongChiPhi = parseNum(tongChiPhi);
+                          const sumTongChiPhiOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.tongSoTien), 0);
+                          const maxTongChiPhi = Math.max(0, limitTongChiPhi - sumTongChiPhiOthers);
+                          const isTongChiPhiExceeded = parseNum(d.tongSoTien) > maxTongChiPhi;
+
+                          const limitSoNgayNghi = parseNum(soNgayNghi);
+                          const sumSoNgayNghiOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.soNgayNghi), 0);
+                          const maxSoNgayNghi = Math.max(0, limitSoNgayNghi - sumSoNgayNghiOthers);
+                          const isSoNgayNghiExceeded = parseNum(d.soNgayNghi) > maxSoNgayNghi;
+
+                          const limitThiHaiTS = parseNum(thiHaiTaiSan);
+                          const sumThiHaiTSOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.thiethaiTaiSan), 0);
+                          const maxThiHaiTS = Math.max(0, limitThiHaiTS - sumThiHaiTSOthers);
+                          const isThiHaiTaiSanExceeded = parseNum(d.thiethaiTaiSan) > maxThiHaiTS;
+
                           return (
                             <div
                               key={d.id}
@@ -3573,6 +3767,7 @@ export default function EnterpriseReportPage() {
                                           )
                                         }
                                       >
+                                        <option value="">-- Chọn nguyên nhân --</option>
                                         {CAUSE_OPTIONS.map((opt) => (
                                           <option key={opt} value={opt}>
                                             {opt}
@@ -3587,9 +3782,11 @@ export default function EnterpriseReportPage() {
                                       <select
                                         className={SC}
                                         value={
-                                          standardFactors.includes(d.yeuTo)
-                                            ? d.yeuTo
-                                            : "Khác"
+                                          d.yeuTo === ""
+                                            ? ""
+                                            : standardFactors.includes(d.yeuTo)
+                                              ? d.yeuTo
+                                              : "Khác"
                                         }
                                         onChange={(e) => {
                                           const val = e.target.value;
@@ -3600,14 +3797,16 @@ export default function EnterpriseReportPage() {
                                           }
                                         }}
                                       >
+                                        <option value="">-- Chọn yếu tố --</option>
                                         {FACTOR_OPTIONS.map((opt) => (
                                           <option key={opt} value={opt}>
                                             {opt}
                                           </option>
                                         ))}
                                       </select>
-                                      {(!standardFactors.includes(d.yeuTo) ||
-                                        d.yeuTo === "Khác") && (
+                                      {d.yeuTo !== "" &&
+                                        (!standardFactors.includes(d.yeuTo) ||
+                                          d.yeuTo === "Khác") && (
                                         <div className="mt-1">
                                           <InputField
                                             label="Yếu tố chấn thương khác (ghi cụ thể)"
@@ -3644,11 +3843,13 @@ export default function EnterpriseReportPage() {
                                       <select
                                         className={SC}
                                         value={
-                                          standardOccupations.includes(
-                                            d.ngheNghiep,
-                                          )
-                                            ? d.ngheNghiep
-                                            : "Khác"
+                                          d.ngheNghiep === ""
+                                            ? ""
+                                            : standardOccupations.includes(
+                                                d.ngheNghiep,
+                                              )
+                                              ? d.ngheNghiep
+                                              : "Khác"
                                         }
                                         onChange={(e) => {
                                           const val = e.target.value;
@@ -3667,16 +3868,18 @@ export default function EnterpriseReportPage() {
                                           }
                                         }}
                                       >
+                                        <option value="">-- Chọn nghề nghiệp --</option>
                                         {OCCUPATION_OPTIONS.map((opt) => (
                                           <option key={opt} value={opt}>
                                             {opt}
                                           </option>
                                         ))}
                                       </select>
-                                      {(!standardOccupations.includes(
-                                        d.ngheNghiep,
-                                      ) ||
-                                        d.ngheNghiep === "Khác") && (
+                                      {d.ngheNghiep !== "" &&
+                                        (!standardOccupations.includes(
+                                          d.ngheNghiep,
+                                        ) ||
+                                          d.ngheNghiep === "Khác") && (
                                         <div className="mt-1">
                                           <InputField
                                             label="Nghề nghiệp khác (ghi cụ thể)"
@@ -3732,8 +3935,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.soNguoiBiNan,
                                           true,
-                                        )}
-                                        errorMsg={isNuGreater ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số lao động nữ bị nạn" : isChetGreater ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người chết" : isThuongGreater ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người bị thương nặng" : getErrorMsg(
+                                        ) || isNanExceeded}
+                                        errorMsg={isNuGreater ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số lao động nữ bị nạn" : isChetGreater ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người chết" : isThuongGreater ? "Tổng số người bị nạn phải lớn hơn hoặc bằng tổng số người bị thương nặng" : isNanExceeded ? "Tối đa là " + maxNan : getErrorMsg(
                                           triedSubmit,
                                           d.soNguoiBiNan,
                                           "Tổng số người bị nạn",
@@ -3751,8 +3954,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.soLDNu,
                                           true,
-                                        )}
-                                        errorMsg={isNuGreater ? "Tổng số lao động nữ bị nạn phải nhỏ hơn hoặc bằng tổng số người bị nạn" : getErrorMsg(
+                                        ) || isNanNuExceeded}
+                                        errorMsg={isNuGreater ? "Tổng số lao động nữ bị nạn phải nhỏ hơn hoặc bằng tổng số người bị nạn" : isNanNuExceeded ? "Tối đa là " + maxNanNu : getErrorMsg(
                                           triedSubmit,
                                           d.soLDNu,
                                           "Tổng số lao động nữ bị nạn",
@@ -3770,8 +3973,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.soNguoiBiChet,
                                           true,
-                                        )}
-                                        errorMsg={isChetGreater ? "Tổng số người chết phải nhỏ hơn hoặc bằng tổng số người bị nạn" : getErrorMsg(
+                                        ) || isChetNNExceeded}
+                                        errorMsg={isChetGreater ? "Tổng số người chết phải nhỏ hơn hoặc bằng tổng số người bị nạn" : isChetNNExceeded ? "Tối đa là " + maxChetNN : getErrorMsg(
                                           triedSubmit,
                                           d.soNguoiBiChet,
                                           "Tổng số người chết",
@@ -3793,8 +3996,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.soNguoiBiThuongNang,
                                           true,
-                                        )}
-                                        errorMsg={isThuongGreater ? "Tổng số người bị thương nặng phải nhỏ hơn hoặc bằng tổng số người bị nạn" : getErrorMsg(
+                                        ) || isThuongNangExceeded}
+                                        errorMsg={isThuongGreater ? "Tổng số người bị thương nặng phải nhỏ hơn hoặc bằng tổng số người bị nạn" : isThuongNangExceeded ? "Tối đa là " + maxThuongNang : getErrorMsg(
                                           triedSubmit,
                                           d.soNguoiBiThuongNang,
                                           "Tổng số người bị thương nặng",
@@ -3813,8 +4016,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.nanKhongQL,
                                           true,
-                                        )}
-                                        errorMsg={isNuKQLGreater ? "Số người bị nạn không QL phải lớn hơn hoặc bằng lao động nữ bị nạn không QL" : isChetKQLGreater ? "Số người bị nạn không QL phải lớn hơn hoặc bằng số người chết không QL" : isThuongKQLGreater ? "Số người bị nạn không QL phải lớn hơn hoặc bằng người bị thương nặng không QL" : getErrorMsg(
+                                        ) || isNanKQLExceeded}
+                                        errorMsg={isNuKQLGreater ? "Số người bị nạn không QL phải lớn hơn hoặc bằng lao động nữ bị nạn không QL" : isChetKQLGreater ? "Số người bị nạn không QL phải lớn hơn hoặc bằng số người chết không QL" : isThuongKQLGreater ? "Số người bị nạn không QL phải lớn hơn hoặc bằng người bị thương nặng không QL" : isNanKQLExceeded ? "Tối đa là " + maxNanKQL : getErrorMsg(
                                           triedSubmit,
                                           d.nanKhongQL,
                                           "Số người bị nạn không QL",
@@ -3832,8 +4035,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.nuKhongQL,
                                           true,
-                                        )}
-                                        errorMsg={isNuKQLGreater ? "Lao động nữ bị nạn không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL" : getErrorMsg(
+                                        ) || isNuKQLExceeded}
+                                        errorMsg={isNuKQLGreater ? "Lao động nữ bị nạn không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL" : isNuKQLExceeded ? "Tối đa là " + maxNuKQL : getErrorMsg(
                                           triedSubmit,
                                           d.nuKhongQL,
                                           "Lao động nữ bị nạn không QL",
@@ -3851,8 +4054,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.chetKhongQL,
                                           true,
-                                        )}
-                                        errorMsg={isChetKQLGreater ? "Số người chết không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL" : getErrorMsg(
+                                        ) || isChetKQLExceeded}
+                                        errorMsg={isChetKQLGreater ? "Số người chết không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL" : isChetKQLExceeded ? "Tối đa là " + maxChetKQL : getErrorMsg(
                                           triedSubmit,
                                           d.chetKhongQL,
                                           "Số người chết không QL",
@@ -3870,8 +4073,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.thuongKhongQL,
                                           true,
-                                        )}
-                                        errorMsg={isThuongKQLGreater ? "Người bị thương nặng không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL" : getErrorMsg(
+                                        ) || isThuongKQLExceeded}
+                                        errorMsg={isThuongKQLGreater ? "Người bị thương nặng không QL phải nhỏ hơn hoặc bằng số người bị nạn không QL" : isThuongKQLExceeded ? "Tối đa là " + maxThuongKQL : getErrorMsg(
                                           triedSubmit,
                                           d.thuongKhongQL,
                                           "Người bị thương nặng không QL",
@@ -3903,8 +4106,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.chiPhiYTe,
                                           true,
-                                        )}
-                                        errorMsg={getErrorMsg(
+                                        ) || isChiPhiYTeExceeded}
+                                        errorMsg={isChiPhiYTeExceeded ? "Tối đa là " + formatNumberString(String(maxYTe)) : getErrorMsg(
                                           triedSubmit,
                                           d.chiPhiYTe,
                                           "Chi phí y tế",
@@ -3927,8 +4130,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.chiPhiLuong,
                                           true,
-                                        )}
-                                        errorMsg={getErrorMsg(
+                                        ) || isChiPhiLuongExceeded}
+                                        errorMsg={isChiPhiLuongExceeded ? "Tối đa là " + formatNumberString(String(maxLuong)) : getErrorMsg(
                                           triedSubmit,
                                           d.chiPhiLuong,
                                           "Chi phí trả lương trong thời gian điều trị",
@@ -3951,8 +4154,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.chiPhiBTTC,
                                           true,
-                                        )}
-                                        errorMsg={getErrorMsg(
+                                        ) || isChiPhiBTTCExceeded}
+                                        errorMsg={isChiPhiBTTCExceeded ? "Tối đa là " + formatNumberString(String(maxBTTC)) : getErrorMsg(
                                           triedSubmit,
                                           d.chiPhiBTTC,
                                           "Chi phí bồi thường trợ cấp",
@@ -3968,8 +4171,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.tongSoTien,
                                           true,
-                                        )}
-                                        errorMsg={getErrorMsg(
+                                        ) || isTongChiPhiExceeded}
+                                        errorMsg={isTongChiPhiExceeded ? "Tối đa là " + formatNumberString(String(maxTongChiPhi)) : getErrorMsg(
                                           triedSubmit,
                                           d.tongSoTien,
                                           "Tổng số tiền chi phí",
@@ -3988,8 +4191,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.soNgayNghi,
                                           true,
-                                        )}
-                                        errorMsg={getErrorMsg(
+                                        ) || isSoNgayNghiExceeded}
+                                        errorMsg={isSoNgayNghiExceeded ? "Tối đa là " + maxSoNgayNghi : getErrorMsg(
                                           triedSubmit,
                                           d.soNgayNghi,
                                           "Tổng số ngày nghỉ vì TNLĐ",
@@ -4012,8 +4215,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.thiethaiTaiSan,
                                           true,
-                                        )}
-                                        errorMsg={getErrorMsg(
+                                        ) || isThiHaiTaiSanExceeded}
+                                        errorMsg={isThiHaiTaiSanExceeded ? "Tối đa là " + formatNumberString(String(maxThiHaiTS)) : getErrorMsg(
                                           triedSubmit,
                                           d.thiethaiTaiSan,
                                           "Thiệt hại tài sản",
