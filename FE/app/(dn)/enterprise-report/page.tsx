@@ -1065,28 +1065,76 @@ export default function EnterpriseReportPage() {
       return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     };
 
+    // Determine which groups of details are filled
+    const hasDetailCosts = accidentDetails.some(
+      (d) => parseNum(d.chiPhiYTe) > 0 || parseNum(d.chiPhiLuong) > 0 || parseNum(d.chiPhiBTTC) > 0 || parseNum(d.thiethaiTaiSan) > 0
+    );
+    const hasDetailDays = accidentDetails.some((d) => parseNum(d.soNgayNghi) > 0);
+    
+    const hasDetailNan = accidentDetails.some((d) => parseNum(d.soNguoiBiNan) > 0);
+    const hasDetailNu = accidentDetails.some((d) => parseNum(d.soLDNu) > 0);
+    const hasDetailChet = accidentDetails.some((d) => parseNum(d.soNguoiBiChet) > 0);
+    const hasDetailThuong = accidentDetails.some((d) => parseNum(d.soNguoiBiThuongNang) > 0);
+    const hasDetailKQL = accidentDetails.some(
+      (d) =>
+        parseNum(d.nanKhongQL) > 0 ||
+        parseNum(d.nuKhongQL) > 0 ||
+        parseNum(d.chetKhongQL) > 0 ||
+        parseNum(d.thuongKhongQL) > 0
+    );
+    const hasDetailVuChet = accidentDetails.some((d) => parseNum(d.soVuCoNguoiChet) > 0);
+    const hasDetailVuNhieu = accidentDetails.some((d) => parseNum(d.soVuCo2NguoiBiNan) > 0);
+
     setTongVu(String(totalV));
-    setVuChet(String(vChetCount));
-    setVuNhieu(String(vNhieuCount));
-    setTongNan(String(totalN));
-    setTongNanNu(String(totalN_Nu));
-    setTongChetNN(String(totalChet));
-    setTongThuongNang(String(totalThuong));
-    setNanKhongQL(String(totalNanKQL));
-    setNuKhongQL(String(totalNuKQL));
-    setChetKhongQL(String(totalChetKQL));
-    setThuongKhongQL(String(totalThuongKQL));
-    setChiPhiYTe(formatCost(totalYTe));
-    setChiPhiLuong(formatCost(totalLuong));
-    setChiPhiBTTC(formatCost(totalBTTC));
-    setTongChiPhi(formatCost(totalYTe + totalLuong + totalBTTC));
-    setSoNgayNghi(String(totalNgayNghi));
-    setThiHaiTaiSan(formatCost(totalThiHaiTS));
+
+    if (hasDetailVuChet) setVuChet(String(vChetCount));
+    if (hasDetailVuNhieu) setVuNhieu(String(vNhieuCount));
+    if (hasDetailNan) setTongNan(String(totalN));
+    if (hasDetailNu) setTongNanNu(String(totalN_Nu));
+    if (hasDetailChet) setTongChetNN(String(totalChet));
+    if (hasDetailThuong) setTongThuongNang(String(totalThuong));
+
+    if (hasDetailKQL) {
+      setNanKhongQL(String(totalNanKQL));
+      setNuKhongQL(String(totalNuKQL));
+      setChetKhongQL(String(totalChetKQL));
+      setThuongKhongQL(String(totalThuongKQL));
+    }
+
+    if (hasDetailCosts) {
+      setChiPhiYTe(formatCost(totalYTe));
+      setChiPhiLuong(formatCost(totalLuong));
+      setChiPhiBTTC(formatCost(totalBTTC));
+      setTongChiPhi(formatCost(totalYTe + totalLuong + totalBTTC));
+      setThiHaiTaiSan(formatCost(totalThiHaiTS));
+    }
+
+    if (hasDetailDays) {
+      setSoNgayNghi(String(totalNgayNghi));
+    }
 
     setPhanLoai((prev) => {
       const next = { ...prev };
       for (const ma of PHAN_LOAI_MAS) {
-        next[ma] = Array(13).fill("0");
+        next[ma] = (next[ma] || Array(13).fill("0")).map((c, i) => {
+          // If we don't have detailed costs, preserve the cost columns (indexes 8 to 12)
+          if (!hasDetailCosts && i >= 8 && i <= 12) {
+            return c;
+          }
+          // If we don't have detailed days, preserve the day column (index 7)
+          if (!hasDetailDays && i === 7) {
+            return c;
+          }
+          // If we don't have detailed victims/counts, preserve index 1 to 6
+          if (i === 1 && !hasDetailVuChet) return c;
+          if (i === 2 && !hasDetailVuNhieu) return c;
+          if (i === 3 && !hasDetailNan) return c;
+          if (i === 4 && !hasDetailNu) return c;
+          if (i === 5 && !hasDetailChet) return c;
+          if (i === 6 && !hasDetailThuong) return c;
+          
+          return "0";
+        });
       }
 
       accidentDetails.forEach((d) => {
@@ -1102,18 +1150,27 @@ export default function EnterpriseReportPage() {
             const current = parseNum(c);
             let added = 0;
             if (i === 0) added = parseNum(d.soVu);
-            else if (i === 1) added = parseNum(d.soVuCoNguoiChet);
-            else if (i === 2) added = parseNum(d.soVuCo2NguoiBiNan);
-            else if (i === 3) added = parseNum(d.soNguoiBiNan);
-            else if (i === 4) added = parseNum(d.soLDNu);
-            else if (i === 5) added = parseNum(d.soNguoiBiChet);
-            else if (i === 6) added = parseNum(d.soNguoiBiThuongNang);
-            else if (i === 7) added = parseNum(d.soNgayNghi);
-            else if (i === 8) added = parseNum(d.tongSoTien);
-            else if (i === 9) added = parseNum(d.chiPhiYTe);
-            else if (i === 10) added = parseNum(d.chiPhiLuong);
-            else if (i === 11) added = parseNum(d.chiPhiBTTC);
-            else if (i === 12) added = parseNum(d.thiethaiTaiSan);
+            else if (i === 1) {
+              if (hasDetailVuChet) added = parseNum(d.soVuCoNguoiChet);
+            } else if (i === 2) {
+              if (hasDetailVuNhieu) added = parseNum(d.soVuCo2NguoiBiNan);
+            } else if (i === 3) {
+              if (hasDetailNan) added = parseNum(d.soNguoiBiNan);
+            } else if (i === 4) {
+              if (hasDetailNu) added = parseNum(d.soLDNu);
+            } else if (i === 5) {
+              if (hasDetailChet) added = parseNum(d.soNguoiBiChet);
+            } else if (i === 6) {
+              if (hasDetailThuong) added = parseNum(d.soNguoiBiThuongNang);
+            } else if (i === 7) {
+              if (hasDetailDays) added = parseNum(d.soNgayNghi);
+            } else if (hasDetailCosts) {
+              if (i === 8) added = parseNum(d.tongSoTien);
+              else if (i === 9) added = parseNum(d.chiPhiYTe);
+              else if (i === 10) added = parseNum(d.chiPhiLuong);
+              else if (i === 11) added = parseNum(d.chiPhiBTTC);
+              else if (i === 12) added = parseNum(d.thiethaiTaiSan);
+            }
             return String(current + added);
           });
         };
@@ -1389,10 +1446,47 @@ export default function EnterpriseReportPage() {
 
         const tcVals = res.form.tongSoRows?.["10"];
         if (Array.isArray(tcVals)) {
-          // 👉 THÊM VÀO ĐÂY: Kiểm tra xem báo cáo lấy từ API về đã có dữ liệu Mục 2 chưa
-          // Nếu có bất kỳ số nào > 0, nghĩa là Mục 2 đã từng được nhập -> Khóa auto-sync lại để bảo vệ dữ liệu.
-          const hasTcData = tcVals.some((v) => Number(v) > 0);
-          isTcEditedByUser.current = hasTcData;
+          // Kiểm tra xem dữ liệu Mục 2 trong DB có khác biệt so với Mục 1 không.
+          // Nếu giống hệt nhau (hoặc cùng bằng 0), tức là Mục 2 chưa từng được sửa thủ công -> Giữ auto-sync hoạt động.
+          const s1Vals = res.form.tongSoRows?.["1"] || [];
+          const s1_soVu = t.soVu;
+          const s1_soVuCoNguoiChet = t.soVuCoNguoiChet;
+          const s1_soVuCo2NguoiBiNan = t.soVuCo2NguoiBiNan;
+          const s1_soNguoiBiNan = t.soNguoiBiNan;
+          const s1_nanKhongQL = s1Vals[4] ?? 0;
+          const s1_soLDNu = t.soLDNu;
+          const s1_nuKhongQL = s1Vals[6] ?? 0;
+          const s1_soNguoiBiChet = t.soNguoiBiChet;
+          const s1_chetKhongQL = s1Vals[8] ?? 0;
+          const s1_soNguoiBiThuongNang = t.soNguoiBiThuongNang;
+          const s1_thuongKhongQL = s1Vals[10] ?? 0;
+          const s1_soNgayNghi = t.soNgayNghi;
+          const s1_tongSoTien = t.tongSoTien;
+          const s1_chiPhiYTe = t.chiPhiYTe;
+          const s1_chiPhiTraLuong = t.chiPhiTraLuong;
+          const s1_boiThuongTroCap = t.boiThuongTroCap;
+          const s1_thiethaiTaiSan = t.thiethaiTaiSan;
+
+          const isIdentical =
+            Number(tcVals[0] ?? 0) === Number(s1_soVu) &&
+            Number(tcVals[1] ?? 0) === Number(s1_soVuCoNguoiChet) &&
+            Number(tcVals[2] ?? 0) === Number(s1_soVuCo2NguoiBiNan) &&
+            Number(tcVals[3] ?? 0) === Number(s1_soNguoiBiNan) &&
+            Number(tcVals[4] ?? 0) === Number(s1_nanKhongQL) &&
+            Number(tcVals[5] ?? 0) === Number(s1_soLDNu) &&
+            Number(tcVals[6] ?? 0) === Number(s1_nuKhongQL) &&
+            Number(tcVals[7] ?? 0) === Number(s1_soNguoiBiChet) &&
+            Number(tcVals[8] ?? 0) === Number(s1_chetKhongQL) &&
+            Number(tcVals[9] ?? 0) === Number(s1_soNguoiBiThuongNang) &&
+            Number(tcVals[10] ?? 0) === Number(s1_thuongKhongQL) &&
+            Number(tcVals[11] ?? 0) === Number(s1_soNgayNghi) &&
+            Number(tcVals[12] ?? 0) === Number(s1_tongSoTien) &&
+            Number(tcVals[13] ?? 0) === Number(s1_chiPhiYTe) &&
+            Number(tcVals[14] ?? 0) === Number(s1_chiPhiTraLuong) &&
+            Number(tcVals[15] ?? 0) === Number(s1_boiThuongTroCap) &&
+            Number(tcVals[16] ?? 0) === Number(s1_thiethaiTaiSan);
+
+          isTcEditedByUser.current = !isIdentical;
 
           setTcTongVu(String(tcVals[0] ?? 0));
           setTcVuChet(String(tcVals[1] ?? 0));
