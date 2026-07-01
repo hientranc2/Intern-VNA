@@ -783,7 +783,6 @@ export default function AccidentReportPage() {
                     <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5">
                       <TriCheckbox
                         checked={allPageSelected}
-                        indeterminate={!allPageSelected && somePageSelected}
                         onChange={toggleSelectAll}
                         disabled={enabledPaged.length === 0}
                       />
