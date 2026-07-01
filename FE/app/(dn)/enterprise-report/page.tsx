@@ -676,54 +676,6 @@ export default function EnterpriseReportPage() {
     setTongChiPhi(formatted);
   }, [chiPhiYTe, chiPhiLuong, chiPhiBTTC]);
 
-  // 👉 TÌM VÀ THAY THẾ USEEFFECT CŨ BẰNG ĐOẠN NÀY
-  useEffect(() => {
-    if (isLoadingReportRef.current) return;
-
-    // Nếu người dùng đã tự tay nhập số liệu vào Mục 2, ta KHÔNG ghi đè nữa để tôn trọng dữ liệu của họ.
-    if (isTcEditedByUser.current) return;
-
-    // Nếu người dùng chưa đụng vào Mục 2, tự động lấy 100% dữ liệu từ Mục 1 đắp sang
-    setTcTongVu(tongVu);
-    setTcVuChet(vuChet);
-    setTcVuNhieu(vuNhieu);
-    setTcTongNan(tongNan);
-    setTcTongNanNu(tongNanNu);
-    setTcTongChetNN(tongChetNN);
-    setTcTongThuongNang(tongThuongNang);
-    setTcNanKhongQL(nanKhongQL);
-    setTcNuKhongQL(nuKhongQL);
-    setTcChetKhongQL(chetKhongQL);
-    setTcThuongKhongQL(thuongKhongQL);
-    setTcChiPhiYTe(chiPhiYTe);
-    setTcChiPhiLuong(chiPhiLuong);
-    setTcChiPhiBTTC(chiPhiBTTC);
-    setTcTongChiPhi(tongChiPhi);
-    setTcSoNgayNghi(soNgayNghi);
-    setTcThiHaiTaiSan(thiHaiTaiSan);
-  }, [
-    // Lắng nghe trực tiếp Mục 1: Bất cứ khi nào Mục 1 thay đổi, Mục 2 sẽ tự động cập nhật theo
-    tongVu,
-    vuChet,
-    vuNhieu,
-    tongNan,
-    tongNanNu,
-    tongChetNN,
-    tongThuongNang,
-    nanKhongQL,
-    nuKhongQL,
-    chetKhongQL,
-    thuongKhongQL,
-    chiPhiYTe,
-    chiPhiLuong,
-    chiPhiBTTC,
-    tongChiPhi,
-    soNgayNghi,
-    thiHaiTaiSan,
-  ]);
-
-
-
   // Auto-calculate phanLoai rows 1-8 and 17-24
   useEffect(() => {
     if (isLoadingReportRef.current) return;
@@ -1104,6 +1056,12 @@ export default function EnterpriseReportPage() {
     const hasDetailVuNhieu = accidentDetails.some((d) => parseNum(d.soVuCo2NguoiBiNan) > 0);
 
 
+    const hasDetailVu = accidentDetails.some((d) => parseNum(d.soVu) > 0);
+    if (hasDetailVu) {
+      setTongVu(String(totalV));
+      setVuChet(String(vChetCount));
+      setVuNhieu(String(vNhieuCount));
+    }
     if (hasDetailNan) setTongNan(String(totalN));
     if (hasDetailNu) setTongNanNu(String(totalN_Nu));
     if (hasDetailChet) setTongChetNN(String(totalChet));
@@ -2540,8 +2498,8 @@ export default function EnterpriseReportPage() {
   const addDetail = () => {
     setAccidentDetails((prev) => {
       const next = [...prev, { id: Date.now(), ...EMPTY_DETAIL }];
-      // Update tongNan (section 1) to match new count
-      setTongNan(String(next.length));
+      // Update tongVu (section 1) to match new count
+      setTongVu(String(next.length));
       return next;
     });
   };
@@ -2580,17 +2538,17 @@ export default function EnterpriseReportPage() {
   const removeDetail = (id: number) => {
     setAccidentDetails((prev) => {
       const next = prev.filter((d) => d.id !== id);
-      // Update tongNan (section 1) to match new count
-      setTongNan(String(next.length));
+      // Update tongVu (section 1) to match new count
+      setTongVu(String(next.length));
       return next;
     });
   };
 
-  // Auto-sync accidentDetails count when tongNan (section 1 total victims) changes
+  // Auto-sync accidentDetails count when tongVu (section 1 total cases) changes
   useEffect(() => {
     if (isLoadingReportRef.current) return;
-    if (tongNan.trim() === "") return; // Skip if temporarily cleared/empty
-    const target = parseNum(tongNan);
+    if (tongVu.trim() === "") return; // Skip if temporarily cleared/empty
+    const target = parseNum(tongVu);
     if (target < 0) return;
     setAccidentDetails((prev) => {
       const current = prev.length;
@@ -2625,7 +2583,7 @@ export default function EnterpriseReportPage() {
         return prev.slice(0, target);
       }
     });
-  }, [tongNan]);
+  }, [tongVu]);
 
   // Năm để lọc lấy từ chính dữ liệu báo cáo (report_configs.nam), đồng thời hiển thị đến năm hiện tại (2026).
   const yearOptions = useMemo(() => {
