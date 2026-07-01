@@ -849,6 +849,11 @@ export default function EnterpriseReportPage() {
       isTcNuKQGreater: nanKQL < nuKQL,
       isTcChetKQGreater: nanKQL < chetKQL,
       isTcThuongKQGreater: nanKQL < thuongKQL,
+      isTcChetConflict:
+        (tongChet > 0 && vuChet === 0) ||
+        (tongChet === 0 && vuChet > 0) ||
+        vuChet > tongChet,
+      isTcVuNhieuConflict: tongNan < 2 * vuNhieu,
     };
   }, [
     tcTongVu,
@@ -899,6 +904,11 @@ export default function EnterpriseReportPage() {
       isNuKQLGreater: nKQL < nuKQL,
       isChetKQLGreater: nKQL < chetKQL,
       isThuongKQLGreater: nKQL < thuongKQL,
+      isChetConflict:
+        (tChet > 0 && vChet === 0) ||
+        (tChet === 0 && vChet > 0) ||
+        vChet > tChet,
+      isVuNhieuConflict: tNan < 2 * vNhieu,
     };
   }, [
     tongVu,
@@ -3140,17 +3150,20 @@ export default function EnterpriseReportPage() {
                         required
                         invalid={
                           isInvalidValue(triedSubmit, vuChet, true) ||
-                          tnldCrossValidations.isVuChetGreater
+                          tnldCrossValidations.isVuChetGreater ||
+                          tnldCrossValidations.isChetConflict
                         }
                         errorMsg={
                           tnldCrossValidations.isVuChetGreater
                             ? "Số vụ có người chết không được lớn hơn tổng số vụ"
-                            : getErrorMsg(
-                                triedSubmit,
-                                vuChet,
-                                "Số vụ có người chết",
-                                true,
-                              )
+                            : tnldCrossValidations.isChetConflict
+                              ? "Số vụ có người chết và tổng số người chết không khớp nhau"
+                              : getErrorMsg(
+                                  triedSubmit,
+                                  vuChet,
+                                  "Số vụ có người chết",
+                                  true,
+                                )
                         }
                       />
                       <InputField
@@ -3162,17 +3175,20 @@ export default function EnterpriseReportPage() {
                         required
                         invalid={
                           isInvalidValue(triedSubmit, vuNhieu, true) ||
-                          tnldCrossValidations.isVuNhieuGreater
+                          tnldCrossValidations.isVuNhieuGreater ||
+                          tnldCrossValidations.isVuNhieuConflict
                         }
                         errorMsg={
                           tnldCrossValidations.isVuNhieuGreater
                             ? "Số vụ ≥ 2 người bị nạn không được lớn hơn tổng số vụ"
-                            : getErrorMsg(
-                                triedSubmit,
-                                vuNhieu,
-                                "Số vụ ≥ 2 người bị nạn",
-                                true,
-                              )
+                            : tnldCrossValidations.isVuNhieuConflict
+                              ? "Tổng số người bị nạn phải ít nhất bằng gấp đôi số vụ có từ 2 người bị nạn trở lên"
+                              : getErrorMsg(
+                                  triedSubmit,
+                                  vuNhieu,
+                                  "Số vụ ≥ 2 người bị nạn",
+                                  true,
+                                )
                         }
                       />
                       <div />
@@ -3238,17 +3254,20 @@ export default function EnterpriseReportPage() {
                         required
                         invalid={
                           isInvalidValue(triedSubmit, tongChetNN, true) ||
-                          tnldCrossValidations.isChetNNGreater
+                          tnldCrossValidations.isChetNNGreater ||
+                          tnldCrossValidations.isChetConflict
                         }
                         errorMsg={
                           tnldCrossValidations.isChetNNGreater
                             ? "Tổng số người bị chết không được lớn hơn tổng số người bị nạn"
-                            : getErrorMsg(
-                                triedSubmit,
-                                tongChetNN,
-                                "Tổng số người bị chết",
-                                true,
-                              )
+                            : tnldCrossValidations.isChetConflict
+                              ? "Số vụ có người chết và tổng số người chết không khớp nhau"
+                              : getErrorMsg(
+                                  triedSubmit,
+                                  tongChetNN,
+                                  "Tổng số người bị chết",
+                                  true,
+                                )
                         }
                       />
                       <InputField
@@ -4119,17 +4138,20 @@ export default function EnterpriseReportPage() {
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcVuChet, true) ||
-                      tcCrossValidations.isTcChetGreater
+                      tcCrossValidations.isTcChetGreater ||
+                      tcCrossValidations.isTcChetConflict
                     }
                     errorMsg={
                       tcCrossValidations.isTcChetGreater
                         ? "Số vụ có người chết phải nhỏ hơn hoặc bằng tổng số vụ"
-                        : getErrorMsg(
-                            triedSubmit,
-                            tcVuChet,
-                            "Số vụ có người chết",
-                            true,
-                          )
+                        : tcCrossValidations.isTcChetConflict
+                          ? "Số vụ có người chết và tổng số người chết không khớp nhau"
+                          : getErrorMsg(
+                              triedSubmit,
+                              tcVuChet,
+                              "Số vụ có người chết",
+                              true,
+                            )
                     }
                   />
                   <InputField
@@ -4142,17 +4164,20 @@ export default function EnterpriseReportPage() {
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcVuNhieu, true) ||
-                      tcCrossValidations.isTcNhieuGreater
+                      tcCrossValidations.isTcNhieuGreater ||
+                      tcCrossValidations.isTcVuNhieuConflict
                     }
                     errorMsg={
                       tcCrossValidations.isTcNhieuGreater
                         ? "Số vụ ≥ 2 người bị nạn phải nhỏ hơn hoặc bằng tổng số vụ"
-                        : getErrorMsg(
-                            triedSubmit,
-                            tcVuNhieu,
-                            "Số vụ ≥ 2 người bị nạn",
-                            true,
-                          )
+                        : tcCrossValidations.isTcVuNhieuConflict
+                          ? "Tổng số người bị nạn phải ít nhất bằng gấp đôi số vụ có từ 2 người bị nạn trở lên"
+                          : getErrorMsg(
+                              triedSubmit,
+                              tcVuNhieu,
+                              "Số vụ ≥ 2 người bị nạn",
+                              true,
+                            )
                     }
                   />
                   <div />
@@ -4221,17 +4246,20 @@ export default function EnterpriseReportPage() {
                     required
                     invalid={
                       isInvalidValue(triedSubmit, tcTongChetNN, true) ||
-                      tcCrossValidations.isTcChetNNGreater
+                      tcCrossValidations.isTcChetNNGreater ||
+                      tcCrossValidations.isTcChetConflict
                     }
                     errorMsg={
                       tcCrossValidations.isTcChetNNGreater
                         ? "Tổng số người bị chết phải nhỏ hơn hoặc bằng tổng số người bị nạn"
-                        : getErrorMsg(
-                            triedSubmit,
-                            tcTongChetNN,
-                            "Tổng số người bị chết",
-                            true,
-                          )
+                        : tcCrossValidations.isTcChetConflict
+                          ? "Số vụ có người chết và tổng số người chết không khớp nhau"
+                          : getErrorMsg(
+                              triedSubmit,
+                              tcTongChetNN,
+                              "Tổng số người bị chết",
+                              true,
+                            )
                     }
                   />
                   <InputField
