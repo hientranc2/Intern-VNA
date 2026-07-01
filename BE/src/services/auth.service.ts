@@ -92,17 +92,22 @@ export class AuthService {
   ) {}
 
   // Suy ra quyền + tên vai trò hiển thị của user (nạp vai trò 1 lần).
-  // role ADMIN = toàn quyền (mọi Component); ngược lại lấy theo vai trò đã gán.
+  // Chỉ SUPER_ADMIN = toàn quyền (mọi Component); ngược lại lấy theo vai trò đã gán.
   // roleName ưu tiên tên vai trò (roleId), fallback role string (vd ADMIN).
   private async getAccessInfo(
     user: User,
-  ): Promise<{ permissions: string[]; roleName: string; isSuper: boolean }> {
+  ): Promise<{
+    permissions: string[];
+    roleName: string;
+    roleCode: string;
+    isSuper: boolean;
+  }> {
     const role = user.roleId
       ? await this.roleRepository.findOne({ where: { id: user.roleId } })
       : null;
 
-    // ADMIN (role string) hoặc vai trò is_super = toàn quyền (mọi Component).
-    const isSuper = user.role === 'ADMIN' || Boolean(role?.isSuper);
+    // SUPER_ADMIN là quyền ẩn toàn quyền; các role khác dùng đúng roles.perms.
+    const isSuper = role?.ma === 'SUPER_ADMIN';
     let permissions: string[];
     if (isSuper) {
       const all = await this.permissionRepository.find({
@@ -113,7 +118,12 @@ export class AuthService {
       permissions = role?.perms ?? [];
     }
 
-    return { permissions, roleName: role?.ten ?? user.role, isSuper };
+    return {
+      permissions,
+      roleName: role?.ten ?? user.role,
+      roleCode: role?.ma ?? user.role,
+      isSuper,
+    };
   }
 
   async register(dto: RegisterDto) {
@@ -164,12 +174,13 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload, { expiresIn });
     const { password, otpCode, otpExpiresAt, ...userInfo } = user;
-    const { permissions, roleName, isSuper } = await this.getAccessInfo(user);
+    const { permissions, roleName, roleCode, isSuper } =
+      await this.getAccessInfo(user);
 
     return {
       message: 'Đăng nhập thành công',
       accessToken,
-      user: { ...userInfo, permissions, roleName, isSuper },
+      user: { ...userInfo, permissions, roleName, roleCode, isSuper },
     };
   }
 
@@ -400,8 +411,9 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     const { password, otpCode, otpExpiresAt, ...result } = user;
-    const { permissions, roleName, isSuper } = await this.getAccessInfo(user);
-    return { ...result, permissions, roleName, isSuper };
+    const { permissions, roleName, roleCode, isSuper } =
+      await this.getAccessInfo(user);
+    return { ...result, permissions, roleName, roleCode, isSuper };
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {

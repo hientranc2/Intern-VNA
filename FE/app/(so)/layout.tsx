@@ -10,9 +10,11 @@ import {
   clearToken,
   getProfile,
   getBusinessId,
+  getIsSuper,
   getPermissions,
   setPermissions,
   setIsSuper,
+  setRoleCode,
   changePassword,
   ApiError,
 } from "@/libs/tts/auth/authApi";
@@ -140,6 +142,7 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
         const perms = p.permissions ?? [];
         setPermissions(perms);
         setIsSuper(p.isSuper ?? false);
+        setRoleCode(p.roleCode);
         setAbility(defineAbilityFor(perms));
       })
       .catch(() => {});
@@ -149,7 +152,9 @@ export default function SoLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!permsReady) return;
     const subject = getSubjectForPath(pathname);
-    if (subject && !ability.can("view", subject)) router.replace("/account");
+    if (subject && !getIsSuper() && !ability.can("view", subject)) {
+      router.replace("/account");
+    }
   }, [permsReady, ability, pathname, router]);
 
   const handleLogout = () => {

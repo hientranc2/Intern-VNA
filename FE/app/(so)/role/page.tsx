@@ -14,7 +14,7 @@ import {
 import { type Permission } from "@/libs/tts/permission/permissionData";
 import { getPermissionList } from "@/libs/tts/permission/permissionApi";
 import { useCan } from "@/libs/tts/auth/abilityContext";
-import { getIsSuper } from "@/libs/tts/auth/authApi";
+import { getProfile, getRoleCode } from "@/libs/tts/auth/authApi";
 
 type PermRow = {
   id: string;
@@ -27,6 +27,9 @@ type PermRow = {
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
 
+const isSuperAdminRole = (role: Role) =>
+  role.ma.trim().toUpperCase() === "SUPER_ADMIN";
+
 export default function RolePage() {
   const canCreate = useCan("create", "ROLE");
   const canUpdate = useCan("update", "ROLE");
@@ -38,15 +41,24 @@ export default function RolePage() {
     variant?: "success" | "error" | "warning";
   } | null>(null);
   const [saving, setSaving] = useState(false);
-  // User hiện tại là ADMIN/CEO? — chỉ họ mới được sửa vai trò cấp cao (is_super).
+  // Chỉ Super Admin được sửa các vai trò hệ thống cấp cao.
   // Đọc 1 lần từ localStorage; server trả false để tránh hydration mismatch.
-  const isPrivileged = useSyncExternalStore(
+  const isSuperAdminFromStorage = useSyncExternalStore(
     () => () => {},
-    () => getIsSuper(),
+    () => getRoleCode() === "SUPER_ADMIN",
     () => false,
   );
+  const [profileRoleCode, setProfileRoleCode] = useState<string | null>(null);
+  const isSuperAdminAccount =
+    profileRoleCode === "SUPER_ADMIN" || isSuperAdminFromStorage;
+  const canCreateRole = isSuperAdminAccount || canCreate;
+  const canUpdateRole = isSuperAdminAccount || canUpdate;
+  const canDeleteRole = isSuperAdminAccount || canDelete;
 
   useEffect(() => {
+    getProfile()
+      .then((p) => setProfileRoleCode(p.roleCode ?? null))
+      .catch(() => {});
     getRoleList()
       .then(setRoles)
       .catch(() =>
@@ -102,6 +114,7 @@ export default function RolePage() {
     const ten = searchTen.toLowerCase();
     return roles.filter(
       (r) =>
+        !isSuperAdminRole(r) &&
         r.ma.toLowerCase().includes(ma) && r.ten.toLowerCase().includes(ten),
     );
   }, [roles, searchMa, searchTen]);
@@ -113,8 +126,10 @@ export default function RolePage() {
   const end = Math.min(start + pageSize, total);
   const pagedRoles = filteredRoles.slice(start, end);
 
-  // Vai trò hệ thống cấp cao không được chọn để xóa.
-  const selectableRoles = pagedRoles.filter((r) => !r.isProtected);
+  // Vai trò hệ thống cấp cao chỉ bị khóa với user thường; super admin được quản lý các role khác.
+  const selectableRoles = pagedRoles.filter(
+    (r) => isSuperAdminAccount || !r.isProtected,
+  );
   const allPageChecked =
     selectableRoles.length > 0 &&
     selectableRoles.every((r) => selectedIds.has(r.id));
@@ -138,7 +153,11 @@ export default function RolePage() {
 
   const deleteSelected = async () => {
     const protectedIds = new Set(
-      roles.filter((r) => r.isProtected).map((r) => r.id),
+      roles
+        .filter(
+          (r) => isSuperAdminRole(r) || (!isSuperAdminAccount && r.isProtected),
+        )
+        .map((r) => r.id),
     );
     const ids = [...selectedIds].filter((id) => !protectedIds.has(id));
     if (ids.length === 0) {
@@ -386,8 +405,8 @@ export default function RolePage() {
           <button
             type="button"
             onClick={openAdd}
-            disabled={!canCreate}
-            title={canCreate ? undefined : "Bạn không có quyền thêm"}
+            disabled={!canCreateRole}
+            title={canCreateRole ? undefined : "Bạn không có quyền thêm"}
             className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
           >
             <svg
@@ -478,6 +497,7 @@ export default function RolePage() {
               ) : (
                 pagedRoles.map((r) => {
                   const selected = selectedIds.has(r.id);
+                  const showLockIcon = r.isProtected && !isSuperAdminAccount;
                   return (
                     <tr
                       key={r.id}
@@ -486,9 +506,9 @@ export default function RolePage() {
                       <td className="pl-3.5 pr-1 py-2.5">
                         <TriCheckbox
                           checked={selected}
-                          disabled={r.isProtected}
+                          disabled={!isSuperAdminAccount && r.isProtected}
                           title={
-                            r.isProtected
+                            !isSuperAdminAccount && r.isProtected
                               ? "Vai trò hệ thống cấp cao — không thể xóa"
                               : undefined
                           }
@@ -497,12 +517,13 @@ export default function RolePage() {
                       </td>
                       <td className="pl-1 pr-3.5 py-2.5">
                         {(() => {
-                          const lockedSuper = r.isSuper && !isPrivileged;
-                          const editDisabled = !canUpdate || lockedSuper;
-                          const editTitle = !canUpdate
+                          const lockedSuper =
+                            r.isProtected && !isSuperAdminAccount;
+                          const editDisabled = !canUpdateRole || lockedSuper;
+                          const editTitle = !canUpdateRole
                             ? "Bạn không có quyền sửa"
                             : lockedSuper
-                              ? "Chỉ ADMIN hoặc CEO mới được sửa vai trò cấp cao"
+                              ? "Chỉ Super Admin mới được sửa vai trò cấp cao"
                               : "Chỉnh sửa";
                           return (
                             <button
@@ -530,7 +551,7 @@ export default function RolePage() {
                       <td className="px-3.5 py-2.5 text-[#374151]">{r.ma}</td>
                       <td className="px-3.5 py-2.5 text-[#374151]">
                         <span className="inline-flex items-center gap-1.5">
-                          {r.isProtected ? (
+                          {showLockIcon ? (
                             <svg
                               width="12"
                               height="12"
@@ -824,8 +845,8 @@ export default function RolePage() {
             <button
               type="button"
               onClick={() => setDeleteConfirmOpen(true)}
-              disabled={!canDelete}
-              title={canDelete ? undefined : "Bạn không có quyền xóa"}
+              disabled={!canDeleteRole}
+              title={canDeleteRole ? undefined : "Bạn không có quyền xóa"}
               className="flex h-10 items-center gap-1.5 bg-danger px-3.5 text-[13px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
             >
               <svg

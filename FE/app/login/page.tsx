@@ -15,6 +15,7 @@ import {
   setBusinessId,
   setPermissions,
   setIsSuper,
+  setRoleCode,
   getToken,
   getBusinessId,
   markLoginSuccess,
@@ -76,6 +77,7 @@ export default function LoginPage() {
         });
         setToken(res.accessToken);
         setBusinessId(res.account.businessId);
+        setRoleCode(null);
         markLoginSuccess();
         router.push("/enterprise-info");
       } else {
@@ -83,6 +85,7 @@ export default function LoginPage() {
         setToken(res.accessToken);
         setPermissions(res.user.permissions ?? []);
         setIsSuper(res.user.isSuper ?? false);
+        setRoleCode(res.user.roleCode);
         markLoginSuccess();
         router.push("/account");
       }

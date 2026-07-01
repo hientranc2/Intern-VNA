@@ -227,14 +227,13 @@ export class UsersService {
     return { message: 'Xóa người dùng thành công' };
   }
 
-  // User cấp cao: role string ADMIN, hoặc đang giữ một vai trò is_super (vd CEO, Quản trị viên hệ thống).
+  // User cấp cao: role hệ thống được bảo vệ hoặc legacy is_super.
   private async isHighRoleUser(user: User): Promise<boolean> {
-    if (user.role === 'ADMIN') return true;
     if (!user.roleId) return false;
     const role = await this.roleRepository.findOne({
       where: { id: user.roleId },
     });
-    return Boolean(role?.isSuper);
+    return Boolean(role?.isProtected || role?.isSuper);
   }
 
   // User giữ vai trò SUPER_ADMIN cụ thể — quyền cao nhất, bất khả xâm phạm.
