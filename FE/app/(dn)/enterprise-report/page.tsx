@@ -1070,6 +1070,53 @@ export default function EnterpriseReportPage() {
     thiHaiTaiSan,
   ]);
 
+  const detailCostAllocationMismatches = useMemo(() => {
+    const costFields = [
+      {
+        label: "Chi phí y tế",
+        summary: parseNum(chiPhiYTe),
+        detail: detailSumsValidation.sumYTe,
+      },
+      {
+        label: "Chi phí trả lương trong thời gian điều trị",
+        summary: parseNum(chiPhiLuong),
+        detail: detailSumsValidation.sumLuong,
+      },
+      {
+        label: "Chi phí bồi thường trợ cấp",
+        summary: parseNum(chiPhiBTTC),
+        detail: detailSumsValidation.sumBTTC,
+      },
+    ];
+
+    return costFields.filter((field) => field.summary !== field.detail);
+  }, [
+    chiPhiYTe,
+    chiPhiLuong,
+    chiPhiBTTC,
+    detailSumsValidation.sumYTe,
+    detailSumsValidation.sumLuong,
+    detailSumsValidation.sumBTTC,
+  ]);
+
+  const showDetailCostAllocationError = () => {
+    if (detailCostAllocationMismatches.length === 0) return;
+
+    const message = detailCostAllocationMismatches
+      .map(
+        (field) =>
+          `${field.label}: Tổng hợp ${detailSumsValidation.formatCost(
+            field.summary,
+          )}, Chi tiết ${detailSumsValidation.formatCost(field.detail)}`,
+      )
+      .join("; ");
+
+    setToast({
+      message: `Tổng chi tiết của từng loại chi phí phải bằng chính xác số liệu ở phần Tổng hợp. Chưa khớp: ${message}`,
+      variant: "error",
+    });
+  };
+
   useEffect(() => {
     if (!checkDetailsChanged()) return;
 
@@ -1751,6 +1798,12 @@ export default function EnterpriseReportPage() {
         setSubTab("chiTiet");
         return false;
       }
+
+      if (detailCostAllocationMismatches.length > 0) {
+        setSubTab("chiTiet");
+        showDetailCostAllocationError();
+        return false;
+      }
     } else if (sec === "tnld_tc") {
       const tcFields: [string, string][] = [
         ["Tổng số vụ", tcTongVu],
@@ -1929,6 +1982,13 @@ export default function EnterpriseReportPage() {
     if (hasDetailExceededError) {
       setSection("tnld");
       setSubTab("chiTiet");
+      return false;
+    }
+
+    if (detailCostAllocationMismatches.length > 0) {
+      setSection("tnld");
+      setSubTab("chiTiet");
+      showDetailCostAllocationError();
       return false;
     }
 
@@ -3684,16 +3744,25 @@ export default function EnterpriseReportPage() {
                           const sumYTeOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.chiPhiYTe), 0);
                           const maxYTe = Math.max(0, limitYTe - sumYTeOthers);
                           const isChiPhiYTeExceeded = parseNum(d.chiPhiYTe) > maxYTe;
+                          const isChiPhiYTeMismatch =
+                            triedSubmit &&
+                            detailSumsValidation.sumYTe !== limitYTe;
 
                           const limitLuong = parseNum(chiPhiLuong);
                           const sumLuongOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.chiPhiLuong), 0);
                           const maxLuong = Math.max(0, limitLuong - sumLuongOthers);
                           const isChiPhiLuongExceeded = parseNum(d.chiPhiLuong) > maxLuong;
+                          const isChiPhiLuongMismatch =
+                            triedSubmit &&
+                            detailSumsValidation.sumLuong !== limitLuong;
 
                           const limitBTTC = parseNum(chiPhiBTTC);
                           const sumBTTCOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.chiPhiBTTC), 0);
                           const maxBTTC = Math.max(0, limitBTTC - sumBTTCOthers);
                           const isChiPhiBTTCExceeded = parseNum(d.chiPhiBTTC) > maxBTTC;
+                          const isChiPhiBTTCMismatch =
+                            triedSubmit &&
+                            detailSumsValidation.sumBTTC !== limitBTTC;
 
                           const limitTongChiPhi = parseNum(tongChiPhi);
                           const sumTongChiPhiOthers = accidentDetails.filter(x => x.id !== d.id).reduce((acc, x) => acc + parseNum(x.tongSoTien), 0);
@@ -4106,8 +4175,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.chiPhiYTe,
                                           true,
-                                        ) || isChiPhiYTeExceeded}
-                                        errorMsg={isChiPhiYTeExceeded ? "Tối đa là " + formatNumberString(String(maxYTe)) : getErrorMsg(
+                                        ) || isChiPhiYTeExceeded || isChiPhiYTeMismatch}
+                                        errorMsg={isChiPhiYTeExceeded ? "Tối đa là " + formatNumberString(String(maxYTe)) : isChiPhiYTeMismatch ? `Tổng chi tiết ${detailSumsValidation.formatCost(detailSumsValidation.sumYTe)} phải bằng Tổng hợp ${detailSumsValidation.formatCost(limitYTe)}` : getErrorMsg(
                                           triedSubmit,
                                           d.chiPhiYTe,
                                           "Chi phí y tế",
@@ -4130,8 +4199,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.chiPhiLuong,
                                           true,
-                                        ) || isChiPhiLuongExceeded}
-                                        errorMsg={isChiPhiLuongExceeded ? "Tối đa là " + formatNumberString(String(maxLuong)) : getErrorMsg(
+                                        ) || isChiPhiLuongExceeded || isChiPhiLuongMismatch}
+                                        errorMsg={isChiPhiLuongExceeded ? "Tối đa là " + formatNumberString(String(maxLuong)) : isChiPhiLuongMismatch ? `Tổng chi tiết ${detailSumsValidation.formatCost(detailSumsValidation.sumLuong)} phải bằng Tổng hợp ${detailSumsValidation.formatCost(limitLuong)}` : getErrorMsg(
                                           triedSubmit,
                                           d.chiPhiLuong,
                                           "Chi phí trả lương trong thời gian điều trị",
@@ -4154,8 +4223,8 @@ export default function EnterpriseReportPage() {
                                           triedSubmit,
                                           d.chiPhiBTTC,
                                           true,
-                                        ) || isChiPhiBTTCExceeded}
-                                        errorMsg={isChiPhiBTTCExceeded ? "Tối đa là " + formatNumberString(String(maxBTTC)) : getErrorMsg(
+                                        ) || isChiPhiBTTCExceeded || isChiPhiBTTCMismatch}
+                                        errorMsg={isChiPhiBTTCExceeded ? "Tối đa là " + formatNumberString(String(maxBTTC)) : isChiPhiBTTCMismatch ? `Tổng chi tiết ${detailSumsValidation.formatCost(detailSumsValidation.sumBTTC)} phải bằng Tổng hợp ${detailSumsValidation.formatCost(limitBTTC)}` : getErrorMsg(
                                           triedSubmit,
                                           d.chiPhiBTTC,
                                           "Chi phí bồi thường trợ cấp",

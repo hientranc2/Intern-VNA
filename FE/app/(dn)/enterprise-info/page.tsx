@@ -1164,9 +1164,78 @@ export default function EnterpriseInfoPage() {
             <Stepper step={2} />
             <div className="px-6 py-5">
               <div className="rounded-lg bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+                <div className="mb-4 border-b border-[#f3f4f6] pb-3.5 text-[14px] font-semibold text-[#374151]">
+                  Thông tin về hồ sơ
+                </div>
                 {reviewRows.map(([label, value]) => (
                   <ReviewRow key={label} label={label} value={value} />
                 ))}
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-lg bg-white shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+                <table className="w-full border-collapse text-[13.5px]">
+                  <thead>
+                    <tr>
+                      <th className="w-[200px] border-b border-[#e5e7eb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-primary">
+                        Tên file
+                      </th>
+                      <th className="border-b border-[#e5e7eb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-primary">
+                        Thông tin file
+                      </th>
+                      <th className="w-24 border-b border-[#e5e7eb] px-3.5 py-2.5 text-center text-[13px] font-semibold text-primary">
+                        Thao tác
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {FILE_NAMES.map((name, idx) => {
+                      const hasFile = !!attachments[idx].file || !!attachments[idx].url;
+
+                      return (
+                        <tr
+                          key={name}
+                          className="border-b border-[#f3f4f6] last:border-b-0"
+                        >
+                          <td className="px-3.5 py-2.5 text-[#374151]">
+                            {name}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-[#374151]">
+                            {hasFile ? (
+                              attachments[idx].displayName
+                            ) : (
+                              <span className="text-muted">Không có file</span>
+                            )}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-center">
+                            <button
+                              type="button"
+                              title="Xem"
+                              onClick={() => handleFileView(idx)}
+                              disabled={!hasFile}
+                              className={
+                                hasFile
+                                  ? "text-muted hover:text-primary"
+                                  : "cursor-not-allowed text-muted opacity-40"
+                              }
+                            >
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </>

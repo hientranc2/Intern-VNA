@@ -39,7 +39,7 @@ import {
 } from "@/libs/tts/auth/authValidation";
 import { Switch } from "@/libs/shared/core/components/Switch/Switch";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
-import { localISODate } from "@/libs/shared/core/utils/dateUtils";
+import { localISODate, yearsAgoISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
 import { UserImportForm } from "@/libs/tts/user/UserImportForm";
@@ -722,6 +722,7 @@ export default function UserPage() {
     const username = form.username.trim();
 
     const errors: FieldErrors = {};
+    const adultDobMax = yearsAgoISODate(18);
     if (!username) {
       errors.username = "Tên đăng nhập không được để trống";
     } else if (!/^[a-zA-Z0-9_ ]+$/.test(username)) {
@@ -748,8 +749,13 @@ export default function UserPage() {
       else if (!isStrongPassword(password))
         errors.password = PASSWORD_RULE_MESSAGE;
     }
-    if (form.dob && form.dob > localISODate(new Date()))
-      errors.dob = "Ngày sinh không được là ngày tương lai";
+    if (form.dob) {
+      if (form.dob > localISODate(new Date())) {
+        errors.dob = "Ngày sinh không được là ngày tương lai";
+      } else if (form.dob > adultDobMax) {
+        errors.dob = "Người dùng phải từ 18 tuổi trở lên";
+      }
+    }
 
     if (!form.roleId) errors.roleId = "Vui lòng chọn vai trò";
 
@@ -1542,7 +1548,7 @@ export default function UserPage() {
                       setField("dob", v);
                       clearFieldError("dob");
                     }}
-                    max={localISODate(new Date())}
+                    max={yearsAgoISODate(18)}
                     error={!!fieldErrors.dob}
                     helperText={fieldErrors.dob}
                   />

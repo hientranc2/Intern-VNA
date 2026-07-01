@@ -26,7 +26,7 @@ import {
   ApiError,
 } from "@/libs/tts/auth/authApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
-import { localISODate } from "@/libs/shared/core/utils/dateUtils";
+import { localISODate, yearsAgoISODate } from "@/libs/shared/core/utils/dateUtils";
 import { DateInput } from "@/libs/shared/core/components/DateInput/DateInput";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
 
@@ -218,8 +218,11 @@ export default function AccountPage() {
 
     if (form.dob) {
       const today = localISODate(new Date());
+      const adultDobMax = yearsAgoISODate(18);
       if (form.dob > today)
         errors.dob = "Ngày sinh không được là ngày tương lai";
+      else if (form.dob > adultDobMax)
+        errors.dob = "Người dùng phải từ 18 tuổi trở lên";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -503,7 +506,7 @@ export default function AccountPage() {
                     if (formErrors.dob)
                       setFormErrors((p) => ({ ...p, dob: undefined }));
                   }}
-                  max={localISODate(new Date())}
+                  max={yearsAgoISODate(18)}
                   error={!!formErrors.dob}
                   helperText={formErrors.dob}
                 />

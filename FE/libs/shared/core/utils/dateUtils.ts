@@ -5,3 +5,9 @@ export function localISODate(d: Date): string {
     String(d.getDate()).padStart(2, "0"),
   ].join("-");
 }
+
+export function yearsAgoISODate(years: number, from: Date = new Date()): string {
+  const d = new Date(from);
+  d.setFullYear(d.getFullYear() - years);
+  return localISODate(d);
+}
