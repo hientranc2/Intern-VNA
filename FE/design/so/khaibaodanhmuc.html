@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Khai báo danh mục - Quản lý ATVSLD</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f3f4f6; color: #111827; min-height: 100vh; }
+    .topbar { height: 52px; background: #1e3a8a; display: flex; align-items: center; padding: 0 16px; gap: 12px; position: fixed; top: 0; left: 0; right: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .topbar-logo { width: 34px; height: 34px; flex-shrink: 0; }
+    .topbar-title { font-size: 13px; font-weight: 600; color: white; flex: 1; }
+    .topbar-menu-btn { background: none; border: none; color: white; cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 5px; }
+    .topbar-menu-btn span { display: block; width: 22px; height: 2px; background: white; border-radius: 2px; }
+    .sidebar { width: 220px; background: #1e3a8a; position: fixed; top: 52px; left: 0; bottom: 0; display: flex; flex-direction: column; overflow-y: auto; z-index: 50; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 16px; color: rgba(255,255,255,0.8); cursor: pointer; font-size: 13px; transition: background 0.15s; text-decoration: none; position: relative; user-select: none; }
+    .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; }
+    .nav-arrow { margin-left: auto; transition: transform 0.2s; }
+    .nav-item.open .nav-arrow { transform: rotate(180deg); }
+    .nav-sub { background: rgba(0,0,0,0.18); display: none; }
+    .nav-sub.open { display: block; }
+    .nav-sub .nav-item { padding-left: 36px; font-size: 12.5px; }
+    .nav-sub .nav-item.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #60a5fa; border-radius: 0 2px 2px 0; }
+    .sidebar-spacer { flex: 1; }
+    .user-footer { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: #93c5fd; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1e3a8a; flex-shrink: 0; }
+    .user-name { font-size: 13px; color: white; font-weight: 500; flex: 1; }
+    .main-content { margin-left: 220px; padding-top: 52px; min-height: 100vh; }
+    .page-header { background: white; border-bottom: 1px solid #e5e7eb; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .page-title { font-size: 16px; font-weight: 600; color: #111827; }
+    .header-actions { display: flex; gap: 10px; }
+    .btn-add { height: 36px; padding: 0 16px; background: #1d4ed8; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .btn-add:hover { background: #1e40af; }
+    .btn-outline { height: 36px; padding: 0 16px; background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .btn-outline:hover { background: #f9fafb; }
+    .content-area { padding: 20px 24px; }
+
+    /* Tab selector */
+    .tab-selector { position: relative; display: inline-block; margin-bottom: 16px; }
+    .tab-btn { height: 38px; padding: 0 16px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #374151; font-size: 13.5px; cursor: pointer; display: flex; align-items: center; gap: 8px; min-width: 220px; justify-content: space-between; }
+    .tab-dropdown { position: absolute; top: 42px; left: 0; min-width: 220px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 50; display: none; }
+    .tab-dropdown.open { display: block; }
+    .tab-option { padding: 10px 16px; font-size: 13.5px; cursor: pointer; color: #374151; }
+    .tab-option:hover { background: #f3f4f6; }
+    .tab-option.active { color: #1d4ed8; font-weight: 600; }
+
+    .table-card { background: white; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead th { background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 11px 14px; text-align: left; font-size: 13px; font-weight: 600; color: #374151; white-space: nowrap; }
+    .filter-row th { background: white; border-bottom: 1px solid #e5e7eb; padding: 6px 10px; }
+    .filter-input { width: 100%; height: 30px; border: 1px solid #d1d5db; border-radius: 5px; padding: 0 8px; font-size: 12.5px; outline: none; }
+    .filter-input:focus { border-color: #3b82f6; }
+    .select-filter { width: 100%; height: 30px; border: 1px solid #d1d5db; border-radius: 5px; padding: 0 4px; font-size: 12.5px; outline: none; background: white; }
+    tbody tr { border-bottom: 1px solid #f3f4f6; }
+    tbody tr:hover { background: #f9fafb; }
+    tbody tr:last-child { border-bottom: none; }
+    td { padding: 10px 14px; font-size: 13.5px; color: #374151; vertical-align: middle; }
+    input[type="checkbox"] { width: 15px; height: 15px; accent-color: #1d4ed8; cursor: pointer; }
+    .btn-edit { background: none; border: none; cursor: pointer; color: #6b7280; padding: 4px; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+    .btn-edit:hover { color: #1d4ed8; background: #eff6ff; }
+    .toggle { position: relative; width: 38px; height: 20px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: #d1d5db; border-radius: 20px; cursor: pointer; transition: background 0.2s; }
+    .toggle-slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
+    .toggle input:checked + .toggle-slider { background: #1d4ed8; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
+    .cap-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+    .cap1 { background: #eff6ff; color: #1d4ed8; }
+    .cap2 { background: #f0fdf4; color: #166534; }
+    .cap3 { background: #fefce8; color: #92400e; }
+    .cap4 { background: #fdf4ff; color: #7c3aed; }
+    .indent-1 { padding-left: 14px !important; }
+    .indent-2 { padding-left: 28px !important; }
+    .indent-3 { padding-left: 42px !important; }
+    .pagination-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 12px 16px; border-top: 1px solid #f3f4f6; font-size: 13px; }
+    .page-size-select { height: 30px; border: 1px solid #d1d5db; border-radius: 5px; padding: 0 6px; font-size: 13px; outline: none; cursor: pointer; }
+    .page-info { color: #6b7280; }
+    .page-nav { display: flex; gap: 4px; }
+    .page-btn { width: 28px; height: 28px; background: white; border: 1px solid #d1d5db; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .page-btn:hover { background: #f3f4f6; }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* SLIDE-IN PANEL */
+    .panel-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .panel-overlay.show { opacity: 1; pointer-events: all; }
+    .slide-panel { position: fixed; top: 0; right: -400px; width: 380px; height: 100vh; background: white; z-index: 201; display: flex; flex-direction: column; box-shadow: -4px 0 20px rgba(0,0,0,0.15); transition: right 0.25s ease; }
+    .panel-overlay.show .slide-panel { right: 0; }
+    .panel-header { padding: 0 20px; height: 52px; background: #1d4ed8; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .panel-header h3 { font-size: 14.5px; font-weight: 700; color: white; }
+    .panel-close { background: none; border: none; color: rgba(255,255,255,0.8); font-size: 22px; cursor: pointer; line-height: 1; }
+    .panel-close:hover { color: white; }
+    .panel-body { flex: 1; padding: 20px; overflow-y: auto; }
+    .panel-footer { padding: 14px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; }
+    .btn-cancel { height: 36px; padding: 0 18px; background: none; border: 1px solid #d1d5db; color: #374151; border-radius: 6px; font-size: 13.5px; cursor: pointer; }
+    .btn-cancel:hover { background: #f9fafb; }
+    .btn-save { height: 36px; padding: 0 20px; background: #1d4ed8; color: white; border: none; border-radius: 6px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+    .btn-save:hover { background: #1e40af; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+    .form-label { font-size: 12.5px; color: #374151; font-weight: 500; }
+    .form-label span { color: #ef4444; }
+    .form-control { height: 38px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 12px; font-size: 13.5px; color: #111827; outline: none; }
+    .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .form-control:disabled { background: #f9fafb; color: #6b7280; }
+    .select-control { height: 38px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 12px; font-size: 13.5px; color: #111827; outline: none; background: white; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+    .select-control:focus { border-color: #3b82f6; }
+    .hidden { display: none !important; }
+    .alert-toast { position: fixed; top: 68px; right: 20px; z-index: 999; padding: 10px 16px; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-6px); transition: opacity 0.2s, transform 0.2s; pointer-events: none; }
+    .alert-toast.show { opacity: 1; transform: translateY(0); }
+    .alert-toast.success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <svg class="topbar-logo" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="48" fill="#c0392b" stroke="#f39c12" stroke-width="3"/>
+      <circle cx="50" cy="50" r="38" fill="#c0392b" stroke="#f1c40f" stroke-width="1.5"/>
+      <polygon points="50,18 54,34 70,34 58,44 62,60 50,50 38,60 42,44 30,34 46,34" fill="#f1c40f"/>
+      <path d="M32 85 Q50 92 68 85 Q60 88 50 89 Q40 88 32 85Z" fill="#f1c40f"/>
+    </svg>
+    <span class="topbar-title">Ủy ban nhân dân thành phố Hồ Chí Minh</span>
+    <button class="topbar-menu-btn"><span></span><span></span><span></span></button>
+  </div>
+
+  <aside class="sidebar">
+    <nav>
+      <a class="nav-item" href="../thongtintaikhoan.html"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Trang chủ</a>
+      <div class="nav-item" onclick="toggleMenu('sub-hethong',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        Hệ thống
+        <svg class="nav-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="nav-sub" id="sub-hethong">
+        <a class="nav-item" href="../quanlyquyen.html">Phân quyền</a>
+        <a class="nav-item" href="../quanlyvairo.html">Vai trò</a>
+        <a class="nav-item" href="../quanlynguoidung.html">Tài khoản</a>
+        <a class="nav-item" href="loaihinhdoanhnghiep.html">Loại hình doanh nghiệp</a>
+        <a class="nav-item" href="nganhnghekinhdoanh.html">Ngành nghề kinh doanh</a>
+        <a class="nav-item" href="quanlydoanhnghiep.html">Quản lý doanh nghiệp</a>
+        <a class="nav-item" href="cauhinhdoanhnghiep.html">Ký báo cáo</a>
+      </div>
+      <div class="nav-item open" onclick="toggleMenu('sub-tnld',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Tai nạn lao động
+        <svg class="nav-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="nav-sub open" id="sub-tnld">
+        <a class="nav-item active" href="khaibaodanhmuc.html">Danh mục chung</a>
+        <a class="nav-item" href="baocaotnld-so.html">TNLĐ theo HĐLĐ</a>
+      </div>
+    </nav>
+    <div class="sidebar-spacer"></div>
+    <div class="user-footer">
+      <div class="user-avatar">PT</div>
+      <span class="user-name">Phan Thanh Tùng</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" opacity="0.6"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">Khai báo danh mục</h1>
+      <div class="header-actions">
+        <button class="btn-outline" id="btnXuat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Xuất danh sách
+        </button>
+        <button class="btn-outline">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Thêm từ file
+        </button>
+        <button class="btn-add" onclick="openPanel('add')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Thêm mới
+        </button>
+      </div>
+    </div>
+    <div class="content-area">
+      <div class="tab-selector">
+        <button class="tab-btn" onclick="toggleTabDropdown()">
+          <span id="currentTabLabel">Yếu tố gây chấn thương</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="tab-dropdown" id="tabDropdown">
+          <div class="tab-option active" onclick="switchTab('yeutochanThuong','Yếu tố gây chấn thương',this)">Yếu tố chấn thương</div>
+          <div class="tab-option" onclick="switchTab('loaiChanThuong','Loại chấn thương',this)">Loại chấn thương</div>
+          <div class="tab-option" onclick="switchTab('ngheNghiep','Danh mục nghề nghiệp',this)">Danh mục nghề nghiệp</div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <!-- Table Tab 1: Yếu tố chấn thương -->
+        <table id="tableTab1">
+          <thead>
+            <tr>
+              <th style="width:44px;"><input type="checkbox" onchange="toggleAll(this)" /></th>
+              <th style="width:160px;">Mã yếu tố</th>
+              <th>Yếu tố gây chấn thương</th>
+              <th style="width:150px;text-align:center;">Trạng thái</th>
+            </tr>
+            <tr class="filter-row">
+              <th></th>
+              <th><input type="text" class="filter-input" id="t1fMa" oninput="filterTab1()" /></th>
+              <th><input type="text" class="filter-input" id="t1fTen" oninput="filterTab1()" /></th>
+              <th>
+                <select class="select-filter" id="t1fTT" onchange="filterTab1()">
+                  <option value="">Tất cả</option>
+                  <option value="1">Sử dụng</option>
+                  <option value="0">Ngừng</option>
+                </select>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="bodyTab1"></tbody>
+        </table>
+
+        <!-- Table Tab 2: Loại chấn thương (phân cấp) -->
+        <table id="tableTab2" class="hidden">
+          <thead>
+            <tr>
+              <th style="width:44px;"><input type="checkbox" onchange="toggleAll(this)" /></th>
+              <th style="width:160px;">Mã số</th>
+              <th>Tên loại chấn thương</th>
+              <th style="width:100px;">Cấp</th>
+              <th style="width:60px;">Thao tác</th>
+            </tr>
+            <tr class="filter-row">
+              <th></th>
+              <th><input type="text" class="filter-input" id="t2fMa" oninput="filterTab2()" /></th>
+              <th><input type="text" class="filter-input" id="t2fTen" oninput="filterTab2()" /></th>
+              <th></th><th></th>
+            </tr>
+          </thead>
+          <tbody id="bodyTab2"></tbody>
+        </table>
+
+        <!-- Table Tab 3: Nghề nghiệp (phân cấp) -->
+        <table id="tableTab3" class="hidden">
+          <thead>
+            <tr>
+              <th style="width:44px;"><input type="checkbox" onchange="toggleAll(this)" /></th>
+              <th style="width:60px;">Thao tác</th>
+              <th style="width:140px;">Mã nghề</th>
+              <th>Tên nghề nghiệp</th>
+              <th style="width:100px;">Cấp</th>
+            </tr>
+            <tr class="filter-row">
+              <th></th><th></th>
+              <th><input type="text" class="filter-input" id="t3fMa" oninput="filterTab3()" /></th>
+              <th><input type="text" class="filter-input" id="t3fTen" oninput="filterTab3()" /></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="bodyTab3"></tbody>
+        </table>
+
+        <div class="pagination-bar">
+          <select class="page-size-select" onchange="changePageSize(this.value)">
+            <option>10</option><option>20</option><option>50</option>
+          </select>
+          <span class="page-info" id="pageInfo"></span>
+          <div class="page-nav">
+            <button class="page-btn" id="btnPrev" onclick="changePage(-1)" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="page-btn" id="btnNext" onclick="changePage(1)" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- SLIDE-IN PANEL -->
+  <div class="panel-overlay" id="panelOverlay" onclick="closePanel()">
+    <div class="slide-panel" onclick="event.stopPropagation()">
+      <div class="panel-header">
+        <h3 id="panelTitle">Thêm mới</h3>
+        <button class="panel-close" onclick="closePanel()">×</button>
+      </div>
+      <div class="panel-body">
+        <!-- Panel Tab 1: Yếu tố chấn thương -->
+        <div id="panelBodyTab1">
+          <div class="form-group">
+            <label class="form-label">Mã yếu tố chấn thương <span>*</span></label>
+            <input type="text" class="form-control" id="p1Ma" placeholder="VD: Ma_1" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên yếu tố chấn thương <span>*</span></label>
+            <input type="text" class="form-control" id="p1Ten" placeholder="VD: Điện" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Trạng thái <span>*</span></label>
+            <select class="select-control" id="p1TT">
+              <option value="1">Sử dụng</option>
+              <option value="0">Ngừng sử dụng</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Panel Tab 2: Loại chấn thương -->
+        <div id="panelBodyTab2" class="hidden">
+          <div class="form-group">
+            <label class="form-label">Mã số <span>*</span></label>
+            <input type="text" class="form-control" id="p2Ma" placeholder="VD: 012" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên loại chấn thương <span>*</span></label>
+            <input type="text" class="form-control" id="p2Ten" placeholder="VD: Dập não" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên loại chấn thương cha <span>*</span></label>
+            <select class="select-control" id="p2Cha">
+              <option value="">-- Không có (Cấp 1) --</option>
+              <option value="1">01 Đầu mặt cổ</option>
+              <option value="11">11 - Các chấn thương so não hở hoặc kín</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Panel Tab 3: Nghề nghiệp -->
+        <div id="panelBodyTab3" class="hidden">
+          <div class="form-group">
+            <label class="form-label">Mã ngành <span>*</span></label>
+            <input type="text" class="form-control" id="p3Ma" placeholder="VD: 1222" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên ngành <span>*</span></label>
+            <input type="text" class="form-control" id="p3Ten" placeholder="VD: Khai thác đá tổ ong" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nhóm ngành cha</label>
+            <select class="select-control" id="p3Cha">
+              <option value="">-- Không có (Cấp 1) --</option>
+              <option value="1">1 - Nhà lãnh đạo trong các ngành...</option>
+              <option value="11">11 - Nhà lãnh đạo cơ quan Đảng...</option>
+              <option value="111">111 - Nhà lãnh đạo cơ quan Đảng cấp Trung ương</option>
+              <option value="122">122 - Khai thác đá</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-cancel" onclick="closePanel()">Huỷ bỏ</button>
+        <button class="btn-save" onclick="savePanel()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Lưu lại
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-toast success" id="toast">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="toastMsg"></span>
+  </div>
+
+  <script>
+    const CAP_LABELS = ['', 'Cấp 1', 'Cấp 2', 'Cấp 3', 'Cấp 4'];
+    const CAP_CLASS  = ['', 'cap1', 'cap2', 'cap3', 'cap4'];
+    const INDENT_CLASS = ['', '', 'indent-1', 'indent-2', 'indent-3'];
+
+    const DATA1 = [
+      { id:1, ma:'Mã 1', ten:'Điện', active:true },
+      { id:2, ma:'Mã 2', ten:'Phóng xạ', active:true },
+      { id:3, ma:'Mã 3', ten:'Thiết bị áp lực', active:true },
+      { id:4, ma:'Mã 4', ten:'Thiết bị nâng', active:true },
+      { id:5, ma:'Mã 5', ten:'Bộ phận truyền động, chuyển động của máy, thiết bị gây cắn, cùn, đè, ép, kẹp, cắt, va đập,...', active:true },
+      { id:6, ma:'Mã 6', ten:'Vật văng bắn', active:true },
+      { id:7, ma:'Mã 7', ten:'Vật rơi, đổ, sập', active:true },
+      { id:8, ma:'Mã 8', ten:'Sập đổ công trình, giàn giáo', active:true },
+      { id:9, ma:'Mã 9', ten:'Sập lở, sập đất đá', active:true },
+    ];
+
+    const DATA2 = [
+      { id:1, ma:'1',   ten:'Đầu, mặt, cổ', cap:1, cha:'' },
+      { id:2, ma:'11',  ten:'– Các chấn thương so não hở hoặc kín', cap:2, cha:'1' },
+      { id:3, ma:'110', ten:'– Bị thương vào cổ, tác hại đến thanh quản và thực quản', cap:3, cha:'11' },
+    ];
+
+    const DATA3 = [
+      { id:1, ma:'1',    ten:'Nhà lãnh đạo trong các ngành, các cấp và các đơn vị', cap:1, cha:'' },
+      { id:2, ma:'11',   ten:'– Nhà lãnh đạo cơ quan Đảng Cộng sản Việt Nam cấp Trung ương và địa phương ...', cap:2, cha:'1' },
+      { id:3, ma:'111',  ten:'– Nhà lãnh đạo cơ quan Đảng Cộng sản Việt Nam cấp Trung ương', cap:3, cha:'11' },
+      { id:4, ma:'1111', ten:'–– Trưởng ban, Phó Trưởng ban và tương đương trở lên thuộc cấp Trung ương', cap:4, cha:'111' },
+    ];
+
+    let currentTab = 'yeutochanThuong';
+    let f1 = [...DATA1], f2 = [...DATA2], f3 = [...DATA3];
+    let currentPage = 1, pageSize = 10, editId = null;
+
+    function toggleMenu(id, el) { document.getElementById(id).classList.toggle('open'); el.classList.toggle('open'); }
+    function toggleAll(cb) { document.querySelectorAll('tbody input[type=checkbox]').forEach(c => c.checked = cb.checked); }
+    function changePage(d) { currentPage += d; renderCurrent(); }
+    function changePageSize(v) { pageSize = +v; currentPage = 1; renderCurrent(); }
+
+    function toggleTabDropdown() { document.getElementById('tabDropdown').classList.toggle('open'); }
+
+    function switchTab(tab, label, el) {
+      currentTab = tab;
+      document.getElementById('currentTabLabel').textContent = label;
+      document.getElementById('tabDropdown').classList.remove('open');
+      document.querySelectorAll('.tab-option').forEach(o => o.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('tableTab1').classList.toggle('hidden', tab !== 'yeutochanThuong');
+      document.getElementById('tableTab2').classList.toggle('hidden', tab !== 'loaiChanThuong');
+      document.getElementById('tableTab3').classList.toggle('hidden', tab !== 'ngheNghiep');
+      document.getElementById('btnXuat').classList.toggle('hidden', tab === 'ngheNghiep');
+      currentPage = 1;
+      renderCurrent();
+    }
+
+    function renderCurrent() {
+      if (currentTab === 'yeutochanThuong') renderTab1();
+      else if (currentTab === 'loaiChanThuong') renderTab2();
+      else renderTab3();
+    }
+
+    function updatePagination(total) {
+      const start = (currentPage - 1) * pageSize;
+      const end = Math.min(start + pageSize, total);
+      document.getElementById('pageInfo').textContent = total ? `${start+1} - ${end} of ${total}` : '0 of 0';
+      document.getElementById('btnPrev').disabled = currentPage <= 1;
+      document.getElementById('btnNext').disabled = end >= total;
+    }
+
+    function renderTab1() {
+      const start = (currentPage - 1) * pageSize;
+      const page = f1.slice(start, start + pageSize);
+      document.getElementById('bodyTab1').innerHTML = page.map(r => `
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td>${r.ma}</td>
+          <td>${r.ten}</td>
+          <td style="text-align:center;">
+            <label class="toggle">
+              <input type="checkbox" ${r.active ? 'checked' : ''} onchange="DATA1.find(x=>x.id===${r.id}).active=this.checked;showToast('Cập nhật thành công')" />
+              <span class="toggle-slider"></span>
+            </label>
+          </td>
+        </tr>`).join('');
+      updatePagination(f1.length);
+    }
+
+    function renderTab2() {
+      const start = (currentPage - 1) * pageSize;
+      const page = f2.slice(start, start + pageSize);
+      document.getElementById('bodyTab2').innerHTML = page.map(r => `
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td>${r.ma}</td>
+          <td class="${INDENT_CLASS[r.cap]}">${r.ten}</td>
+          <td>${CAP_LABELS[r.cap]}</td>
+          <td>
+            <button class="btn-edit" onclick="openPanel('edit2',${r.id})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </td>
+        </tr>`).join('');
+      updatePagination(f2.length);
+    }
+
+    function renderTab3() {
+      const start = (currentPage - 1) * pageSize;
+      const page = f3.slice(start, start + pageSize);
+      document.getElementById('bodyTab3').innerHTML = page.map(r => `
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td>
+            <button class="btn-edit" onclick="openPanel('edit3',${r.id})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </td>
+          <td>${r.ma}</td>
+          <td class="${INDENT_CLASS[r.cap]}">${r.ten}</td>
+          <td>${CAP_LABELS[r.cap]}</td>
+        </tr>`).join('');
+      updatePagination(f3.length);
+    }
+
+    function filterTab1() {
+      const ma = document.getElementById('t1fMa').value.toLowerCase();
+      const ten = document.getElementById('t1fTen').value.toLowerCase();
+      const tt = document.getElementById('t1fTT').value;
+      f1 = DATA1.filter(r => r.ma.toLowerCase().includes(ma) && r.ten.toLowerCase().includes(ten) && (tt === '' || (tt === '1' ? r.active : !r.active)));
+      currentPage = 1; renderTab1();
+    }
+
+    function filterTab2() {
+      const ma = document.getElementById('t2fMa').value.toLowerCase();
+      const ten = document.getElementById('t2fTen').value.toLowerCase();
+      f2 = DATA2.filter(r => r.ma.toLowerCase().includes(ma) && r.ten.toLowerCase().includes(ten));
+      currentPage = 1; renderTab2();
+    }
+
+    function filterTab3() {
+      const ma = document.getElementById('t3fMa').value.toLowerCase();
+      const ten = document.getElementById('t3fTen').value.toLowerCase();
+      f3 = DATA3.filter(r => r.ma.toLowerCase().includes(ma) && r.ten.toLowerCase().includes(ten));
+      currentPage = 1; renderTab3();
+    }
+
+    function openPanel(mode, id) {
+      editId = null;
+      ['panelBodyTab1','panelBodyTab2','panelBodyTab3'].forEach(s => document.getElementById(s).classList.add('hidden'));
+      if (currentTab === 'yeutochanThuong' || mode === 'add') {
+        const tabMap = { yeutochanThuong: 'panelBodyTab1', loaiChanThuong: 'panelBodyTab2', ngheNghiep: 'panelBodyTab3' };
+        document.getElementById(tabMap[currentTab]).classList.remove('hidden');
+        document.getElementById('panelTitle').textContent = mode === 'add' ? 'Thêm mới' : 'Chỉnh sửa';
+      } else if (mode === 'edit2') {
+        document.getElementById('panelBodyTab2').classList.remove('hidden');
+        const r = DATA2.find(x => x.id === id);
+        document.getElementById('p2Ma').value = r.ma; document.getElementById('p2Ma').disabled = true;
+        document.getElementById('p2Ten').value = r.ten;
+        document.getElementById('p2Cha').value = r.cha;
+        document.getElementById('panelTitle').textContent = 'Chỉnh sửa';
+        editId = id;
+      } else if (mode === 'edit3') {
+        document.getElementById('panelBodyTab3').classList.remove('hidden');
+        const r = DATA3.find(x => x.id === id);
+        document.getElementById('p3Ma').value = r.ma; document.getElementById('p3Ma').disabled = true;
+        document.getElementById('p3Ten').value = r.ten;
+        document.getElementById('p3Cha').value = r.cha;
+        document.getElementById('panelTitle').textContent = 'Chỉnh sửa';
+        editId = id;
+      }
+      if (mode === 'add') {
+        ['p1Ma','p1Ten','p2Ma','p2Ten','p3Ma','p3Ten'].forEach(id => { const el = document.getElementById(id); if(el){el.value='';el.disabled=false;} });
+        document.getElementById('p1TT').value = '1';
+        document.getElementById('p2Cha').value = '';
+        document.getElementById('p3Cha').value = '';
+      }
+      document.getElementById('panelOverlay').classList.add('show');
+    }
+
+    function closePanel() { document.getElementById('panelOverlay').classList.remove('show'); }
+
+    function savePanel() {
+      showToast(editId ? 'Cập nhật thành công' : 'Thêm mới thành công');
+      closePanel();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.tab-selector')) document.getElementById('tabDropdown').classList.remove('open');
+    });
+
+    renderTab1();
+  </script>
+</body>
+</html>

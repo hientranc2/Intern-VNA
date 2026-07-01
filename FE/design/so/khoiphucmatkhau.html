@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quên mật khẩu - Phần Mềm ATVSLD</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      height: 100vh;
+      display: flex;
+      background: #f0f4f8;
+    }
+
+    /* ===== LEFT PANEL ===== */
+    .left-panel {
+      flex: 1;
+      background: linear-gradient(145deg, #e8f4fd 0%, #cde8f8 30%, #a8d8f0 60%, #7ec8e3 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .left-panel::before {
+      content: '';
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(100,190,240,0.35) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .illustration {
+      position: relative;
+      width: 420px;
+      height: 380px;
+    }
+
+    .laptop-screen {
+      position: absolute;
+      top: 30px;
+      left: 60px;
+      width: 280px;
+      height: 190px;
+      background: #1a56db;
+      border-radius: 12px 12px 4px 4px;
+      box-shadow: 0 10px 30px rgba(26,86,219,0.4);
+      overflow: hidden;
+    }
+
+    .laptop-screen::before {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%);
+      border-radius: 6px;
+    }
+
+    .checklist {
+      position: absolute;
+      top: 28px;
+      left: 24px;
+      right: 24px;
+      z-index: 2;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .check-bar {
+      height: 10px;
+      border-radius: 5px;
+      background: rgba(255,255,255,0.25);
+      flex: 1;
+    }
+
+    .check-bar.done { background: rgba(255,255,255,0.75); }
+
+    .check-icon {
+      width: 18px;
+      height: 18px;
+      background: #22c55e;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .check-icon svg { width: 10px; height: 10px; }
+
+    .laptop-base {
+      position: absolute;
+      top: 218px;
+      left: 45px;
+      width: 310px;
+      height: 16px;
+      background: linear-gradient(180deg, #1a56db 0%, #1341a8 100%);
+      border-radius: 0 0 8px 8px;
+    }
+
+    .laptop-shadow {
+      position: absolute;
+      top: 232px;
+      left: 70px;
+      width: 260px;
+      height: 8px;
+      background: rgba(26,86,219,0.2);
+      border-radius: 50%;
+      filter: blur(4px);
+    }
+
+    .num-circle {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f97316;
+      color: white;
+      font-weight: 700;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(249,115,22,0.5);
+      z-index: 10;
+    }
+
+    .num-1 { top: 120px; left: 20px; }
+    .num-2 { top: 230px; left: 110px; }
+    .num-3 { top: 10px; right: 80px; }
+
+    .person { position: absolute; bottom: 50px; }
+    .person-left { left: 15px; bottom: 65px; }
+    .person-right { right: 30px; bottom: 55px; }
+    .person-mid { right: 95px; bottom: 35px; }
+
+    /* ===== RIGHT PANEL ===== */
+    .right-panel {
+      width: 420px;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 48px;
+      box-shadow: -4px 0 30px rgba(0,0,0,0.08);
+    }
+
+    .gov-seal { width: 68px; height: 68px; margin-bottom: 12px; }
+
+    .form-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e3a8a;
+      text-align: center;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .form-desc {
+      font-size: 13px;
+      color: #6b7280;
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    /* Alert boxes */
+    .alert {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      position: relative;
+    }
+
+    .alert-success {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      color: #166534;
+    }
+
+    .alert-error {
+      background: #fff1f0;
+      border: 1px solid #fca5a5;
+      color: #b91c1c;
+    }
+
+    .alert-icon-success {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #22c55e;
+      color: white;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .alert-icon-err {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #ef4444;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .alert-close {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 4px;
+    }
+
+    .form-group {
+      width: 100%;
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .form-control {
+      width: 100%;
+      height: 40px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 0 12px;
+      font-size: 14px;
+      color: #111827;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .form-control.error { border-color: #ef4444; }
+
+    .input-wrapper { position: relative; }
+
+    .input-suffix {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #9ca3af;
+    }
+
+    .input-suffix:hover { color: #374151; }
+
+    .btn-primary {
+      width: 100%;
+      height: 42px;
+      background: #1d4ed8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 14px;
+    }
+
+    .btn-primary:hover { background: #1e40af; }
+
+    .otp-countdown {
+      text-align: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: #1d4ed8;
+      margin-bottom: 6px;
+    }
+
+    .resend-row {
+      text-align: center;
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 14px;
+    }
+
+    .resend-row a {
+      color: #1d4ed8;
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .resend-row a:hover { text-decoration: underline; }
+
+    .footer-links {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .footer-links a {
+      color: #1d4ed8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .footer-links a:hover { text-decoration: underline; }
+
+    /* Step pages */
+    .step { display: none; width: 100%; }
+    .step.active { display: block; }
+
+    .step-wrapper {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="illustration">
+      <div class="laptop-screen">
+        <div class="checklist">
+          <div class="check-item">
+            <div class="check-icon">
+              <svg viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="check-bar done"></div>
+          </div>
+          <div class="check-item">
+            <div class="check-icon">
+              <svg viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="check-bar done"></div>
+          </div>
+          <div class="check-item">
+            <div class="check-icon" style="background:#94a3b8;">
+              <svg viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="check-bar"></div>
+          </div>
+        </div>
+      </div>
+      <div class="laptop-base"></div>
+      <div class="laptop-shadow"></div>
+      <div class="num-circle num-1">1</div>
+      <div class="num-circle num-2">2</div>
+      <div class="num-circle num-3" style="background:#22c55e;">3</div>
+
+      <svg class="person person-left" viewBox="0 0 50 90" width="40" fill="none">
+        <circle cx="25" cy="14" r="10" fill="#fbbf24"/>
+        <rect x="14" y="26" width="22" height="36" rx="6" fill="#1d4ed8"/>
+        <rect x="6" y="28" width="10" height="24" rx="5" fill="#1d4ed8"/>
+        <rect x="34" y="28" width="10" height="24" rx="5" fill="#1d4ed8"/>
+        <rect x="15" y="62" width="9" height="22" rx="4" fill="#1e3a8a"/>
+        <rect x="26" y="62" width="9" height="22" rx="4" fill="#1e3a8a"/>
+      </svg>
+
+      <svg class="person person-right" viewBox="0 0 50 90" width="38" fill="none">
+        <circle cx="25" cy="14" r="10" fill="#f97316"/>
+        <rect x="14" y="26" width="22" height="36" rx="6" fill="#22c55e"/>
+        <rect x="6" y="28" width="10" height="24" rx="5" fill="#22c55e"/>
+        <rect x="34" y="28" width="10" height="20" rx="5" fill="#22c55e"/>
+        <rect x="15" y="62" width="9" height="22" rx="4" fill="#166534"/>
+        <rect x="26" y="62" width="9" height="22" rx="4" fill="#166534"/>
+      </svg>
+
+      <svg class="person person-mid" viewBox="0 0 50 90" width="34" fill="none">
+        <circle cx="25" cy="14" r="10" fill="#fbbf24"/>
+        <rect x="14" y="26" width="22" height="36" rx="6" fill="#7c3aed"/>
+        <rect x="6" y="28" width="10" height="18" rx="5" fill="#7c3aed"/>
+        <rect x="34" y="28" width="10" height="24" rx="5" fill="#7c3aed"/>
+        <rect x="15" y="62" width="9" height="22" rx="4" fill="#4c1d95"/>
+        <rect x="26" y="62" width="9" height="22" rx="4" fill="#4c1d95"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- Vietnam seal -->
+    <svg class="gov-seal" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="48" fill="#c0392b" stroke="#f39c12" stroke-width="3"/>
+      <circle cx="50" cy="50" r="38" fill="#c0392b" stroke="#f1c40f" stroke-width="1.5"/>
+      <polygon points="50,18 54,34 70,34 58,44 62,60 50,50 38,60 42,44 30,34 46,34" fill="#f1c40f"/>
+      <path d="M32 85 Q50 92 68 85 Q60 88 50 89 Q40 88 32 85Z" fill="#f1c40f"/>
+    </svg>
+
+    <!-- STEP 1: Nhập email -->
+    <div class="step active" id="step1">
+      <div class="step-wrapper">
+        <div class="form-title">Quên mật khẩu</div>
+        <p class="form-desc">Vui lòng nhập email để đăng ký tài khoản</p>
+
+        <!-- Alert box (hiển thị tuỳ case) -->
+        <div class="alert alert-success hidden" id="alertSuccess1">
+          <div class="alert-icon-success">
+            <svg width="10" height="10" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span>Gửi email thành công</span>
+          <button class="alert-close" onclick="closeAlert('alertSuccess1')">×</button>
+        </div>
+        <div class="alert alert-error hidden" id="alertError1">
+          <div class="alert-icon-err">!</div>
+          <span id="alertError1Msg">Email chưa đăng ký trong hệ thống. Xin vui lòng thử lại sau</span>
+          <button class="alert-close" onclick="closeAlert('alertError1')">×</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-control" id="emailInput" placeholder="Phanthanhtung093@gmail.com" />
+        </div>
+
+        <button class="btn-primary" onclick="sendEmail()">Gửi xác thực</button>
+
+        <div class="footer-links">
+          <span>Bạn đã có tài khoản? <a href="dangnhap.html">Đăng nhập</a></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Nhập OTP + Mật khẩu mới -->
+    <div class="step" id="step2">
+      <div class="step-wrapper">
+        <div class="form-title">Quên mật khẩu</div>
+        <p class="form-desc" id="step2Desc">
+          Chúng tôi đã gửi mã xác minh qua email<br>
+          <strong id="step2Email"></strong><br>
+          Bạn vui lòng kiểm tra và điền mã xác thực
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">OTP *</label>
+          <input type="text" class="form-control" id="otpInput" placeholder="Nhập mã OTP" maxlength="6" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mật khẩu mới *</label>
+          <div class="input-wrapper">
+            <input type="password" class="form-control" id="newPwd" placeholder="Nhập mật khẩu mới" style="padding-right:40px;" />
+            <span class="input-suffix" onclick="togglePwd('newPwd', 'eyeNew')">
+              <svg id="eyeNew" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nhập lại mật khẩu mới *</label>
+          <div class="input-wrapper">
+            <input type="password" class="form-control" id="confirmPwd" placeholder="Xác nhận mật khẩu mới" style="padding-right:40px;" />
+            <span class="input-suffix" onclick="togglePwd('confirmPwd', 'eyeConfirm')">
+              <svg id="eyeConfirm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <div class="otp-countdown" id="otpCountdown">00:60</div>
+        <div class="resend-row">
+          <a onclick="resendOtp()">Chưa nhận được mã? Gửi lại</a>
+        </div>
+
+        <button class="btn-primary" onclick="resetPassword()">Khôi phục mật khẩu</button>
+
+        <div class="footer-links">
+          <span><a onclick="goStep(1)" style="cursor:pointer;">← Quay lại</a> &nbsp;|&nbsp; <a href="dangnhap.html">Đăng nhập</a></span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end right panel -->
+
+  <script>
+    let otpTimer = null;
+    let otpSeconds = 60;
+
+    function goStep(n) {
+      document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
+      document.getElementById('step' + n).classList.add('active');
+    }
+
+    function closeAlert(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function showAlert(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function sendEmail() {
+      const email = document.getElementById('emailInput').value.trim();
+      closeAlert('alertSuccess1');
+      closeAlert('alertError1');
+      document.getElementById('emailInput').classList.remove('error');
+
+      if (!email) {
+        document.getElementById('emailInput').classList.add('error');
+        document.getElementById('alertError1Msg').textContent = 'Vui lòng nhập đầy đủ thông tin';
+        showAlert('alertError1');
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        document.getElementById('emailInput').classList.add('error');
+        document.getElementById('alertError1Msg').textContent = 'Vui lòng nhập đúng định dạng email. Định dạng đúng ... @...';
+        showAlert('alertError1');
+        return;
+      }
+
+      // Demo: giả lập gửi email thành công
+      showAlert('alertSuccess1');
+      document.getElementById('step2Email').textContent = email;
+
+      setTimeout(function() {
+        goStep(2);
+        startOtpTimer();
+      }, 1000);
+    }
+
+    function startOtpTimer() {
+      otpSeconds = 60;
+      if (otpTimer) clearInterval(otpTimer);
+      otpTimer = setInterval(function() {
+        otpSeconds--;
+        const m = String(Math.floor(otpSeconds / 60)).padStart(2, '0');
+        const s = String(otpSeconds % 60).padStart(2, '0');
+        document.getElementById('otpCountdown').textContent = m + ':' + s;
+        if (otpSeconds <= 0) clearInterval(otpTimer);
+      }, 1000);
+    }
+
+    function resendOtp() {
+      startOtpTimer();
+    }
+
+    function togglePwd(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23" stroke-width="2" stroke-linecap="round"/>';
+      } else {
+        input.type = 'password';
+        icon.innerHTML = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>';
+      }
+    }
+
+    function resetPassword() {
+      const otp = document.getElementById('otpInput').value.trim();
+      const pwd = document.getElementById('newPwd').value.trim();
+      const confirm = document.getElementById('confirmPwd').value.trim();
+
+      if (!otp || !pwd || !confirm) {
+        alert('Vui lòng điền đầy đủ thông tin');
+        return;
+      }
+      if (pwd !== confirm) {
+        alert('Mật khẩu xác nhận không khớp');
+        return;
+      }
+      if (otpTimer) clearInterval(otpTimer);
+      alert('Khôi phục mật khẩu thành công! Vui lòng đăng nhập lại.');
+      window.location.href = 'dangnhap.html';
+    }
+  </script>
+</body>
+</html>

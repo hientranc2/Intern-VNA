@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng ký tài khoản doanh nghiệp</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #111827; min-height: 100vh; display: flex; }
+
+    /* ====== LOGIN LAYOUT (split screen) ====== */
+    .left-panel { flex: 1; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 60%, #93c5fd 100%); display: flex; align-items: center; justify-content: center; padding: 40px; position: relative; overflow: hidden; }
+    .illustration { width: 100%; max-width: 480px; }
+
+    /* Laptop SVG illustration */
+    .laptop-wrap { position: relative; }
+    .circle-badge { position: absolute; width: 36px; height: 36px; border-radius: 50%; background: #f59e0b; color: white; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+    .badge-1 { top: 40%; left: -10px; }
+    .badge-2 { bottom: 10%; left: 20%; }
+    .badge-3 { top: 5%; right: 10%; }
+
+    .right-panel { width: 420px; flex-shrink: 0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 40px; }
+    .logo-wrap { display: flex; justify-content: center; margin-bottom: 20px; }
+    .app-name { text-align: center; font-size: 15px; font-weight: 700; color: #111827; line-height: 1.5; margin-bottom: 28px; max-width: 280px; }
+
+    .form-section-label { font-size: 13px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.03em; margin-bottom: 18px; text-align: left; width: 100%; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; width: 100%; }
+    .form-label { font-size: 12.5px; color: #374151; font-weight: 500; }
+    .input-wrap { position: relative; }
+    .form-input { width: 100%; height: 42px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 14px; font-size: 13.5px; color: #111827; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .form-input.error { border-color: #ef4444; }
+    .toggle-pwd { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #9ca3af; padding: 2px; }
+    .toggle-pwd:hover { color: #6b7280; }
+
+    .remember-row { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 20px; }
+    .remember-check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #374151; cursor: pointer; }
+    .remember-check input { width: 15px; height: 15px; accent-color: #1d4ed8; }
+    .forgot-link { font-size: 13px; color: #1d4ed8; text-decoration: none; cursor: pointer; }
+    .forgot-link:hover { text-decoration: underline; }
+
+    .btn-login { width: 100%; height: 44px; background: #1d4ed8; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 12px; transition: background 0.15s; }
+    .btn-login:hover { background: #1e40af; }
+    .btn-register { width: 100%; height: 44px; background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+    .btn-register:hover { background: #f9fafb; }
+
+    .alert-box { width: 100%; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .alert-box.error { background: #fff1f0; border: 1px solid #fca5a5; color: #b91c1c; }
+    .alert-icon { width: 18px; height: 18px; border-radius: 50%; background: #ef4444; color: white; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+    /* ====== WIZARD MODAL ====== */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-start; justify-content: center; z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s; padding-top: 30px; overflow-y: auto; }
+    .modal-overlay.show { opacity: 1; pointer-events: all; }
+    .wizard-box { background: white; border-radius: 12px; width: 780px; max-width: 96vw; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); transform: translateY(12px); transition: transform 0.2s; }
+    .modal-overlay.show .wizard-box { transform: translateY(0); }
+
+    /* Stepper */
+    .stepper { display: flex; align-items: center; justify-content: center; padding: 22px 0 14px; gap: 0; }
+    .step-item { display: flex; align-items: center; gap: 8px; }
+    .step-circle { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; border: 2px solid #d1d5db; color: #9ca3af; background: white; flex-shrink: 0; }
+    .step-circle.active { border-color: #1d4ed8; color: #1d4ed8; }
+    .step-circle.done { border-color: #1d4ed8; background: #1d4ed8; color: white; }
+    .step-label { font-size: 13px; color: #9ca3af; }
+    .step-label.active, .step-label.done { color: #111827; font-weight: 500; }
+    .step-line { width: 60px; height: 2px; background: #e5e7eb; margin: 0 8px; }
+    .step-line.done { background: #1d4ed8; }
+
+    /* Modal header bar */
+    .wizard-header-bar { padding: 0 24px 0; display: flex; justify-content: flex-end; }
+    .btn-close-x { background: none; border: none; cursor: pointer; color: #6b7280; font-size: 22px; padding: 0 4px; line-height: 1; }
+
+    .wizard-body { padding: 0 28px 20px; }
+    .section-title { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 14px; }
+    .form-card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px 20px; margin-bottom: 14px; }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .form-grid-3-2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .w-group { display: flex; flex-direction: column; gap: 5px; }
+    .w-label { font-size: 12.5px; color: #374151; font-weight: 500; }
+    .w-label span { color: #ef4444; }
+    .w-input { height: 38px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 12px; font-size: 13.5px; color: #111827; outline: none; transition: border-color 0.2s; }
+    .w-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .w-select { height: 38px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 12px; font-size: 13.5px; color: #111827; outline: none; background: white; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+    .section-sub { font-size: 13.5px; font-weight: 600; color: #374151; margin: 12px 0 10px; }
+
+    /* Date input */
+    .date-wrap { position: relative; }
+    .date-wrap .w-input { padding-right: 36px; }
+    .date-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
+
+    /* File table */
+    .file-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .file-table th { background: #f9fafb; padding: 8px 14px; text-align: left; font-size: 12.5px; color: #374151; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+    .file-table th:last-child { color: #1d4ed8; }
+    .file-table td { padding: 9px 14px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+    .file-table tr:last-child td { border-bottom: none; }
+    .file-btn { background: none; border: none; cursor: pointer; color: #6b7280; padding: 3px; }
+    .file-btn:hover { color: #ef4444; }
+    .file-btn.view:hover { color: #1d4ed8; }
+
+    /* Review step */
+    .review-row { display: flex; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+    .review-row:last-child { border-bottom: none; }
+    .review-label { width: 280px; font-size: 13.5px; font-weight: 600; color: #374151; flex-shrink: 0; }
+    .review-value { font-size: 13.5px; color: #111827; }
+
+    .wizard-footer { padding: 14px 28px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 10px; }
+    .btn-w-cancel { height: 38px; padding: 0 18px; background: none; border: none; color: #374151; font-size: 13.5px; cursor: pointer; }
+    .btn-w-next { height: 38px; padding: 0 20px; background: #1d4ed8; color: white; border: none; border-radius: 6px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .btn-w-next:hover { background: #1e40af; }
+    .btn-w-back { height: 38px; padding: 0 18px; background: none; border: 1px solid #d1d5db; color: #374151; border-radius: 6px; font-size: 13.5px; cursor: pointer; }
+    .btn-w-confirm { height: 38px; padding: 0 20px; background: #1d4ed8; color: white; border: none; border-radius: 6px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .hidden { display: none !important; }
+
+    /* ====== OTP MODAL ====== */
+    .otp-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .otp-overlay.show { opacity: 1; pointer-events: all; }
+    .otp-box { background: white; border-radius: 12px; width: 340px; padding: 32px 28px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.25); transform: translateY(8px); transition: transform 0.2s; }
+    .otp-overlay.show .otp-box { transform: translateY(0); }
+    .otp-title { font-size: 16px; font-weight: 700; color: #1d4ed8; margin-bottom: 8px; }
+    .otp-desc { font-size: 13px; color: #6b7280; margin-bottom: 2px; }
+    .otp-email { font-size: 13.5px; font-weight: 700; color: #111827; margin-bottom: 14px; }
+    .otp-field-label { font-size: 12.5px; color: #374151; font-weight: 500; text-align: left; display: block; margin-bottom: 5px; }
+    .otp-input { width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 12px; font-size: 14px; outline: none; }
+    .otp-input:focus { border-color: #3b82f6; }
+    .otp-timer { color: #1d4ed8; font-weight: 600; margin: 10px 0 3px; font-size: 14px; }
+    .otp-resend { font-size: 12.5px; color: #6b7280; margin-bottom: 16px; cursor: pointer; }
+    .otp-resend a { color: #1d4ed8; text-decoration: none; }
+    .otp-resend a:hover { text-decoration: underline; }
+    .btn-otp-confirm { width: 100%; height: 42px; background: #1d4ed8; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
+    .btn-otp-confirm:hover { background: #1e40af; }
+    .btn-otp-cancel { background: none; border: none; color: #6b7280; font-size: 13px; cursor: pointer; }
+
+    /* ====== ACCOUNT POPUP ====== */
+    .acc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .acc-overlay.show { opacity: 1; pointer-events: all; }
+    .acc-box { background: white; border-radius: 10px; width: 300px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+    .acc-header { background: #1d4ed8; padding: 14px 20px; border-radius: 10px 10px 0 0; text-align: center; }
+    .acc-header h3 { font-size: 15px; font-weight: 700; color: white; }
+    .acc-body { padding: 16px 20px 12px; }
+    .acc-info { font-size: 13.5px; color: #111827; margin-bottom: 8px; }
+    .acc-info strong { font-weight: 700; }
+    .acc-footer { padding: 0 20px 14px; text-align: right; }
+    .btn-acc-close { background: none; border: none; color: #6b7280; font-size: 13px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- ====== LOGIN FORM ====== -->
+  <div class="left-panel">
+    <div class="illustration">
+      <!-- Laptop illustration SVG -->
+      <div class="laptop-wrap" style="position:relative;">
+        <svg viewBox="0 0 500 360" xmlns="http://www.w3.org/2000/svg" style="width:100%;">
+          <!-- Screen -->
+          <rect x="80" y="30" width="340" height="220" rx="12" fill="#1e3a8a" opacity="0.9"/>
+          <rect x="95" y="45" width="310" height="190" rx="6" fill="white" opacity="0.95"/>
+          <!-- Screen content lines -->
+          <rect x="110" y="70" width="180" height="12" rx="3" fill="#e5e7eb"/>
+          <rect x="110" y="92" width="140" height="10" rx="3" fill="#dbeafe"/>
+          <rect x="110" y="112" width="200" height="10" rx="3" fill="#e5e7eb"/>
+          <rect x="110" y="132" width="160" height="10" rx="3" fill="#dbeafe"/>
+          <rect x="110" y="152" width="220" height="10" rx="3" fill="#e5e7eb"/>
+          <!-- Checkmarks -->
+          <circle cx="330" cy="76" r="10" fill="#22c55e"/>
+          <polyline points="325,76 329,80 337,72" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="330" cy="98" r="10" fill="#22c55e"/>
+          <polyline points="325,98 329,102 337,94" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="330" cy="120" r="10" fill="#3b82f6"/>
+          <!-- Keyboard base -->
+          <rect x="60" y="250" width="380" height="24" rx="4" fill="#1e3a8a" opacity="0.8"/>
+          <rect x="40" y="272" width="420" height="10" rx="5" fill="#1e3a8a" opacity="0.5"/>
+          <!-- Person left -->
+          <circle cx="55" cy="200" r="16" fill="#fbbf24"/>
+          <rect x="42" y="216" width="26" height="35" rx="6" fill="#3b82f6"/>
+          <line x1="42" y1="225" x2="28" y2="240" stroke="#3b82f6" stroke-width="6" stroke-linecap="round"/>
+          <line x1="68" y1="225" x2="78" y2="235" stroke="#3b82f6" stroke-width="6" stroke-linecap="round"/>
+          <!-- Person right -->
+          <circle cx="445" cy="210" r="14" fill="#f87171"/>
+          <rect x="433" y="224" width="24" height="32" rx="6" fill="#1d4ed8"/>
+          <line x1="433" y1="233" x2="420" y2="248" stroke="#1d4ed8" stroke-width="5" stroke-linecap="round"/>
+          <line x1="457" y1="233" x2="468" y2="243" stroke="#1d4ed8" stroke-width="5" stroke-linecap="round"/>
+          <!-- Person bottom center -->
+          <circle cx="250" cy="305" r="13" fill="#6ee7b7"/>
+          <rect x="239" y="318" width="22" height="28" rx="5" fill="#059669"/>
+          <line x1="250" y1="320" x2="240" y2="340" stroke="#059669" stroke-width="4" stroke-linecap="round"/>
+          <line x1="250" y1="320" x2="260" y2="340" stroke="#059669" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <div class="circle-badge badge-1">1</div>
+        <div class="circle-badge badge-2">2</div>
+        <div class="circle-badge badge-3">3</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="logo-wrap">
+      <svg width="64" height="64" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="48" fill="#c0392b" stroke="#f39c12" stroke-width="3"/>
+        <circle cx="50" cy="50" r="38" fill="#c0392b" stroke="#f1c40f" stroke-width="1.5"/>
+        <polygon points="50,18 54,34 70,34 58,44 62,60 50,50 38,60 42,44 30,34 46,34" fill="#f1c40f"/>
+        <path d="M32 85 Q50 92 68 85 Q60 88 50 89 Q40 88 32 85Z" fill="#f1c40f"/>
+      </svg>
+    </div>
+    <p class="app-name">Phần Mềm Quản Lý - Tạo Lập Cơ Sở Dữ Liệu An Toàn Vệ Sinh Lao Động</p>
+
+    <div id="alertBox" class="alert-box error hidden">
+      <div class="alert-icon">!</div>
+      <span id="alertMsg"></span>
+    </div>
+
+    <p class="form-section-label">ĐĂNG NHẬP</p>
+    <div class="form-group">
+      <label class="form-label">Tên đăng nhập *</label>
+      <input type="text" class="form-input" id="username" placeholder="nguyenvanb.stttt" onkeydown="if(event.key==='Enter')handleLogin()" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mật khẩu</label>
+      <div class="input-wrap">
+        <input type="password" class="form-input" id="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()" />
+        <button class="toggle-pwd" type="button" onclick="togglePwd()" id="eyeBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="remember-row">
+      <label class="remember-check">
+        <input type="checkbox" id="rememberMe" /> Nhớ đăng nhập
+      </label>
+      <a class="forgot-link" href="dangnhap-dn.html">Quản mật khẩu</a>
+    </div>
+    <button class="btn-login" onclick="handleLogin()">Đăng nhập</button>
+    <button class="btn-register" onclick="openWizard()">Đăng ký tài khoản doanh nghiệp</button>
+  </div>
+
+  <!-- ====== WIZARD MODAL ====== -->
+  <div class="modal-overlay" id="wizardOverlay">
+    <div class="wizard-box">
+      <div class="wizard-header-bar" style="padding-top:12px;">
+        <button class="btn-close-x" onclick="closeWizard()">×</button>
+      </div>
+      <!-- Stepper -->
+      <div class="stepper">
+        <div class="step-item">
+          <div class="step-circle" id="sc1">1</div>
+          <span class="step-label" id="sl1">Thông tin doanh nghiệp</span>
+        </div>
+        <div class="step-line" id="stepLine"></div>
+        <div class="step-item">
+          <div class="step-circle" id="sc2">2</div>
+          <span class="step-label" id="sl2">Xác nhận đăng ký</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Form -->
+      <div id="step1">
+        <div class="wizard-body">
+          <div class="section-title">Thêm mới doanh nghiệp</div>
+          <div class="form-card">
+            <div class="form-grid-3">
+              <div class="w-group">
+                <label class="w-label">Tên doanh nghiệp <span>*</span></label>
+                <input type="text" class="w-input" id="wTen" placeholder="VD: Công ty cổ phần ABC" />
+              </div>
+              <div class="w-group">
+                <label class="w-label">Mã số thuế <span>*</span></label>
+                <input type="text" class="w-input" id="wMST" placeholder="VD: 910000888292" />
+              </div>
+              <div class="w-group">
+                <label class="w-label">Loại hình kinh doanh <span>*</span></label>
+                <select class="w-select" id="wLoai">
+                  <option value="">-- Chọn loại hình --</option>
+                  <option>Công ty TNHH 1 thành viên</option>
+                  <option>Công ty TNHH 2+ thành viên</option>
+                  <option>Công ty cổ phần</option>
+                  <option>Doanh nghiệp tư nhân</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid-3">
+              <div class="w-group">
+                <label class="w-label">Ngành nghề kinh doanh, chính <span>*</span></label>
+                <select class="w-select" id="wNganh">
+                  <option value="">-- Chọn ngành nghề --</option>
+                  <option>4669 - Bán buôn chuyên doanh khác chưa…</option>
+                  <option>0111 - Trồng lúa</option>
+                </select>
+              </div>
+              <div class="w-group">
+                <label class="w-label">Ngày cấp GPKD</label>
+                <div class="date-wrap">
+                  <input type="date" class="w-input" id="wNgayCap" />
+                </div>
+              </div>
+              <div class="w-group">
+                <label class="w-label">Tỉnh/Thành phố ĐKKD <span>*</span></label>
+                <select class="w-select" id="wTinh">
+                  <option>Thành phố Hồ Chí Minh</option>
+                  <option>Hà Nội</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="w-group">
+                <label class="w-label">Phường/Xã ĐKKD <span>*</span></label>
+                <select class="w-select" id="wPhuong">
+                  <option>Phường Hiệp Bình Phước</option>
+                  <option>Phường Tân Định</option>
+                </select>
+              </div>
+              <div class="w-group">
+                <label class="w-label">Địa chỉ</label>
+                <input type="text" class="w-input" id="wDiaChi" placeholder="VD: 162 đường số 2, khu đô thị Vạn Phúc" />
+              </div>
+            </div>
+          </div>
+
+          <p class="section-sub">Thông tin liên hệ</p>
+          <div class="form-card">
+            <div class="form-grid-3">
+              <div class="w-group">
+                <label class="w-label">Tên viết bằng tiếng nước ngoài</label>
+                <input type="text" class="w-input" id="wTenNN" placeholder="VD: VNA Group" />
+              </div>
+              <div class="w-group">
+                <label class="w-label">Email <span>*</span></label>
+                <input type="email" class="w-input" id="wEmail" placeholder="vnagroup@gmail.com" />
+              </div>
+              <div class="w-group">
+                <label class="w-label">Số điện thoại cơ quan</label>
+                <input type="text" class="w-input" id="wSDT" placeholder="VD: 0283xxxxxxx" />
+              </div>
+            </div>
+            <div class="form-grid-3">
+              <div class="w-group">
+                <label class="w-label">Người đứng đầu doanh nghiệp</label>
+                <input type="text" class="w-input" id="wNguoiDD" placeholder="VD: Nguyễn Văn A" />
+              </div>
+              <div class="w-group">
+                <label class="w-label">SĐT liên hệ người đứng đầu</label>
+                <select class="w-select" id="wSDTDD">
+                  <option value="">-- Chọn --</option>
+                  <option>0932768093</option>
+                </select>
+              </div>
+              <div class="w-group">
+                <label class="w-label">Tỉnh/TP hoạt động KD</label>
+                <select class="w-select" id="wTinhHD">
+                  <option value="">-- Chọn tỉnh --</option>
+                  <option>Thành phố Hồ Chí Minh</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid-3">
+              <div class="w-group">
+                <label class="w-label">Phường/xã hoạt động KD</label>
+                <select class="w-select" id="wPhuongHD">
+                  <option value="">-- Chọn phường/xã --</option>
+                  <option>Phường Tân Định</option>
+                </select>
+              </div>
+              <div class="w-group">
+                <label class="w-label">Địa điểm kinh doanh</label>
+                <input type="text" class="w-input" id="wDiaDiem" />
+              </div>
+              <div></div>
+            </div>
+          </div>
+
+          <p class="section-sub">File đính kèm</p>
+          <div class="form-card" style="padding:0;overflow:hidden;">
+            <table class="file-table">
+              <thead>
+                <tr>
+                  <th style="width:200px;">Tên file</th>
+                  <th>Thông tin file</th>
+                  <th style="width:100px;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Giấy phép kinh doanh</td><td>GPKD.pdf</td>
+                  <td>
+                    <button class="file-btn view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="file-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
+                    <button class="file-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Giấy tờ khác</td><td>GTK1.pdf</td>
+                  <td>
+                    <button class="file-btn view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="file-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
+                    <button class="file-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="wizard-footer">
+          <button class="btn-w-cancel" onclick="closeWizard()">Huỷ bỏ</button>
+          <button class="btn-w-next" onclick="goToOtp()">
+            Tiếp tục
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Review -->
+      <div id="step2" class="hidden">
+        <div class="wizard-body">
+          <div class="section-title">Thông tin về hồ sơ</div>
+          <div class="form-card">
+            <div id="reviewContent"></div>
+          </div>
+          <div class="form-card" style="padding:0;overflow:hidden;margin-top:12px;">
+            <table class="file-table">
+              <thead>
+                <tr><th style="width:200px;">Tên file</th><th>Thông tin file</th><th style="width:80px;">Thao tác</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Giấy phép kinh doanh</td><td>GPKD.pdf</td>
+                  <td><button class="file-btn view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
+                </tr>
+                <tr>
+                  <td>Giấy tờ khác</td><td>GTK1.pdf</td>
+                  <td><button class="file-btn view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="wizard-footer">
+          <button class="btn-w-back" onclick="backToStep1()">Trở về</button>
+          <button class="btn-w-confirm" onclick="confirmRegistration()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Xác nhận
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== OTP MODAL ====== -->
+  <div class="otp-overlay" id="otpOverlay">
+    <div class="otp-box">
+      <p class="otp-title">XÁC THỰC EMAIL</p>
+      <p class="otp-desc">Chúng tôi đã gửi mã xác minh qua số email cũ</p>
+      <p class="otp-email" id="otpEmailDisplay">vnagorup@gmail.com</p>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:12px;">Bạn vui lòng kiểm tra và điền mã xác thực</p>
+      <label class="otp-field-label">OTP *</label>
+      <input type="text" class="otp-input" id="otpInput" placeholder="Nhập mã OTP" maxlength="6" />
+      <p class="otp-timer" id="otpTimer">00:60</p>
+      <p class="otp-resend">Chưa nhận được mã? <a onclick="resendOtp()">Gửi lại</a></p>
+      <button class="btn-otp-confirm" onclick="confirmOtp()">Xác nhận</button>
+      <button class="btn-otp-cancel" onclick="closeOtp()">Huỷ bỏ</button>
+    </div>
+  </div>
+
+  <!-- ====== ACCOUNT INFO POPUP ====== -->
+  <div class="acc-overlay" id="accOverlay">
+    <div class="acc-box">
+      <div class="acc-header"><h3>Thông tin tài khoản</h3></div>
+      <div class="acc-body">
+        <p class="acc-info">• Tài khoản: <strong id="accUsername">031300008900</strong></p>
+        <p class="acc-info">• Mật khẩu: <strong>12345678</strong></p>
+      </div>
+      <div class="acc-footer">
+        <button class="btn-acc-close" onclick="closeAccPopup()">Huỷ bỏ</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let otpInterval = null;
+
+    function togglePwd() {
+      const inp = document.getElementById('password');
+      const btn = document.getElementById('eyeBtn');
+      const showing = inp.type === 'text';
+      inp.type = showing ? 'password' : 'text';
+      btn.innerHTML = showing
+        ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
+        : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    }
+
+    function showAlert(msg) {
+      document.getElementById('alertMsg').textContent = msg;
+      document.getElementById('alertBox').classList.remove('hidden');
+    }
+
+    function handleLogin() {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+      document.getElementById('alertBox').classList.add('hidden');
+      if (!u || !p) { showAlert('Vui lòng nhập đầy đủ thông tin'); return; }
+      if (u === 'admin' && p === '123456') {
+        window.location.href = 'thongtindoanhnghiep.html';
+      } else {
+        showAlert('Tài khoản hoặc mật khẩu không đúng. Xin vui lòng thử lại');
+      }
+    }
+
+    function openWizard() {
+      document.getElementById('step1').classList.remove('hidden');
+      document.getElementById('step2').classList.add('hidden');
+      updateStepper(1);
+      document.getElementById('wizardOverlay').classList.add('show');
+    }
+
+    function closeWizard() {
+      document.getElementById('wizardOverlay').classList.remove('show');
+      stopOtpTimer();
+    }
+
+    function updateStepper(step) {
+      const sc1 = document.getElementById('sc1'), sl1 = document.getElementById('sl1');
+      const sc2 = document.getElementById('sc2'), sl2 = document.getElementById('sl2');
+      const line = document.getElementById('stepLine');
+      if (step === 1) {
+        sc1.className = 'step-circle active'; sc1.textContent = '1'; sl1.className = 'step-label active';
+        sc2.className = 'step-circle'; sc2.textContent = '2'; sl2.className = 'step-label';
+        line.classList.remove('done');
+      } else {
+        sc1.className = 'step-circle done';
+        sc1.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+        sl1.className = 'step-label done';
+        sc2.className = 'step-circle active'; sc2.textContent = '2'; sl2.className = 'step-label active';
+        line.classList.add('done');
+      }
+    }
+
+    function goToOtp() {
+      const ten = document.getElementById('wTen').value.trim();
+      const mst = document.getElementById('wMST').value.trim();
+      const email = document.getElementById('wEmail').value.trim();
+      if (!ten || !mst) { alert('Vui lòng nhập đầy đủ thông tin bắt buộc (Tên DN, Mã số thuế).'); return; }
+      const displayEmail = email || 'vnagorup@gmail.com';
+      document.getElementById('otpEmailDisplay').textContent = displayEmail;
+      document.getElementById('otpInput').value = '';
+      document.getElementById('otpOverlay').classList.add('show');
+      startOtpTimer(60);
+    }
+
+    function closeOtp() {
+      document.getElementById('otpOverlay').classList.remove('show');
+      stopOtpTimer();
+    }
+
+    function confirmOtp() {
+      const otp = document.getElementById('otpInput').value.trim();
+      if (!otp) { alert('Vui lòng nhập mã OTP.'); return; }
+      closeOtp();
+      buildReview();
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.remove('hidden');
+      updateStepper(2);
+    }
+
+    function resendOtp() {
+      stopOtpTimer();
+      document.getElementById('otpInput').value = '';
+      startOtpTimer(60);
+    }
+
+    function startOtpTimer(seconds) {
+      let remaining = seconds;
+      document.getElementById('otpTimer').textContent = formatTime(remaining);
+      otpInterval = setInterval(() => {
+        remaining--;
+        document.getElementById('otpTimer').textContent = formatTime(remaining);
+        if (remaining <= 0) stopOtpTimer();
+      }, 1000);
+    }
+
+    function stopOtpTimer() {
+      if (otpInterval) { clearInterval(otpInterval); otpInterval = null; }
+    }
+
+    function formatTime(s) {
+      return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    }
+
+    function buildReview() {
+      const mst = document.getElementById('wMST').value || '210987802';
+      const ten = document.getElementById('wTen').value || 'Công ty cổ phần ABC';
+      const tenNN = document.getElementById('wTenNN').value || 'ABC Group';
+      const email = document.getElementById('wEmail').value || 'vnagroup@gmail.com';
+      const loai = document.getElementById('wLoai').value || 'Công ty TNHH';
+      const nguoiDD = document.getElementById('wNguoiDD').value || 'Nguyễn Văn A';
+      const rows = [
+        ['Tên đăng nhập:', mst],
+        ['Mã số thuế :', mst],
+        ['Tên doanh nghiệp :', ten],
+        ['Tên viết bằng tiếng nước ngoài :', tenNN],
+        ['Email :', email],
+        ['Ngày cấp GPKD:', ''],
+        ['Loại hình kinh doanh:', loai],
+        ['Ngành nghề kinh doanh', '4669 - Bán buôn chuyên doanh khác chưa được phân vào đâu'],
+        ['Địa chỉ đăng ký giấy phép kinh doanh :', 'Vạn phúc City , Phường Tân Định, Thành phố Hồ Chí Minh'],
+        ['Địa điểm kinh doanh :', 'Vạn phúc City , Phường Tân Định, Thành phố Hồ Chí Minh'],
+        ['Người đứng đầu doanh nghiệp', nguoiDD],
+        ['SDT người đứng đầu', '0932768093'],
+      ];
+      document.getElementById('reviewContent').innerHTML = rows.map(([l, v]) =>
+        `<div class="review-row"><span class="review-label">${l}</span><span class="review-value">${v}</span></div>`
+      ).join('');
+    }
+
+    function backToStep1() {
+      document.getElementById('step2').classList.add('hidden');
+      document.getElementById('step1').classList.remove('hidden');
+      updateStepper(1);
+    }
+
+    function confirmRegistration() {
+      closeWizard();
+      const acc = '0' + Math.floor(Math.random() * 9e9).toString().padStart(9, '0');
+      document.getElementById('accUsername').textContent = acc;
+      document.getElementById('accOverlay').classList.add('show');
+    }
+
+    function closeAccPopup() {
+      document.getElementById('accOverlay').classList.remove('show');
+    }
+  </script>
+</body>
+</html>
