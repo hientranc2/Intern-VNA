@@ -129,8 +129,10 @@ const parseNum = (s: string): number =>
   Number(String(s).replace(/[^\d]/g, "")) || 0;
 
 const formatNumberString = (val: string): string => {
-  const clean = val.replace(/[^\d]/g, "");
+  let clean = val.replace(/[^\d]/g, "");
   if (!clean) return "";
+  clean = clean.replace(/^0+/, "");
+  if (!clean) return "0";
   return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
 
@@ -228,6 +230,23 @@ const InputField = ({
   errorMsg?: string;
   type?: "text" | "number";
 }) => {
+  const handleInputChange = (rawVal: string) => {
+    if (!onChange) return;
+    
+    let processedVal = rawVal;
+    if (type === "number" && !suffix) {
+      // Strip leading zeros for numeric inputs, e.g., "01" -> "1", "00" -> "0"
+      const clean = rawVal.replace(/[^\d]/g, "");
+      if (clean) {
+        const stripped = clean.replace(/^0+/, "");
+        processedVal = stripped || "0";
+      } else {
+        processedVal = "";
+      }
+    }
+    onChange(processedVal);
+  };
+
   return (
     <div className="relative flex flex-col mt-2">
       <label className="absolute -top-2 left-2 bg-white px-1 text-[11px] text-[#6b7280] z-10">
@@ -239,7 +258,8 @@ const InputField = ({
           min={type === "text" || suffix ? undefined : 0}
           className={`${FC} w-full h-[40px] pt-1 ${suffix ? "pr-16" : ""} ${invalid ? "border-danger border-2" : ""}`}
           value={value}
-          onChange={(e) => onChange?.(e.target.value)}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={(e) => e.target.select()}
           disabled={disabled}
         />
         {suffix && (
@@ -1141,7 +1161,9 @@ export default function EnterpriseReportPage() {
   };
 
   const setPhanLoaiCell = (ma: string, col: number, val: string) => {
-    const cleanVal = val.replace(/\D/g, "");
+    let cleanVal = val.replace(/\D/g, "");
+    cleanVal = cleanVal.replace(/^0+/, "");
+    if (!cleanVal) cleanVal = "0";
     setPhanLoai((prev) => {
       const next = {
         ...prev,
