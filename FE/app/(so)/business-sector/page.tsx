@@ -19,6 +19,7 @@ import {
 } from "@/libs/tts/business-sector/businessSectorApi";
 import { ApiError } from "@/libs/tts/auth/apiClient";
 import { useCan } from "@/libs/tts/auth/abilityContext";
+import { BusinessSectorImportForm } from "@/libs/tts/business-sector/BusinessSectorImportForm";
 
 const FILTER_INPUT_CLASS =
   "h-[30px] w-full rounded-[5px] border border-line px-2 text-[12.5px] font-normal text-ink outline-none focus:border-[#3b82f6]";
@@ -51,6 +52,7 @@ export default function BusinessSectorPage() {
   const [importErrors, setImportErrors] = useState<Record<number, Record<string, string>>>({});
   const [isImportSubmitting, setIsImportSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   useEffect(() => {
     getBusinessSectorList()
@@ -60,7 +62,7 @@ export default function BusinessSectorPage() {
 
   const parentOptions = useMemo(
     () =>
-      items
+      buildTreeOrder(items)
         .filter((s) => s.cap < 4)
         .map((s) => ({
           value: s.ma,
@@ -98,8 +100,33 @@ export default function BusinessSectorPage() {
     {},
   );
 
+  function buildTreeOrder(items: BusinessSector[]): BusinessSector[] {
+    const roots = items.filter((x) => !x.cha || x.cha === "");
+    
+    function getChildren(maCha: string): BusinessSector[] {
+      const children = items.filter((x) => x.cha === maCha);
+      // sort anh em cùng cấp theo mã
+      children.sort((a, b) => a.ma.localeCompare(b.ma));
+      const result: BusinessSector[] = [];
+      for (const child of children) {
+        result.push(child);
+        result.push(...getChildren(child.ma));
+      }
+      return result;
+    }
+
+    roots.sort((a, b) => a.ma.localeCompare(b.ma));
+    const result: BusinessSector[] = [];
+    for (const root of roots) {
+      result.push(root);
+      result.push(...getChildren(root.ma));
+    }
+    return result;
+  }
+
   const filtered = useMemo(() => {
-    return items.filter(
+    const treeOrdered = buildTreeOrder(items);
+    return treeOrdered.filter(
       (r) =>
         r.ma.toLowerCase().includes(searchMa.toLowerCase()) &&
         r.ten.toLowerCase().includes(searchTen.toLowerCase()),
@@ -152,20 +179,16 @@ export default function BusinessSectorPage() {
 
   const normalizeBusinessSectorRows = (rawRows: any[]) => {
     return rawRows.map((row) => {
-      const pick = (candidates: string[]) => {
-        for (const k of Object.keys(row)) {
-          if (candidates.map(c => c.toLowerCase().trim()).includes(k.toLowerCase().trim())) {
-            return String(row[k] ?? "").trim();
-          }
-        }
-        return "";
-      };
-
+      const normalizedRow: Record<string, string> = {};
+      for (const k of Object.keys(row)) {
+        const cleanKey = k.replace(/\s*\*\s*$/, "").trim();
+        normalizedRow[cleanKey] = String(row[k] ?? "").trim();
+      }
       return {
-        'Mã ngành': pick(['Mã ngành', 'Mã']),
-        'Tên ngành': pick(['Tên ngành', 'Tên']),
-        'Cấp': pick(['Cấp', 'Cấp độ']),
-        'Mã cha': pick(['Mã cha', 'Cha']),
+        'Mã ngành': normalizedRow['Mã ngành'] || normalizedRow['Mã'] || "",
+        'Tên ngành': normalizedRow['Tên ngành'] || normalizedRow['Tên'] || "",
+        'Cấp': normalizedRow['Cấp'] || normalizedRow['Cấp độ'] || "",
+        'Mã cha': normalizedRow['Mã cha'] || normalizedRow['Cha'] || "",
       };
     });
   };
@@ -209,11 +232,8 @@ export default function BusinessSectorPage() {
     return errs;
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImportFileName(file.name);
+  const handleFileDrop = (file: File, fileName: string) => {
+    setImportFileName(fileName);
     setIsLoading(true);
 
     const reader = new FileReader();
@@ -227,10 +247,24 @@ export default function BusinessSectorPage() {
         if (!sheetName) throw new Error("File không có sheet nào");
 
         const sheet = workbook.Sheets[sheetName];
-        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "" });
+        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "", blankrows: false });
         if (rawRows.length === 0) throw new Error("File không có dòng dữ liệu nào");
 
-        const normalized = normalizeBusinessSectorRows(rawRows);
+        const dataRows = rawRows.filter((row) => {
+          const importantKeys = ["Mã ngành *", "Mã ngành", "Tên ngành *", "Tên ngành"];
+          const hasRealValue = importantKeys.some(
+            (k) => String(row[k] ?? "").trim() !== ""
+          );
+          if (!hasRealValue) return false;
+
+          const ma = String(row["Mã ngành *"] || row["Mã ngành"] || "").trim();
+          const ten = String(row["Tên ngành *"] || row["Tên ngành"] || "").trim();
+          return !(ma === "0111" && ten === "Trồng lúa");
+        });
+
+        if (dataRows.length === 0) throw new Error("File không có dòng dữ liệu nào");
+
+        const normalized = normalizeBusinessSectorRows(dataRows);
         const errs = validateBusinessSectorImport(normalized);
 
         setImportRows(normalized);
@@ -240,7 +274,6 @@ export default function BusinessSectorPage() {
         setToast({ message: err instanceof Error ? err.message : "Đọc file Excel thất bại", variant: "error" });
       } finally {
         setIsLoading(false);
-        if (importRef.current) importRef.current.value = "";
       }
     };
 
@@ -369,13 +402,13 @@ export default function BusinessSectorPage() {
       } else {
         const parent = items.find((x) => x.ma === inputCha);
         const cap = inputCha ? Math.min((parent?.cap ?? 0) + 1, 4) : 1;
-        const created = await createBusinessSector({
+        await createBusinessSector({
           ma,
           ten,
           cap,
           cha: inputCha || undefined,
         });
-        setItems((prev) => [...prev, created]);
+        await getBusinessSectorList().then(setItems);
       }
       setPanelOpen(false);
       setToast({ message: editId ? "Cập nhật thành công" : "Thêm mới thành công", variant: "success" });
@@ -413,17 +446,11 @@ export default function BusinessSectorPage() {
               Xóa bộ lọc
             </button>
           )}
-          <input
-            ref={importRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-            onChange={handleImport}
-          />
+
           <button
             type="button"
-            onClick={() => importRef.current?.click()}
-            className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
+            onClick={() => setImportModalOpen(true)}
+            className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff]"
           >
             <svg
               width="14"
@@ -577,7 +604,7 @@ export default function BusinessSectorPage() {
                         className="px-3.5 py-2.5 text-[#374151]"
                         style={{ paddingLeft: INDENT_PX[r.cap] }}
                       >
-                        {r.ten}
+                        {r.cap > 1 ? `– ${r.ten.replace(/^[–-]\s*/, "")}` : r.ten}
                       </td>
                       <td className="px-3.5 py-2.5">
                         <span
@@ -712,7 +739,8 @@ export default function BusinessSectorPage() {
             label="Tên ngành"
             value={inputTen}
             onChange={(e) => {
-              setInputTen(e.target.value);
+              const val = e.target.value.replace(/[^a-zA-Z0-9\sÀ-ỹà-ỹ]/g, "");
+              setInputTen(val);
               if (panelErrors.ten)
                 setPanelErrors((p) => ({ ...p, ten: undefined }));
             }}
@@ -755,6 +783,16 @@ export default function BusinessSectorPage() {
           </TextField>
         </div>
       </Modal>
+
+      {importModalOpen && (
+        <BusinessSectorImportForm
+          onClose={() => setImportModalOpen(false)}
+          onFileReady={(file, fileName) => {
+            setImportModalOpen(false);
+            handleFileDrop(file, fileName);
+          }}
+        />
+      )}
 
       {/* Modal Preview Import */}
       {importPreviewOpen && (

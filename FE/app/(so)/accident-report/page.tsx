@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import Tooltip from "@mui/material/Tooltip";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
@@ -16,12 +17,82 @@ import {
   deleteAccidentReport,
   approveAccidentReports,
   rejectAccidentReports,
+  getAccidentReportById,
 } from "@/libs/tts/accident-report/accidentReportApi";
 import { exportTonghopDocx } from "@/libs/tts/accident-report/exportTonghopDocx";
 import { exportDetailDocx } from "@/libs/tts/accident-report/exportDetailDocx";
 import { getBusinessById } from "@/libs/tts/enterprise/enterpriseApi";
+import { getBusinessSectorList } from "@/libs/tts/business-sector/businessSectorApi";
 import { PROVINCES, WARDS_BY_PROVINCE } from "@/libs/tts/location/locationData";
 import { SearchableSelect } from "@/libs/shared/core/components/SearchableSelect/SearchableSelect";
+import {
+  getInjuryFactorList,
+  getOccupationList,
+} from "@/libs/tts/category/categoryApi";
+
+const cleanName = (name: string): string => {
+  return (name || "").replace(/^[–\-—\s\.\u2013\u2014]+/, "").trim();
+};
+
+const matchCategoryCode = (
+  dbItems: { ten: string; ma: string }[],
+  label: string,
+  type: "sector" | "factor"
+): string => {
+  const cleanHard = (s: string) =>
+    (s || "")
+      .normalize("NFC")
+      .toLowerCase()
+      .replace(/^[–\-—\s\.\u2013\u2014]+/, "")
+      .replace(/[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/g, "")
+      .trim();
+
+  const cLabelHard = cleanHard(label);
+
+  for (const item of dbItems) {
+    const cTenHard = cleanHard(item.ten);
+    if (cTenHard === cLabelHard || cTenHard.includes(cLabelHard) || cLabelHard.includes(cTenHard)) {
+      return item.ma;
+    }
+  }
+
+  const clean = (s: string) =>
+    (s || "")
+      .normalize("NFC")
+      .toLowerCase()
+      .trim();
+
+  const cLabel = clean(label);
+
+  if (type === "sector") {
+    if (cLabel.includes("khai khoáng")) return "B";
+    if (cLabel.includes("chế biến") || cLabel.includes("chế tạo")) return "C";
+    if (cLabel.includes("điện") || cLabel.includes("khí đốt")) return "D";
+    if (cLabel.includes("nước") || cLabel.includes("rác thải") || cLabel.includes("thoát nước")) return "E";
+    if (cLabel.includes("xây dựng")) return "F";
+    if (cLabel.includes("vận tải") || cLabel.includes("kho bãi")) return "H";
+    if (cLabel.includes("nông nghiệp") || cLabel.includes("thủy sản")) return "A";
+  } else if (type === "factor") {
+    if (cLabel.includes("ngã")) {
+      const found = dbItems.find((f) => clean(f.ten).includes("ngã"));
+      if (found) return found.ma;
+    }
+    if (cLabel.includes("điện")) {
+      const found = dbItems.find((f) => clean(f.ten).includes("điện"));
+      if (found) return found.ma;
+    }
+    if (cLabel.includes("rơi") || cLabel.includes("bắn")) {
+      const found = dbItems.find((f) => clean(f.ten).includes("rơi") || clean(f.ten).includes("bắn"));
+      if (found) return found.ma;
+    }
+    if (cLabel.includes("máy") || cLabel.includes("thiết bị")) {
+      const found = dbItems.find((f) => clean(f.ten).includes("máy") || clean(f.ten).includes("thiết bị"));
+      if (found) return found.ma;
+    }
+  }
+
+  return "";
+};
 
 type ViewMode = "list" | "detail" | "tonghop";
 
@@ -32,9 +103,9 @@ const SELECT_TOP_CLASS =
   "h-9 min-w-[200px] cursor-pointer appearance-none rounded-md border border-line bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22/%3E%3C/svg%3E')] bg-[right_10px_center] bg-no-repeat px-3 pr-8 text-[13px] outline-none";
 
 const CT_TH =
-  "border border-line bg-[#f9fafb] px-2 py-1.5 text-center align-middle font-semibold text-[#374151]";
+  "border border-line bg-[#f9fafb] px-2 py-3 text-center align-middle font-semibold text-[#374151]";
 const CT_TD =
-  "border border-line px-2 py-1.5 text-center align-middle text-[#374151]";
+  "border border-line px-2 py-3 text-center align-middle text-[#374151]";
 
 const fmtMoney = (n: number) => n.toLocaleString("vi-VN");
 const fmtRate = (n: number, d: number) =>
@@ -59,6 +130,46 @@ const formatTime = (dStr?: string | null): string => {
 export default function AccidentReportPage() {
   const [view, setView] = useState<ViewMode>("list");
   const [reports, setReports] = useState<AccidentReport[]>([]);
+  const [dbFactors, setDbFactors] = useState<{ ten: string; ma: string }[]>([]);
+  const [dbOccupations, setDbOccupations] = useState<
+    { ten: string; ma: string }[]
+  >([]);
+  const [dbSectors, setDbSectors] = useState<{ ten: string; ma: string; cap: number }[]>([]);
+
+  useEffect(() => {
+    getInjuryFactorList()
+      .then((list) => {
+        const items = list
+          .filter((item) => item.active)
+          .map((item) => ({
+            ten: cleanName(item.ten),
+            ma: item.ma,
+          }));
+        setDbFactors(items);
+      })
+      .catch((err) => console.error("Failed to load injury factors", err));
+
+    getOccupationList()
+      .then((list) => {
+        const items = list.map((item) => ({
+          ten: cleanName(item.ten),
+          ma: item.ma,
+        }));
+        setDbOccupations(items);
+      })
+      .catch((err) => console.error("Failed to load occupations", err));
+
+    getBusinessSectorList()
+      .then((list) => {
+        const items = list.map((item) => ({
+          ten: cleanName(item.ten),
+          ma: item.ma,
+          cap: item.cap,
+        }));
+        setDbSectors(items);
+      })
+      .catch((err) => console.error("Failed to load business sectors", err));
+  }, []);
   const [year, setYear] = useState(() => String(new Date().getFullYear()));
 
   const yearsList = useMemo(() => {
@@ -111,7 +222,6 @@ export default function AccidentReportPage() {
         chiTietRows: viewingReport.chiTietRows || [],
       };
       await exportDetailDocx(dataToExport, bizDetail);
-      setToast({ message: "In báo cáo Word thành công!", variant: "success" });
     } catch (e: any) {
       setToast({
         message: e.message || "In báo cáo thất bại",
@@ -195,6 +305,8 @@ export default function AccidentReportPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   const toggleSelect = (id: number) => {
+    const report = reports.find((r) => r.id === id);
+    if (!report || (report.tt !== "Đã nộp" && report.tt !== "Đã tiếp nhận")) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -296,17 +408,27 @@ export default function AccidentReportPage() {
     const r = viewingReport;
     if (!r) return DETAIL_REPORT_ROWS;
     const rows = r.rows ?? {};
+    const phanLoai = r.phanLoaiRows ?? {};
+    const details = r.chiTietRows ?? [];
 
     const get11 = (ma: string): number[] => {
-      const raw = rows[ma];
+      const raw = phanLoai[ma];
       if (!Array.isArray(raw)) return Array(11).fill(0);
-      // Chỉ lấy 11 cột đầu (tránh lồi cột do rows["10"] có 17 phần tử)
-      return Array(11)
-        .fill(0)
-        .map((_, i) => Number(raw[i] ?? 0));
+      return [
+        Number(raw[0] ?? 0),
+        Number(raw[1] ?? 0),
+        Number(raw[2] ?? 0),
+        Number(raw[3] ?? 0),
+        0,
+        Number(raw[4] ?? 0),
+        0,
+        Number(raw[5] ?? 0),
+        0,
+        Number(raw[6] ?? 0),
+        0,
+      ];
     };
 
-    // Section tổng (mã "1") dùng field tổng hợp của báo cáo.
     const section1Vals = [
       r.soVu,
       r.soVuCoNguoiChet,
@@ -321,28 +443,236 @@ export default function AccidentReportPage() {
       0,
     ];
 
-    // Section "2. Tai nạn được hưởng trợ cấp..." = rows["10"] cột 0..10
     const section2Vals = get11("10");
-
-    // Section "3. Tổng số" = section1 + section2
     const section3Vals = section1Vals.map((v, i) => v + section2Vals[i]);
 
-    return DETAIL_REPORT_ROWS.map((row) => {
-      if (row.kind === "sub") return row;
+    // 1. Get the list of factors and occupations dynamically from details (or savedOverviewRows keys)
+    const activeFactors = new Set<string>();
+    const activeOccupations = new Set<string>();
 
-      let vals: number[];
-      if (row.label === "Tai nạn lao động" && (row as any).ma === "1") {
-        vals = section1Vals;
-      } else if (row.label === "Tổng số (3=1+2)") {
-        vals = section3Vals;
-      } else if ((row as { ma?: string }).ma) {
-        vals = get11((row as { ma?: string }).ma!);
-      } else {
-        vals = Array(11).fill(0);
+    details.forEach((d: any) => {
+      if (d.yeuTo) activeFactors.add(cleanName(d.yeuTo));
+      if (d.ngheNghiep) activeOccupations.add(cleanName(d.ngheNghiep));
+    });
+
+    // Also look at savedOverviewRows to preserve any loaded/saved rows that might not be in details currently
+    Object.keys(phanLoai).forEach((key) => {
+      if (key.startsWith("factor_")) {
+        activeFactors.add(cleanName(key.replace("factor_", "")));
+      }
+      if (key.startsWith("occupation_")) {
+        activeOccupations.add(cleanName(key.replace("occupation_", "")));
+      }
+    });
+
+    // If both are empty (for example, no details and no saved rows), default to "Thiết bị nâng" and standard occupations
+    if (activeFactors.size === 0 && activeOccupations.size === 0) {
+      activeFactors.add("Thiết bị nâng");
+      activeOccupations.add(
+        "Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương",
+      );
+      activeOccupations.add("Công nhân");
+    }
+
+    // Build the dynamic rows array
+    const dynamicRows: {
+      kind: "normal" | "sub" | "section";
+      label: string;
+      ma: string;
+      bold?: boolean;
+    }[] = [];
+
+    // Prefix: up to 1.1 Do người lao động
+    dynamicRows.push(
+      { kind: "section", label: "1. Tai nạn lao động", ma: "" },
+      { kind: "normal", label: "Tai nạn lao động", ma: "1" },
+      {
+        kind: "sub",
+        label: "1.1 Phân theo nguyên nhân xảy ra TNLĐ",
+        ma: "",
+        bold: true,
+      },
+      { kind: "sub", label: "a. Do người sử dụng lao động", ma: "" },
+      {
+        kind: "normal",
+        label: "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
+        ma: "1",
+      },
+      {
+        kind: "normal",
+        label:
+          "Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt",
+        ma: "2",
+      },
+      { kind: "normal", label: "Tổ chức lao động không hợp lý", ma: "3" },
+      {
+        kind: "normal",
+        label:
+          "Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ",
+        ma: "4",
+      },
+      {
+        kind: "normal",
+        label: "Không có quy trình an toàn hoặc biện pháp làm việc an toàn",
+        ma: "5",
+      },
+      { kind: "normal", label: "Điều kiện làm việc không tốt", ma: "6" },
+      { kind: "sub", label: "b. Do người lao động", ma: "" },
+      {
+        kind: "normal",
+        label:
+          "Quy phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn",
+        ma: "7",
+      },
+      {
+        kind: "normal",
+        label: "Không sử dụng phương tiện bảo vệ cá nhân",
+        ma: "8",
+      },
+      {
+        kind: "normal",
+        label: "Khách quan khó tránh/ Nguyên nhân chưa kể đến",
+        ma: "9",
+      },
+    );
+
+    // 1.2 Phân theo yếu tố gây chấn thương
+    dynamicRows.push({
+      kind: "sub",
+      label: "1.2. Phân theo yếu tố gây chấn thương",
+      ma: "",
+      bold: true,
+    });
+    Array.from(activeFactors).forEach((factor) => {
+      dynamicRows.push({
+        kind: "normal",
+        label: factor,
+        ma: `factor_${factor}`,
+      });
+    });
+
+    // 1.3 Phân theo nghề nghiệp
+    dynamicRows.push({
+      kind: "sub",
+      label: "1.3 Phân theo nghề nghiệp",
+      ma: "",
+      bold: true,
+    });
+    Array.from(activeOccupations).forEach((occ) => {
+      dynamicRows.push({ kind: "normal", label: occ, ma: `occupation_${occ}` });
+    });
+
+    // 2 & 3 Sections
+    dynamicRows.push(
+      {
+        kind: "section",
+        label:
+          "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ",
+        ma: "",
+      },
+      {
+        kind: "normal",
+        label:
+          "Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ",
+        ma: "10",
+      },
+      { kind: "section", label: "3. Tổng số", ma: "" },
+      { kind: "normal", label: "Tổng số (3=1+2)", ma: "total" },
+    );
+
+    return dynamicRows.map((row) => {
+      if (row.kind !== "normal" && row.kind !== "section") {
+        return row;
       }
 
-      return { ...row, vals };
+      let vals = Array(11).fill(0);
+      const ma = row.ma;
+
+      if (row.label === "Tai nạn lao động" && ma === "1") {
+        vals = section1Vals;
+      } else if (row.label === "Tổng số (3=1+2)" && ma === "total") {
+        vals = section3Vals;
+      } else if (ma === "10") {
+        vals = section2Vals;
+      } else if (ma) {
+        vals = get11(ma);
+      }
+
+      let displayMa = row.ma;
+      if (row.ma === "total") {
+        displayMa = "";
+      } else if (row.ma.startsWith("factor_")) {
+        const factorName = row.ma.replace("factor_", "");
+        const found = dbFactors.find((f) => f.ten === factorName);
+        displayMa = found ? found.ma : "";
+      } else if (row.ma.startsWith("occupation_")) {
+        const occName = row.ma.replace("occupation_", "");
+        const found = dbOccupations.find((o) => o.ten === occName);
+        displayMa = found ? found.ma : "";
+      }
+
+      return {
+        ...row,
+        ma: displayMa,
+        vals,
+      };
     });
+  }, [viewingReport, dbFactors, dbOccupations]);
+
+  const dynamicThiethai = useMemo(() => {
+    if (!viewingReport) return null;
+    const details = viewingReport.chiTietRows || [];
+
+    let s1NgayNghi = 0;
+    let s1YTe = 0;
+    let s1Luong = 0;
+    let s1BTTC = 0;
+    let s1ThiHai = 0;
+
+    if (details.length > 0) {
+      details.forEach((d: any) => {
+        const getVal = (v: any) => {
+          if (typeof v === "number") return v;
+          const clean = String(v || "0")
+            .trim()
+            .replace(/\./g, "")
+            .replace(/,/g, ".");
+          return parseFloat(clean) || 0;
+        };
+        s1YTe += getVal(d.chiPhiYTe);
+        s1Luong += getVal(d.chiPhiLuong);
+        s1BTTC += getVal(d.chiPhiBTTC);
+        s1NgayNghi += getVal(d.soNgayNghi);
+        s1ThiHai += getVal(d.thiethaiTaiSan);
+      });
+    } else {
+      s1NgayNghi = Number(viewingReport.soNgayNghi) || 0;
+      s1YTe = Number(viewingReport.chiPhiYTe) || 0;
+      s1Luong = Number(viewingReport.chiPhiTraLuong) || 0;
+      s1BTTC = Number(viewingReport.boiThuongTroCap) || 0;
+      s1ThiHai = Number(viewingReport.thiethaiTaiSan) || 0;
+    }
+
+    const s1TongChiPhi = s1YTe + s1Luong + s1BTTC;
+
+    const tcRow = viewingReport.rows?.["10"];
+    const hasTc = Array.isArray(tcRow) && tcRow.length >= 17;
+
+    const s2NgayNghi = hasTc ? (Number(tcRow[11]) || 0) : 0;
+    const s2TongChiPhi = hasTc ? (Number(tcRow[12]) || 0) : 0;
+    const s2YTe = hasTc ? (Number(tcRow[13]) || 0) : 0;
+    const s2Luong = hasTc ? (Number(tcRow[14]) || 0) : 0;
+    const s2BTTC = hasTc ? (Number(tcRow[15]) || 0) : 0;
+    const s2ThiHai = hasTc ? (Number(tcRow[16]) || 0) : 0;
+
+    return {
+      soNgayNghi: s1NgayNghi + s2NgayNghi,
+      tongSoTien: s1TongChiPhi + s2TongChiPhi,
+      chiPhiYTe: s1YTe + s2YTe,
+      chiPhiTraLuong: s1Luong + s2Luong,
+      boiThuongTroCap: s1BTTC + s2BTTC,
+      thiethaiTaiSan: s1ThiHai + s2ThiHai,
+    };
   }, [viewingReport]);
 
   const total = filtered.length;
@@ -352,9 +682,13 @@ export default function AccidentReportPage() {
   const end = Math.min(start + pageSize, total);
   const paged = filtered.slice(start, end);
 
+  const enabledPaged = useMemo(() => {
+    return paged.filter((r) => r.tt === "Đã nộp" || r.tt === "Đã tiếp nhận");
+  }, [paged]);
+
   const allPageSelected =
-    paged.length > 0 && paged.every((r) => selectedIds.has(r.id));
-  const somePageSelected = paged.some((r) => selectedIds.has(r.id));
+    enabledPaged.length > 0 && enabledPaged.every((r) => selectedIds.has(r.id));
+  const somePageSelected = enabledPaged.some((r) => selectedIds.has(r.id));
 
   // Các báo cáo đang được chọn — dùng để validate trạng thái trước khi duyệt/từ chối.
   const selectedReports = useMemo(
@@ -366,14 +700,16 @@ export default function AccidentReportPage() {
   // "Đã tiếp nhận" = đã duyệt rồi → không cho duyệt lại.
   // "Từ chối" rồi → không cho từ chối lại.
   const disableApprove = selectedReports.some((r) => r.tt !== "Đã nộp");
-  const disableReject = selectedReports.some((r) => r.tt !== "Đã nộp");
+  const disableReject = selectedReports.some(
+    (r) => r.tt !== "Đã nộp" && r.tt !== "Đã tiếp nhận",
+  );
 
   const toggleSelectAll = () => {
-    const allIds = paged.map((r) => r.id);
+    const enabledIds = enabledPaged.map((r) => r.id);
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (allPageSelected) allIds.forEach((id) => next.delete(id));
-      else allIds.forEach((id) => next.add(id));
+      if (allPageSelected) enabledIds.forEach((id) => next.delete(id));
+      else enabledIds.forEach((id) => next.add(id));
       return next;
     });
   };
@@ -449,13 +785,14 @@ export default function AccidentReportPage() {
                         checked={allPageSelected}
                         indeterminate={!allPageSelected && somePageSelected}
                         onChange={toggleSelectAll}
+                        disabled={enabledPaged.length === 0}
                       />
                     </th>
                     <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]" />
                     <th className="border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Tên doanh nghiệp
                     </th>
-                    <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
+                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151] whitespace-nowrap">
                       Mã số thuế
                     </th>
                     <th className="w-32 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
@@ -466,9 +803,6 @@ export default function AccidentReportPage() {
                     </th>
                     <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Ngày cập nhật
-                    </th>
-                    <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
-                      Ngày nộp
                     </th>
                     <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                       Trạng thái
@@ -536,7 +870,6 @@ export default function AccidentReportPage() {
                     </th>
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
-                    <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5" />
                     <th className="border-b border-[#e5e7eb] bg-white px-2.5 py-1.5">
                       <select
                         className={FILTER_SELECT_CLASS}
@@ -568,7 +901,7 @@ export default function AccidentReportPage() {
                   {paged.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={8}
                         className="px-3.5 py-8 text-center text-[13.5px] text-muted"
                       >
                         Không có dữ liệu
@@ -584,15 +917,29 @@ export default function AccidentReportPage() {
                           <TriCheckbox
                             checked={selectedIds.has(r.id)}
                             onChange={() => toggleSelect(r.id)}
+                            disabled={r.tt !== "Đã nộp" && r.tt !== "Đã tiếp nhận"}
                           />
                         </td>
                         <td className="px-3.5 py-2.5">
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => {
-                                setViewingReport(r);
-                                setView("detail");
+                              onClick={async () => {
+                                try {
+                                  const fullReport =
+                                    await getAccidentReportById(r.id);
+                                  setViewingReport(fullReport);
+                                  setView("detail");
+                                } catch (err) {
+                                  console.error(
+                                    "Failed to load report detail",
+                                    err,
+                                  );
+                                  setToast({
+                                    message: "Không thể tải chi tiết báo cáo",
+                                    variant: "error",
+                                  });
+                                }
                               }}
                               title="Xem"
                               className="rounded p-1 text-muted transition-colors hover:bg-[#eff6ff] hover:text-primary"
@@ -635,7 +982,7 @@ export default function AccidentReportPage() {
                         <td className="px-3.5 py-2.5 text-[#374151]">
                           {r.ten}
                         </td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">
+                        <td className="px-3.5 py-2.5 text-[#374151] whitespace-nowrap">
                           {r.mst}
                         </td>
                         <td className="px-3.5 py-2.5 text-[#374151]">{r.ky}</td>
@@ -644,9 +991,6 @@ export default function AccidentReportPage() {
                         </td>
                         <td className="px-3.5 py-2.5 text-[#374151]">
                           {formatTime(r.updatedAt)}
-                        </td>
-                        <td className="px-3.5 py-2.5 text-[#374151]">
-                          {formatTime(r.submittedAt)}
                         </td>
                         <td className="px-3.5 py-2.5">
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-[#374151]">
@@ -804,11 +1148,12 @@ export default function AccidentReportPage() {
                     <tr>
                       <th
                         className={`${CT_TH} min-w-[220px] text-left`}
+                        style={{ width: "30%" }}
                         rowSpan={4}
                       >
                         Tên chỉ tiêu thống kê
                       </th>
-                      <th className={`${CT_TH} w-[60px]`} rowSpan={4}>
+                      <th className={`${CT_TH} w-[60px]`} style={{ width: "5%" }} rowSpan={4}>
                         Mã số
                       </th>
                       <th className={CT_TH} colSpan={11}>
@@ -824,14 +1169,14 @@ export default function AccidentReportPage() {
                       </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: "6%", minWidth: 45 }}>
                         Tổng số
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: "6%", minWidth: 45 }}>
                         Số vụ có người chết
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
-                        Số vụ có từ 2 người bị nạn trở lên
+                      <th className={CT_TH} rowSpan={2} style={{ width: "6%", minWidth: 45 }}>
+                        Số vụ ≥ 2 người bị nạn
                       </th>
                       <th className={CT_TH} colSpan={2}>
                         Tổng số
@@ -847,25 +1192,24 @@ export default function AccidentReportPage() {
                       </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>NN không thuộc quyền quản lý</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: "6%", minWidth: 45 }}>NN không thuộc quyền quản lý</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {soDetailRows.map((row, idx) => {
+                    {soDetailRows.map((row: any, idx) => {
                       if (row.kind === "sub") {
                         return (
                           <tr key={idx}>
                             <td
                               className={`${CT_TD} text-left ${row.bold ? "font-semibold" : "italic"}`}
                               colSpan={13}
-                              style={{ paddingLeft: row.bold ? 20 : 32 }}
                             >
                               {row.label}
                             </td>
@@ -888,10 +1232,8 @@ export default function AccidentReportPage() {
                       return (
                         <tr key={idx}>
                           <td className={`${CT_TD} text-left`}>{row.label}</td>
-                          <td className={CT_TD}>
-                            {(row as { ma?: string }).ma || ""}
-                          </td>
-                          {vals.map((v, i) => (
+                          <td className={CT_TD}>{row.ma || ""}</td>
+                          {(vals as number[]).map((v, i) => (
                             <td key={i} className={CT_TD}>
                               {v ?? 0}
                             </td>
@@ -943,31 +1285,31 @@ export default function AccidentReportPage() {
                   <tbody>
                     <tr>
                       <td className={CT_TD}>
-                        {viewingReport?.soNgayNghi ?? "—"}
+                        {dynamicThiethai ? dynamicThiethai.soNgayNghi : "—"}
                       </td>
                       <td className={CT_TD}>
-                        {viewingReport
-                          ? fmtMoney(viewingReport.tongSoTien)
+                        {dynamicThiethai
+                          ? fmtMoney(dynamicThiethai.tongSoTien)
                           : "—"}
                       </td>
                       <td className={CT_TD}>
-                        {viewingReport
-                          ? fmtMoney(viewingReport.chiPhiYTe)
+                        {dynamicThiethai
+                          ? fmtMoney(dynamicThiethai.chiPhiYTe)
                           : "—"}
                       </td>
                       <td className={CT_TD}>
-                        {viewingReport
-                          ? fmtMoney(viewingReport.chiPhiTraLuong)
+                        {dynamicThiethai
+                          ? fmtMoney(dynamicThiethai.chiPhiTraLuong)
                           : "—"}
                       </td>
                       <td className={CT_TD}>
-                        {viewingReport
-                          ? fmtMoney(viewingReport.boiThuongTroCap)
+                        {dynamicThiethai
+                          ? fmtMoney(dynamicThiethai.boiThuongTroCap)
                           : "—"}
                       </td>
                       <td className={CT_TD}>
-                        {viewingReport
-                          ? fmtMoney(viewingReport.thiethaiTaiSan)
+                        {dynamicThiethai
+                          ? fmtMoney(dynamicThiethai.thiethaiTaiSan)
                           : "—"}
                       </td>
                     </tr>
@@ -1156,13 +1498,13 @@ export default function AccidentReportPage() {
                   <thead>
                     <tr>
                       <th
-                        className={`${CT_TH} min-w-[140px] text-left`}
+                        className={`${CT_TH} min-w-[95px] max-w-[95px] text-left`}
                         rowSpan={3}
                       >
-                        Tên chỉ tiêu thống kê
+                        Phân loại
                       </th>
                       <th className={`${CT_TH} w-[50px]`} rowSpan={3}>
-                        Mã số
+                        mã số
                       </th>
                       <th className={CT_TH} colSpan={7}>
                         Phân loại TNLĐ theo mức độ thương tật
@@ -1178,34 +1520,34 @@ export default function AccidentReportPage() {
                       <th className={CT_TH} colSpan={4}>
                         Số người bị nạn (Người)
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: 45, minWidth: 45 }}>
                         Tổng số ngày nghỉ vì TNLĐ
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: 85, minWidth: 85 }}>
                         Tổng số tiền
                       </th>
                       <th className={CT_TH} colSpan={3}>
                         Tổng số ngày nghỉ vì TNLĐ
                       </th>
-                      <th className={CT_TH} rowSpan={2}>
+                      <th className={CT_TH} rowSpan={2} style={{ width: 85, minWidth: 85 }}>
                         Thiệt hại tài sản (1.000 đ)
                       </th>
                     </tr>
                     <tr>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>Số vụ có người chết</th>
-                      <th className={CT_TH}>
-                        Số vụ có từ 2 người bị nạn trở lên
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Số vụ có người chết</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>
+                        Số vụ ≥ 2 người bị nạn
                       </th>
-                      <th className={CT_TH}>Tổng số</th>
-                      <th className={CT_TH}>Số LĐ nữ</th>
-                      <th className={CT_TH}>Số người bị chết</th>
-                      <th className={CT_TH}>Số người bị thương nặng</th>
-                      <th className={CT_TH}>Y Tế</th>
-                      <th className={CT_TH}>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Tổng số</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Số LĐ nữ</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Số người bị chết</th>
+                      <th className={CT_TH} style={{ width: 45, minWidth: 45 }}>Số người bị thương nặng</th>
+                      <th className={CT_TH} style={{ width: 85, minWidth: 85 }}>Y tế</th>
+                      <th className={CT_TH} style={{ width: 85, minWidth: 85 }}>
                         Trả lương theo thời gian điều trị
                       </th>
-                      <th className={CT_TH}>Bồi thường/ Trợ cấp</th>
+                      <th className={CT_TH} style={{ width: 85, minWidth: 85 }}>Bồi thường/ Trợ cấp</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1248,39 +1590,65 @@ export default function AccidentReportPage() {
                         {fmtMoney(tonghopStats.total.thiethaiTaiSan)}
                       </td>
                     </tr>
-                    {TONGHOP_II_GROUPS.map((group) => (
-                      <Fragment key={group.category}>
-                        <tr className="bg-[#f1f5f9]">
-                          <td
-                            className={`${CT_TD} text-left font-semibold`}
-                            colSpan={15}
-                          >
-                            {group.category}
-                          </td>
-                        </tr>
-                        {group.items.map((item) => (
-                          <tr key={item.ma}>
-                            <td
-                              className={`${CT_TD} text-left`}
-                              style={{ paddingLeft: 20 }}
-                            >
-                              {item.label}
+                    {TONGHOP_II_GROUPS.map((group) => {
+                      const formatSectorName = (name: string): string => {
+                        if (!name) return "";
+                        const cleaned = name.trim();
+                        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+                      };
+
+                      const items =
+                        group.category === "Phân theo ngành nghề"
+                          ? dbSectors
+                              .filter((s) => s.cap === 1)
+                              .sort((a, b) => a.ma.localeCompare(b.ma, undefined, { numeric: true }))
+                              .map((s) => ({ label: formatSectorName(s.ten), ma: s.ma }))
+                          : group.category === "Phân theo yếu tố gây chấn thương"
+                            ? dbFactors
+                                .sort((a, b) => a.ma.localeCompare(b.ma, undefined, { numeric: true }))
+                                .map((f) => ({ label: f.ten, ma: f.ma }))
+                            : group.items;
+
+                      return items.map((item, index) => {
+                        let displayMa = item.ma;
+
+                        const rowVals = tonghopStats.phanLoai[item.ma];
+                        const displayVals =
+                          rowVals ?? Array.from({ length: 13 }, () => 0);
+                        
+                        const dynamicVals = [...displayVals].map(Number);
+                        dynamicVals[8] = (dynamicVals[9] || 0) + (dynamicVals[10] || 0) + (dynamicVals[11] || 0);
+
+                        return (
+                          <tr key={`${group.category}_${item.ma}`}>
+                            {index === 0 && (
+                              <td
+                                className="border border-[#e5e7eb] p-2 text-center font-bold text-[#374151] align-middle bg-white"
+                                style={{
+                                  verticalAlign: "middle",
+                                  width: 95,
+                                  minWidth: 95,
+                                  maxWidth: 95,
+                                }}
+                                rowSpan={items.length}
+                              >
+                                {group.category}
+                              </td>
+                            )}
+                            <td className={`${CT_TD} cursor-pointer hover:bg-slate-100`}>
+                              <Tooltip title={item.label} arrow placement="top">
+                                <span className="block w-full h-full">{displayMa}</span>
+                              </Tooltip>
                             </td>
-                            <td className={CT_TD}>{item.ma}</td>
-                            {(() => {
-                              const rowVals = tonghopStats.phanLoai[item.ma];
-                              const displayVals =
-                                rowVals ?? Array.from({ length: 13 }, () => 0);
-                              return displayVals.map((v, i) => (
-                                <td key={i} className={CT_TD}>
-                                  {v}
-                                </td>
-                              ));
-                            })()}
+                            {dynamicVals.map((v, i) => (
+                              <td key={i} className={CT_TD}>
+                                {i >= 8 ? fmtMoney(v) : v}
+                              </td>
+                            ))}
                           </tr>
-                        ))}
-                      </Fragment>
-                    ))}
+                        );
+                      });
+                    })}
                   </tbody>
                 </table>
               </div>

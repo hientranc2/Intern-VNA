@@ -21,6 +21,8 @@ export function Switch({ checked, onChange, ariaLabel, disabled }: SwitchProps) 
       }}
     >
       <MuiSwitch
+      // Muốn chỉnh kích thước Switch thì chỉnh size
+        size="small"
         checked={checked}
         disabled={disabled}
         onChange={(_, val) => onChange(val)}

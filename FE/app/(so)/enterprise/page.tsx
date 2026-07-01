@@ -7,6 +7,7 @@ import { Autocomplete, MenuItem, TextField } from "@mui/material";
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
+import { EnterpriseImportForm } from "@/libs/tts/enterprise/EnterpriseImportForm";
 import {
   EMPTY_BUSINESS_FORM,
   type BusinessFormData,
@@ -39,6 +40,7 @@ import {
 import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
 import { useCan } from "@/libs/tts/auth/abilityContext";
 import { LoadingOverlay } from "@/libs/shared/core/components/LoadingOverlay/LoadingOverlay";
+import { PasswordField } from "@/libs/shared/core/components/PasswordField/PasswordField";
 import { FormHelperText } from "@mui/material";
 
 function filenameFromUrl(url?: string | null): string {
@@ -242,6 +244,8 @@ export default function EnterprisePage() {
     Record<number, Record<string, string>>
   >({});
   const [isImportSubmitting, setIsImportSubmitting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const setField = <K extends keyof BusinessFormData>(
     key: K,
@@ -338,46 +342,34 @@ export default function EnterprisePage() {
     }
   };
 
-
   const normalizeBusinessRows = (rawRows: any[]) => {
     return rawRows.map((row) => {
-      const pick = (candidates: string[]) => {
-        for (const k of Object.keys(row)) {
-          if (
-            candidates
-              .map((c) => c.toLowerCase().trim())
-              .includes(k.toLowerCase().trim())
-          ) {
-            return String(row[k] ?? "").trim();
-          }
-        }
-        return "";
-      };
-
+      const normalizedRow: Record<string, string> = {};
+      for (const k of Object.keys(row)) {
+        const cleanKey = k.replace(/\s*\*\s*$/, "").trim();
+        normalizedRow[cleanKey] = String(row[k] ?? "").trim();
+      }
       return {
-        "Tên doanh nghiệp": pick(["Tên doanh nghiệp", "Tên công ty"]),
-        "Mã số thuế": pick(["Mã số thuế", "MST"]),
-        "Loại hình kinh doanh": pick(["Loại hình kinh doanh", "Loại hình KD"]),
-        "Ngành nghề kinh doanh": pick([
-          "Ngành nghề kinh doanh",
-          "Ngành nghề KD",
-        ]),
-        "Ngày cấp GPKD": pick(["Ngày cấp GPKD"]),
-        "Tỉnh ĐKKD": pick(["Tỉnh ĐKKD", "Tỉnh/Thành ĐKKD"]),
-        "Phường ĐKKD": pick(["Phường ĐKKD", "Phường/Xã ĐKKD"]),
-        "Địa chỉ": pick(["Địa chỉ"]),
-        "Tên tiếng nước ngoài": pick(["Tên tiếng nước ngoài"]),
-        Email: pick(["Email", "E-mail"]),
-        "SĐT văn phòng": pick(["SĐT văn phòng", "Điện thoại văn phòng"]),
-        "Tỉnh hoạt động": pick(["Tỉnh hoạt động", "Tỉnh/Thành hoạt động"]),
-        "Phường hoạt động": pick(["Phường hoạt động", "Phường/Xã hoạt động"]),
-        "Địa chỉ hoạt động": pick(["Địa chỉ hoạt động"]),
-        "Người đại diện": pick(["Người đại diện"]),
-        "SĐT đại diện": pick(["SĐT đại diện", "Điện thoại đại diện"]),
+        "Tên doanh nghiệp":      normalizedRow["Tên doanh nghiệp"]      || normalizedRow["Tên công ty"]          || "",
+        "Mã số thuế":            normalizedRow["Mã số thuế"]            || normalizedRow["MST"]                  || "",
+        "Loại hình kinh doanh":  normalizedRow["Loại hình kinh doanh"]  || normalizedRow["Loại hình KD"]         || "",
+        "Ngành nghề kinh doanh": normalizedRow["Ngành nghề kinh doanh"] || normalizedRow["Ngành nghề KD"]        || "",
+        "Ngày cấp GPKD":         normalizedRow["Ngày cấp GPKD"]                                                 || "",
+        "Tỉnh ĐKKD":             normalizedRow["Tỉnh ĐKKD"]             || normalizedRow["Tỉnh/Thành ĐKKD"]      || "",
+        "Phường ĐKKD":           normalizedRow["Phường ĐKKD"]           || normalizedRow["Phường/Xã ĐKKD"]       || "",
+        "Địa chỉ":               normalizedRow["Địa chỉ"]                                                       || "",
+        "Tên tiếng nước ngoài":  normalizedRow["Tên tiếng nước ngoài"]                                          || "",
+        "Email":                 normalizedRow["Email"]                  || normalizedRow["E-mail"]               || "",
+        "SĐT văn phòng":         normalizedRow["SĐT văn phòng"]         || normalizedRow["Điện thoại văn phòng"] || "",
+        "Tỉnh hoạt động":        normalizedRow["Tỉnh hoạt động"]        || normalizedRow["Tỉnh/Thành hoạt động"] || "",
+        "Phường hoạt động":      normalizedRow["Phường hoạt động"]      || normalizedRow["Phường/Xã hoạt động"]  || "",
+        "Địa chỉ hoạt động":     normalizedRow["Địa chỉ hoạt động"]                                             || "",
+        "Người đại diện":        normalizedRow["Người đại diện"]                                                 || "",
+        "SĐT đại diện":          normalizedRow["SĐT đại diện"]          || normalizedRow["Điện thoại đại diện"]  || "",
       };
     });
   };
-
+  
   const validateBusinessImport = (rows: any[]) => {
     const errs: Record<number, Record<string, string>> = {};
     const seenTaxCodes = new Set<string>();
@@ -386,37 +378,78 @@ export default function EnterprisePage() {
     rows.forEach((row, idx) => {
       const rowErrs: Record<string, string> = {};
       const businessName = (row["Tên doanh nghiệp"] || "").toString().trim();
-      const taxCode = (row["Mã số thuế"] || "").toString().trim();
-      const businessType = (row["Loại hình kinh doanh"] || "")
-        .toString()
-        .trim();
-      const mainIndustry = (row["Ngành nghề kinh doanh"] || "")
-        .toString()
-        .trim();
+      let taxCode = (row["Mã số thuế"] || "").toString().trim();
+      if (/^\d{11,15}$/.test(taxCode)) {
+        taxCode = `${taxCode.slice(0, 10)}-${taxCode.slice(10)}`;
+        row["Mã số thuế"] = taxCode;
+      }
+      const businessType = (row["Loại hình kinh doanh"] || "").toString().trim();
+      const mainIndustry = (row["Ngành nghề kinh doanh"] || "").toString().trim();
       const registeredProvince = (row["Tỉnh ĐKKD"] || "").toString().trim();
       const registeredWard = (row["Phường ĐKKD"] || "").toString().trim();
       const email = (row["Email"] || "").toString().trim().toLowerCase();
       const officePhone = (row["SĐT văn phòng"] || "").toString().trim();
       const representativePhone = (row["SĐT đại diện"] || "").toString().trim();
+      const operatingProvince = (row["Tỉnh hoạt động"] || "").toString().trim();
+      const operatingWard = (row["Phường hoạt động"] || "").toString().trim();
 
+      // Tên doanh nghiệp
       if (!businessName) rowErrs["Tên doanh nghiệp"] = "Thiếu tên doanh nghiệp";
 
+      // Mã số thuế
       if (!taxCode) {
         rowErrs["Mã số thuế"] = "Thiếu mã số thuế";
-      } else if (!/^\d{10}(-\d{1,5})?$/.test(taxCode)) {
-        rowErrs["Mã số thuế"] = "Mã số thuế không hợp lệ (cần 10 số)";
+      } else if (!/^\d{10}(-\d{1,5})?$/.test(taxCode.trim())) {
+        rowErrs["Mã số thuế"] =
+          "Mã số thuế gồm 10 chữ số, hoặc 10 chữ số + dấu gạch + tối đa 5 số";
       } else if (seenTaxCodes.has(taxCode)) {
         rowErrs["Mã số thuế"] = "Trùng mã số thuế trong file";
       } else {
         seenTaxCodes.add(taxCode);
       }
 
-      if (!businessType)
+      // Loại hình kinh doanh - phải khớp danh sách hợp lệ
+      if (!businessType) {
         rowErrs["Loại hình kinh doanh"] = "Thiếu loại hình kinh doanh";
-      if (!mainIndustry) rowErrs["Ngành nghề kinh doanh"] = "Thiếu ngành nghề";
-      if (!registeredProvince) rowErrs["Tỉnh ĐKKD"] = "Thiếu tỉnh ĐKKD";
-      if (!registeredWard) rowErrs["Phường ĐKKD"] = "Thiếu phường ĐKKD";
+      } else if (
+        loaiHinhOptions.length > 0 &&
+        !loaiHinhOptions.some(
+          (opt) => opt.trim().toLowerCase() === businessType.toLowerCase(),
+        )
+      ) {
+        rowErrs["Loại hình kinh doanh"] = "Loại hình không có trong hệ thống";
+      }
 
+      // Ngành nghề kinh doanh - phải khớp danh sách hợp lệ
+      if (!mainIndustry) {
+        rowErrs["Ngành nghề kinh doanh"] = "Thiếu ngành nghề";
+      } else if (
+        nganhCap4Options.length > 0 &&
+        !nganhCap4Options.some(
+          (opt) => opt.trim().toLowerCase() === mainIndustry.toLowerCase(),
+        )
+      ) {
+        rowErrs["Ngành nghề kinh doanh"] = "Ngành nghề không có trong hệ thống";
+      }
+
+      // Tỉnh ĐKKD - phải thuộc danh sách PROVINCES
+      if (!registeredProvince) {
+        rowErrs["Tỉnh ĐKKD"] = "Thiếu tỉnh ĐKKD";
+      } else if (!PROVINCES.includes(registeredProvince)) {
+        rowErrs["Tỉnh ĐKKD"] = "Tỉnh/thành phố không hợp lệ";
+      }
+
+      // Phường ĐKKD - phải thuộc đúng tỉnh đã chọn
+      if (!registeredWard) {
+        rowErrs["Phường ĐKKD"] = "Thiếu phường ĐKKD";
+      } else if (registeredProvince && PROVINCES.includes(registeredProvince)) {
+        const validWards = WARDS_BY_PROVINCE[registeredProvince] ?? [];
+        if (validWards.length > 0 && !validWards.includes(registeredWard)) {
+          rowErrs["Phường ĐKKD"] = `Phường/xã không thuộc ${registeredProvince}`;
+        }
+      }
+
+      // Email
       if (!email) {
         rowErrs["Email"] = "Thiếu email";
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -427,11 +460,31 @@ export default function EnterprisePage() {
         seenEmails.add(email);
       }
 
+      // SĐT văn phòng
       if (officePhone && !/^0\d{9,10}$/.test(officePhone)) {
         rowErrs["SĐT văn phòng"] = "SĐT không hợp lệ";
       }
+
+      // SĐT đại diện
       if (representativePhone && !/^0\d{9,10}$/.test(representativePhone)) {
         rowErrs["SĐT đại diện"] = "SĐT không hợp lệ";
+      }
+
+      // Tỉnh hoạt động (không bắt buộc, nhưng nếu có thì phải hợp lệ)
+      if (operatingProvince && !PROVINCES.includes(operatingProvince)) {
+        rowErrs["Tỉnh hoạt động"] = "Tỉnh/thành phố không hợp lệ";
+      }
+
+      // Phường hoạt động (không bắt buộc, nhưng nếu có thì phải thuộc đúng tỉnh)
+      if (
+        operatingWard &&
+        operatingProvince &&
+        PROVINCES.includes(operatingProvince)
+      ) {
+        const validOpWards = WARDS_BY_PROVINCE[operatingProvince] ?? [];
+        if (validOpWards.length > 0 && !validOpWards.includes(operatingWard)) {
+          rowErrs["Phường hoạt động"] = `Phường/xã không thuộc ${operatingProvince}`;
+        }
       }
 
       if (Object.keys(rowErrs).length > 0) {
@@ -442,54 +495,65 @@ export default function EnterprisePage() {
     return errs;
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImportFileName(file.name);
+  const handleFileDrop = (file: File, fileName: string) => {
+    setImportFileName(fileName);
     setIsLoading(true);
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
         const data = evt.target?.result;
         if (!data) throw new Error("Không đọc được dữ liệu file");
-
-        const workbook = XLSX.read(new Uint8Array(data as ArrayBuffer), {
-          type: "array",
-        });
-        const sheetName = workbook.SheetNames[0];
+        const workbook = XLSX.read(new Uint8Array(data as ArrayBuffer), { type: "array" });
+        const sheetName = workbook.SheetNames.find(name => name === "Doanh nghiệp") ?? workbook.SheetNames[0];
         if (!sheetName) throw new Error("File không có sheet nào");
-
         const sheet = workbook.Sheets[sheetName];
-        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "" });
-        if (rawRows.length === 0)
-          throw new Error("File không có dòng dữ liệu nào");
+        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "", blankrows: false });
+        if (rawRows.length === 0) throw new Error("File không có dòng dữ liệu nào");
 
-        const normalized = normalizeBusinessRows(rawRows);
+        const dataRows = rawRows.filter((row) => {
+          // Các cột quan trọng - phải có ít nhất 1 cột có dữ liệu thật
+          const importantKeys = [
+            "Tên doanh nghiệp *", "Tên doanh nghiệp",
+            "Mã số thuế *", "Mã số thuế",
+            "Email *", "Email",
+          ];
+          const hasRealValue = importantKeys.some(
+            (k) => String(row[k] ?? "").trim() !== ""
+          );
+          if (!hasRealValue) return false;
+
+          // Bỏ qua dòng ví dụ
+          const mst = String(row["Mã số thuế *"] || row["Mã số thuế"] || "").trim();
+          const ten = String(row["Tên doanh nghiệp *"] || row["Tên doanh nghiệp"] || "").trim();
+          return !(mst === "0123456789" && ten === "Công ty TNHH Ví Dụ");
+        });
+
+        if (dataRows.length === 0) throw new Error("File không có dòng dữ liệu nào");
+        const normalized = normalizeBusinessRows(dataRows);
         const errs = validateBusinessImport(normalized);
-
         setImportRows(normalized);
         setImportErrors(errs);
         setImportPreviewOpen(true);
       } catch (err) {
         setToast({
-          message:
-            err instanceof Error ? err.message : "Đọc file Excel thất bại",
+          message: err instanceof Error ? err.message : "Đọc file Excel thất bại",
           variant: "error",
         });
       } finally {
         setIsLoading(false);
-        if (importRef.current) importRef.current.value = "";
       }
     };
-
     reader.onerror = () => {
       setToast({ message: "Không thể đọc file", variant: "error" });
       setIsLoading(false);
     };
-
     reader.readAsArrayBuffer(file);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleFileDrop(file, file.name);
   };
 
   const handleCellChange = (rowIdx: number, field: string, val: string) => {
@@ -907,14 +971,14 @@ export default function EnterprisePage() {
             />
             <button
               type="button"
-              onClick={() => importRef.current?.click()}
+              onClick={() => setImportModalOpen(true)}
               disabled={!canCreate}
               title={
                 canCreate
                   ? undefined
                   : "Bạn không có quyền thêm mới doanh nghiệp"
               }
-              className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
+              className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
             >
               <svg
                 width="14"
@@ -1981,17 +2045,16 @@ export default function EnterprisePage() {
               Khởi tạo mật khẩu cho tài khoản{" "}
               <strong>{resetTarget?.taxCode}</strong>
             </p>
-            <TextField
-              type="password"
+            <PasswordField
+              label="Mật khẩu mới"
               value={resetPwd}
-              onChange={(e) => {
-                setResetPwd(e.target.value);
+              onChange={(v) => {
+                setResetPwd(v);
                 if (resetPwdError) setResetPwdError(null);
               }}
-              error={!!resetPwdError}
-              helperText={resetPwdError}
-              size="small"
-              fullWidth
+              autoComplete="new-password"
+              hasError={!!resetPwdError}
+              helperText={resetPwdError ?? undefined}
             />
           </div>
           <div className="flex justify-end gap-3 px-6 pb-5">
@@ -2135,7 +2198,15 @@ export default function EnterprisePage() {
       />
 
       <LoadingOverlay open={isDeleting} message="Đang xóa..." />
-
+      {importModalOpen && (
+        <EnterpriseImportForm
+          onClose={() => setImportModalOpen(false)}
+          onFileReady={(file, fileName) => {
+            setImportModalOpen(false);
+            handleFileDrop(file, fileName);
+          }}
+        />
+      )}
       {/* Modal Preview & Sửa lỗi Import */}
       {importPreviewOpen && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/45 transition-opacity duration-200">
@@ -2274,23 +2345,56 @@ export default function EnterprisePage() {
                           ].map((col, colIdx) => {
                             const err = rowErrs[col];
                             const isLast = colIdx === 15;
+
+                            const SELECT_COLS: Record<string, string[]> = {
+                              "Loại hình kinh doanh": loaiHinhOptions,
+                              "Ngành nghề kinh doanh": nganhCap4Options,
+                              "Tỉnh ĐKKD": PROVINCES,
+                              "Phường ĐKKD": WARDS_BY_PROVINCE[row["Tỉnh ĐKKD"]] ?? [],
+                              "Tỉnh hoạt động": PROVINCES,
+                              "Phường hoạt động": WARDS_BY_PROVINCE[row["Tỉnh hoạt động"]] ?? [],
+                            };
+
+                            const isSelectCol = col in SELECT_COLS;
+
                             return (
                               <td
                                 key={col}
-                                className={`p-2 relative align-top ${isLast ? "" : "border-r border-line"}`}
+                                className={`p-2 align-top overflow-visible ${isLast ? "" : "border-r border-line"}`}
                               >
-                                <input
-                                  type="text"
-                                  value={row[col] || ""}
-                                  onChange={(e) =>
-                                    handleCellChange(idx, col, e.target.value)
-                                  }
-                                  className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
-                                    err
-                                      ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
-                                      : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
-                                  }`}
-                                />
+                                {isSelectCol ? (
+                                  <div className="h-8">
+                                    <SearchableSelect
+                                      fixed
+                                      compact
+                                      error={!!err}
+                                      options={SELECT_COLS[col]}
+                                      value={row[col] || ""}
+                                      onChange={(v) => {
+                                        handleCellChange(idx, col, v);
+                                        if (col === "Tỉnh ĐKKD") {
+                                          handleCellChange(idx, "Phường ĐKKD", "");
+                                        }
+                                        if (col === "Tỉnh hoạt động") {
+                                          handleCellChange(idx, "Phường hoạt động", "");
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={row[col] || ""}
+                                    onChange={(e) =>
+                                      handleCellChange(idx, col, e.target.value)
+                                    }
+                                    className={`w-full h-8 px-2 rounded border text-[12.5px] outline-none transition-all ${
+                                      err
+                                        ? "border-danger bg-red-50/40 focus:border-danger focus:ring-2 focus:ring-danger/10"
+                                        : "border-line focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                    }`}
+                                  />
+                                )}
                                 {err && (
                                   <div className="text-[11px] text-danger font-medium mt-1.5 leading-tight">
                                     {err}

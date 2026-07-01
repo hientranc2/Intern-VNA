@@ -14,6 +14,72 @@ import {
   WidthType,
 } from "docx";
 import { TONGHOP_I_ROWS, TONGHOP_II_GROUPS } from "./accidentReportData";
+import { getInjuryFactorList } from "../category/categoryApi";
+import { getBusinessSectorList } from "../business-sector/businessSectorApi";
+
+const cleanName = (name: string): string => {
+  return (name || "").replace(/^[–\-—\s\.\u2013\u2014]+/, "").trim();
+};
+
+const matchCategoryCode = (
+  dbItems: { ten: string; ma: string }[],
+  label: string,
+  type: "sector" | "factor"
+): string => {
+  const cleanHard = (s: string) =>
+    (s || "")
+      .normalize("NFC")
+      .toLowerCase()
+      .replace(/^[–\-—\s\.\u2013\u2014]+/, "")
+      .replace(/[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/g, "")
+      .trim();
+
+  const cLabelHard = cleanHard(label);
+
+  for (const item of dbItems) {
+    const cTenHard = cleanHard(item.ten);
+    if (cTenHard === cLabelHard || cTenHard.includes(cLabelHard) || cLabelHard.includes(cTenHard)) {
+      return item.ma;
+    }
+  }
+
+  const clean = (s: string) =>
+    (s || "")
+      .normalize("NFC")
+      .toLowerCase()
+      .trim();
+
+  const cLabel = clean(label);
+
+  if (type === "sector") {
+    if (cLabel.includes("khai khoáng")) return "B";
+    if (cLabel.includes("chế biến") || cLabel.includes("chế tạo")) return "C";
+    if (cLabel.includes("điện") || cLabel.includes("khí đốt")) return "D";
+    if (cLabel.includes("nước") || cLabel.includes("rác thải") || cLabel.includes("thoát nước")) return "E";
+    if (cLabel.includes("xây dựng")) return "F";
+    if (cLabel.includes("vận tải") || cLabel.includes("kho bãi")) return "H";
+    if (cLabel.includes("nông nghiệp") || cLabel.includes("thủy sản")) return "A";
+  } else if (type === "factor") {
+    if (cLabel.includes("ngã")) {
+      const found = dbItems.find((f) => clean(f.ten).includes("ngã"));
+      if (found) return found.ma;
+    }
+    if (cLabel.includes("điện")) {
+      const found = dbItems.find((f) => clean(f.ten).includes("điện"));
+      if (found) return found.ma;
+    }
+    if (cLabel.includes("rơi") || cLabel.includes("bắn")) {
+      const found = dbItems.find((f) => clean(f.ten).includes("rơi") || clean(f.ten).includes("bắn"));
+      if (found) return found.ma;
+    }
+    if (cLabel.includes("máy") || cLabel.includes("thiết bị")) {
+      const found = dbItems.find((f) => clean(f.ten).includes("máy") || clean(f.ten).includes("thiết bị"));
+      if (found) return found.ma;
+    }
+  }
+
+  return "";
+};
 
 export type TonghopExportStats = {
   total: RowStats;
@@ -206,7 +272,11 @@ function buildSection1Table(stats: TonghopExportStats): Table {
 }
 
 // ─── Section II – 15 columns (Total: 13960 dxa) ──────────────────────────────
-function buildSection2Table(stats: TonghopExportStats): Table {
+function buildSection2Table(
+  stats: TonghopExportStats,
+  dbSectors: { ten: string; ma: string }[],
+  dbFactors: { ten: string; ma: string }[],
+): Table {
   const W_COL1 = 3580;
   const W_COL2 = 500;
   const W_VAL = 760; // (760 * 13 = 9880)
@@ -296,11 +366,18 @@ function buildSection2Table(stats: TonghopExportStats): Table {
         return String(val ?? 0);
       };
 
+      let displayMa = item.ma;
+      if (group.category === "Phân theo ngành nghề") {
+        displayMa = matchCategoryCode(dbSectors, item.label, "sector") || item.ma;
+      } else if (group.category === "Phân theo yếu tố gây chấn thương") {
+        displayMa = matchCategoryCode(dbFactors, item.label, "factor") || item.ma;
+      }
+
       rows.push(
         new TableRow({
           children: [
             dCell(item.label, false, true, 200, W_COL1),
-            dCell(item.ma, false, false, 0, W_COL2),
+            dCell(displayMa, false, false, 0, W_COL2),
             ...Array.from({ length: 13 }, (_, i) => dCell(v(i), false, false, 0, W_VAL)),
           ],
         }),
@@ -322,6 +399,29 @@ function buildSection2Table(stats: TonghopExportStats): Table {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 export async function exportTonghopDocx(stats: TonghopExportStats): Promise<void> {
+  let dbSectors: { ten: string; ma: string }[] = [];
+  let dbFactors: { ten: string; ma: string }[] = [];
+
+  try {
+    const list = await getBusinessSectorList();
+    dbSectors = list.map((item) => ({
+      ten: cleanName(item.ten),
+      ma: item.ma,
+    }));
+  } catch (err) {
+    console.error("Failed to load business sectors for docx", err);
+  }
+
+  try {
+    const list = await getInjuryFactorList();
+    dbFactors = list.filter((item) => item.active).map((item) => ({
+      ten: cleanName(item.ten),
+      ma: item.ma,
+    }));
+  } catch (err) {
+    console.error("Failed to load injury factors for docx", err);
+  }
+
   const doc = new Document({
     sections: [
       {
@@ -368,7 +468,7 @@ export async function exportTonghopDocx(stats: TonghopExportStats): Promise<void
               }),
             ],
           }),
-          buildSection2Table(stats),
+          buildSection2Table(stats, dbSectors, dbFactors),
           new Paragraph({ children: [] }),
         ],
       },

@@ -68,9 +68,68 @@ export class AccidentReportService {
     return data.publicUrl;
   }
 
+  private async syncMissingReports(): Promise<void> {
+    const configs = await this.configRepo.find({ where: { active: true } });
+    if (configs.length === 0) return;
+
+    const businesses = await this.businessRepo.find({ where: { isActive: true } });
+    if (businesses.length === 0) return;
+
+    const existingReports = await this.repo.find({
+      select: { enterpriseId: true, configId: true },
+    });
+    const existingKeys = new Set(
+      existingReports.map((r) => `${r.enterpriseId}_${r.configId}`),
+    );
+
+    const toCreate: AccidentReport[] = [];
+    for (const config of configs) {
+      for (const business of businesses) {
+        const key = `${business.id}_${config.id}`;
+        if (!existingKeys.has(key)) {
+          const report = this.repo.create({
+            enterpriseId: business.id,
+            configId: config.id,
+            ten: business.businessName,
+            mst: business.taxCode,
+            ky: config.ky,
+            status: STATUS_DRAFT,
+            rows: {},
+            chiTietRows: [],
+            phanLoaiRows: {},
+            province: business.registeredProvince,
+            ward: business.registeredWard,
+            loaiHinh: business.businessType,
+            soLaoDong: 0,
+            soLDCoBaoHiem: 0,
+            soVu: 0,
+            soVuCoNguoiChet: 0,
+            soVuCo2NguoiBiNan: 0,
+            soNguoiBiNan: 0,
+            soLDNu: 0,
+            soNguoiBiChet: 0,
+            soNguoiBiThuongNang: 0,
+            soNgayNghi: 0,
+            tongSoTien: 0,
+            chiPhiYTe: 0,
+            chiPhiTraLuong: 0,
+            boiThuongTroCap: 0,
+            thiethaiTaiSan: 0,
+          });
+          toCreate.push(report);
+        }
+      }
+    }
+
+    if (toCreate.length > 0) {
+      await this.repo.save(toCreate);
+    }
+  }
+
   // ===== Màn hình Sở =====
 
   async findAll(query: AccidentReportQueryDto) {
+    await this.syncMissingReports();
     const { page = 1, pageSize = 10, ten, mst, ky, tt, nam } = query;
 
     const where: Record<string, unknown> = {};
@@ -112,14 +171,7 @@ export class AccidentReportService {
     const report = await this.repo.findOne({ where: { id } });
     if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
 
-    return {
-      id: report.id,
-      enterpriseId: report.enterpriseId,
-      configId: report.configId,
-      rows: report.rows,
-      submittedAt: report.submittedAt,
-      status: report.status,
-    };
+    return report;
   }
 
   async approve(id: number, userId?: string): Promise<{ message: string }> {
@@ -203,6 +255,7 @@ export class AccidentReportService {
   // ===== Màn hình Doanh nghiệp =====
 
   async findMy(userId: string) {
+    await this.syncMissingReports();
     const business = await this.resolveBusiness(userId);
     const reports = await this.repo.find({
       where: { enterpriseId: business.id },
@@ -314,6 +367,31 @@ export class AccidentReportService {
     if (!report) throw new NotFoundException('Không tìm thấy báo cáo');
     if (report.enterpriseId !== business.id)
       throw new ForbiddenException('Không có quyền sửa báo cáo này');
+
+    const config = await this.configRepo.findOne({ where: { id: report.configId } });
+    if (config) {
+      if (!config.active) {
+        throw new BadRequestException('Kỳ báo cáo này đã ngừng hoạt động');
+      }
+      const parseDateDDMMYYYY = (str: string): Date | null => {
+        if (!str) return null;
+        const parts = str.split('/');
+        if (parts.length !== 3) return null;
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+      };
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const end = parseDateDDMMYYYY(config.ketThuc);
+      if (end) {
+        end.setHours(23, 59, 59, 999);
+        if (now > end) {
+          throw new BadRequestException('Đã quá thời hạn kết thúc nộp báo cáo');
+        }
+      }
+    }
 
     if (dto.configId !== undefined) report.configId = dto.configId;
     if (dto.tongSoRows !== undefined) report.rows = dto.tongSoRows;
