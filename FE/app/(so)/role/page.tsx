@@ -14,7 +14,7 @@ import {
 import { type Permission } from "@/libs/tts/permission/permissionData";
 import { getPermissionList } from "@/libs/tts/permission/permissionApi";
 import { useCan } from "@/libs/tts/auth/abilityContext";
-import { getIsSuper, getProfile, getRoleCode } from "@/libs/tts/auth/authApi";
+import { getProfile, getRoleCode } from "@/libs/tts/auth/authApi";
 
 type PermRow = {
   id: string;
@@ -41,13 +41,8 @@ export default function RolePage() {
     variant?: "success" | "error" | "warning";
   } | null>(null);
   const [saving, setSaving] = useState(false);
-  // User hiện tại là ADMIN/CEO? — chỉ họ mới được sửa vai trò cấp cao (is_super).
+  // Chỉ Super Admin được sửa các vai trò hệ thống cấp cao.
   // Đọc 1 lần từ localStorage; server trả false để tránh hydration mismatch.
-  const isPrivileged = useSyncExternalStore(
-    () => () => {},
-    () => getIsSuper(),
-    () => false,
-  );
   const isSuperAdminFromStorage = useSyncExternalStore(
     () => () => {},
     () => getRoleCode() === "SUPER_ADMIN",
@@ -56,8 +51,8 @@ export default function RolePage() {
   const [profileRoleCode, setProfileRoleCode] = useState<string | null>(null);
   const isSuperAdminAccount =
     profileRoleCode === "SUPER_ADMIN" || isSuperAdminFromStorage;
-  const canCreateRole = isPrivileged || canCreate;
-  const canUpdateRole = isPrivileged || canUpdate;
+  const canCreateRole = isSuperAdminAccount || canCreate;
+  const canUpdateRole = isSuperAdminAccount || canUpdate;
   const canDeleteRole = isSuperAdminAccount || canDelete;
 
   useEffect(() => {
@@ -502,9 +497,7 @@ export default function RolePage() {
               ) : (
                 pagedRoles.map((r) => {
                   const selected = selectedIds.has(r.id);
-                  const showLockIcon =
-                    (r.isProtected && !isSuperAdminAccount) ||
-                    (r.isSuper && !isPrivileged);
+                  const showLockIcon = r.isProtected && !isSuperAdminAccount;
                   return (
                     <tr
                       key={r.id}
@@ -524,12 +517,13 @@ export default function RolePage() {
                       </td>
                       <td className="pl-1 pr-3.5 py-2.5">
                         {(() => {
-                          const lockedSuper = r.isSuper && !isPrivileged;
+                          const lockedSuper =
+                            r.isProtected && !isSuperAdminAccount;
                           const editDisabled = !canUpdateRole || lockedSuper;
                           const editTitle = !canUpdateRole
                             ? "Bạn không có quyền sửa"
                             : lockedSuper
-                              ? "Chỉ ADMIN hoặc CEO mới được sửa vai trò cấp cao"
+                              ? "Chỉ Super Admin mới được sửa vai trò cấp cao"
                               : "Chỉnh sửa";
                           return (
                             <button

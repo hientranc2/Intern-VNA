@@ -54,10 +54,10 @@ export class RoleService {
     if (item.ma === 'SUPER_ADMIN')
       throw new ForbiddenException('Không thể cập nhật vai trò Super Admin');
 
-    // Thông tin vai trò cấp cao (ADMIN/CEO) chỉ ADMIN hoặc CEO mới được cập nhật.
-    if (item.isSuper && !(await this.isAdminOrSuper(requester)))
+    // Vai trò hệ thống cấp cao chỉ Super Admin mới được cập nhật.
+    if (item.isProtected && !(await this.isSuperAdmin(requester)))
       throw new ForbiddenException(
-        'Chỉ ADMIN hoặc CEO mới được cập nhật vai trò cấp cao',
+        'Chỉ Super Admin mới được cập nhật vai trò cấp cao',
       );
     if (dto.ten !== undefined) item.ten = dto.ten;
     if (dto.perms !== undefined) item.perms = dto.perms;
@@ -93,17 +93,7 @@ export class RoleService {
     return { message: 'Xóa vai trò thành công' };
   }
 
-  // Người gọi là ADMIN (role string) hoặc đang giữ một vai trò is_super (vd CEO)?
-  private async isAdminOrSuper(requester: RoleRequester): Promise<boolean> {
-    if (requester.role === 'ADMIN') return true;
-    const user = await this.userRepo.findOne({
-      where: { id: requester.userId },
-    });
-    if (!user?.roleId) return false;
-    const role = await this.repo.findOne({ where: { id: user.roleId } });
-    return Boolean(role?.isSuper);
-  }
-
+  // Người gọi giữ vai trò SUPER_ADMIN cụ thể.
   private async isSuperAdmin(requester: RoleRequester): Promise<boolean> {
     const user = await this.userRepo.findOne({
       where: { id: requester.userId },

@@ -27,7 +27,7 @@ export type AuthUser = {
   permissions?: string[];
   roleName?: string;
   roleCode?: string;
-  isSuper?: boolean; // user là ADMIN hoặc giữ vai trò toàn quyền (CEO)
+  isSuper?: boolean; // true chỉ khi user giữ vai trò SUPER_ADMIN
 };
 
 // --- Quản lý token (chỉ chạy phía client) ---

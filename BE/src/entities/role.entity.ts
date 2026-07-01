@@ -24,7 +24,7 @@ export class Role {
   @Column({ name: 'is_protected', default: false })
   isProtected: boolean;
 
-  // Vai trò toàn quyền — tự động có mọi quyền khi đăng nhập (như ADMIN).
+  // Cờ legacy cho vai trò cấp cao; chỉ role mã SUPER_ADMIN mới tự động toàn quyền.
   @Column({ name: 'is_super', default: false })
   isSuper: boolean;
 
