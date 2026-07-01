@@ -36,6 +36,7 @@ import {
 import { useCan } from "@/libs/tts/auth/abilityContext";
 import { ApiError } from "@/libs/tts/auth/apiClient";
 import { exportToExcel } from "@/libs/shared/core/utils/exportCsv";
+import { CategoryImportForm } from "@/libs/tts/category/CategoryImportForm";
 
 const TAB_META: Record<CategoryTab, { label: string; option: string }> = {
   factor: { label: "Yếu tố gây chấn thương", option: "Yếu tố chấn thương" },
@@ -55,7 +56,7 @@ export default function CategoryPage() {
   const canUpdate = useCan("update", "CATEGORY");
   const canDelete = useCan("delete", "CATEGORY");
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const importRef = useRef<HTMLInputElement>(null);
+  
 
   const [factors, setFactors] = useState<InjuryFactor[]>([]);
   const [injuryTypes, setInjuryTypes] = useState<TreeNode[]>([]);
@@ -72,6 +73,7 @@ export default function CategoryPage() {
     Record<number, Record<string, string>>
   >({});
   const [isImportSubmitting, setIsImportSubmitting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   useEffect(() => {
     getInjuryFactorList().then(setFactors).catch(() => {});
@@ -87,6 +89,7 @@ export default function CategoryPage() {
       return next;
     });
   };
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
@@ -168,6 +171,20 @@ export default function CategoryPage() {
   const end = Math.min(start + pageSize, total);
   const pagedFactors = filteredFactors.slice(start, end);
   const pagedTree = filteredTree.slice(start, end);
+
+  const toggleSelectAll = (checked: boolean) => {
+    const currentPaged = tab === "factor" ? pagedFactors : pagedTree;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      currentPaged.forEach((r) => {
+        checked ? next.add(r.id) : next.delete(r.id);
+      });
+      return next;
+    });
+  };
+
+  const isAllPageChecked = (tab === "factor" ? pagedFactors : pagedTree).length > 0 && (tab === "factor" ? pagedFactors : pagedTree).every((r) => selectedIds.has(r.id));
+
 
   const toggleFactor = (id: number, active: boolean) => {
     setFactors((prev) => prev.map((r) => (r.id === id ? { ...r, active } : r)));
@@ -449,11 +466,8 @@ export default function CategoryPage() {
     return errs;
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImportFileName(file.name);
+  const handleFileDrop = (file: File, fileName: string) => {
+    setImportFileName(fileName);
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -484,8 +498,6 @@ export default function CategoryPage() {
         setImportPreviewOpen(true);
       } catch (err) {
         setToast({ message: "Lỗi khi đọc file Excel", variant: "error" });
-      } finally {
-        if (importRef.current) importRef.current.value = "";
       }
     };
     reader.readAsBinaryString(file);
@@ -654,17 +666,12 @@ export default function CategoryPage() {
             </svg>
             Xuất danh sách
           </button>
-          <input
-            ref={importRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-            onChange={handleImport}
-          />
           <button
             type="button"
-            onClick={() => importRef.current?.click()}
-            className="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] text-[#374151] hover:bg-[#f9fafb]"
+            onClick={() => setImportModalOpen(true)}
+            disabled={!canCreate}
+            title={canCreate ? undefined : "Bạn không có quyền thêm mới"}
+            className="flex h-9 items-center gap-1.5 rounded-md border border-primary bg-white px-4 text-[13px] font-medium text-primary hover:bg-[#eff6ff] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
           >
             <svg
               width="14"
@@ -746,7 +753,9 @@ export default function CategoryPage() {
             <table className="w-full border-collapse text-[13.5px]">
               <thead>
                 <tr>
-                  <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
+                  <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5">
+                    <TriCheckbox checked={isAllPageChecked} onChange={toggleSelectAll} />
+                  </th>
                   <th className="w-40 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]">
                     Mã yếu tố
                   </th>
@@ -856,7 +865,9 @@ export default function CategoryPage() {
             <table className="w-full border-collapse text-[13.5px]">
               <thead>
                 <tr>
-                  <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5" />
+                  <th className="w-11 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5">
+                    <TriCheckbox checked={isAllPageChecked} onChange={toggleSelectAll} />
+                  </th>
                   {tab === "occupation" ? (
                     <th className="w-16 border-b border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-left text-[13px] font-semibold text-[#374151]" />
                   ) : null}
@@ -1259,6 +1270,17 @@ export default function CategoryPage() {
           Hành động này không thể hoàn tác.
         </p>
       </Modal>
+
+      {importModalOpen && (
+        <CategoryImportForm
+          tab={tab}
+          onClose={() => setImportModalOpen(false)}
+          onFileReady={(file, fileName) => {
+            setImportModalOpen(false);
+            handleFileDrop(file, fileName);
+          }}
+        />
+      )}
 
       {/* Modal Preview Import */}
       {importPreviewOpen && (

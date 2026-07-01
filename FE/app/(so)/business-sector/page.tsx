@@ -739,10 +739,15 @@ export default function BusinessSectorPage() {
             label="Tên ngành"
             value={inputTen}
             onChange={(e) => {
-              const val = e.target.value.replace(/[^a-zA-Z0-9\sÀ-ỹà-ỹ]/g, "");
-              setInputTen(val);
+              setInputTen(e.target.value);
               if (panelErrors.ten)
                 setPanelErrors((p) => ({ ...p, ten: undefined }));
+            }}
+            onBlur={(e) => {
+              const cleaned = e.target.value
+                .normalize("NFC")
+                .replace(/[^a-zA-Z0-9\sÀ-ỹà-ỹ]/g, "");
+              setInputTen(cleaned);
             }}
             error={!!panelErrors.ten}
             helperText={panelErrors.ten}
