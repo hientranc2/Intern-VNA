@@ -24,7 +24,7 @@ interface RequestUser {
   role: string;
 }
 
-// Ép quyền ở BE: ADMIN / vai trò is_super = toàn quyền; còn lại phải có đủ mã quyền.
+// Ép quyền ở BE: chỉ SUPER_ADMIN bypass; các vai trò khác phải có đủ mã quyền.
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(
@@ -45,7 +45,6 @@ export class PermissionsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{ user?: RequestUser }>();
     const current = request.user;
     if (!current) throw new UnauthorizedException('Chưa đăng nhập');
-    if (current.role === 'ADMIN') return true;
 
     const user = await this.userRepo.findOne({
       where: { id: current.userId },
@@ -53,7 +52,7 @@ export class PermissionsGuard implements CanActivate {
     const role = user?.roleId
       ? await this.roleRepo.findOne({ where: { id: user.roleId } })
       : null;
-    if (role?.isSuper) return true;
+    if (role?.ma === 'SUPER_ADMIN') return true;
 
     const granted = role?.perms ?? [];
     const ok = required.every((code) => granted.includes(code));

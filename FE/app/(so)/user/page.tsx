@@ -118,7 +118,7 @@ export default function UserPage() {
   const canUpdate = useCan("update", "USER");
   const canDelete = useCan("delete", "USER");
   const importRef = useRef<HTMLInputElement>(null);
-  // User hiện tại là ADMIN/Super Admin? — họ được phép sửa/xóa mọi user kể cả cấp cao.
+  // Chỉ Super Admin được phép sửa/xóa user cấp cao.
   const isPrivileged = useSyncExternalStore(
     () => () => {},
     () => getIsSuper(),
@@ -278,10 +278,12 @@ export default function UserPage() {
   const roleName = (u: User) =>
     roles.find((r) => r.id === u.roleId)?.ten ?? u.role ?? "—";
 
-  // User cấp cao (ADMIN / CEO / Quản trị viên hệ thống): vai trò is_super.
+  // User cấp cao: role hệ thống được bảo vệ hoặc legacy is_super.
   const isHighRoleUser = (u: User) =>
-    u.role === "ADMIN" ||
-    Boolean(roles.find((r) => r.id === u.roleId)?.isSuper);
+    Boolean(
+      roles.find((r) => r.id === u.roleId)?.isProtected ||
+        roles.find((r) => r.id === u.roleId)?.isSuper,
+    );
 
   // User giữ vai trò SUPER_ADMIN cụ thể — bất khả xâm phạm, không ai được xóa/reset pw.
   const isSuperAdminUser = (u: User) =>
@@ -289,6 +291,7 @@ export default function UserPage() {
 
   // Người đang đăng nhập có phải Super Admin không? (chỉ Super Admin mới quản lý được admin cùng cấp)
   const currentIsSuperAdmin = Boolean(
+    isPrivileged ||
     currentUserId &&
     users.find(
       (u) =>

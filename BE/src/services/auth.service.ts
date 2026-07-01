@@ -92,7 +92,7 @@ export class AuthService {
   ) {}
 
   // Suy ra quyền + tên vai trò hiển thị của user (nạp vai trò 1 lần).
-  // role ADMIN = toàn quyền (mọi Component); ngược lại lấy theo vai trò đã gán.
+  // Chỉ SUPER_ADMIN = toàn quyền (mọi Component); ngược lại lấy theo vai trò đã gán.
   // roleName ưu tiên tên vai trò (roleId), fallback role string (vd ADMIN).
   private async getAccessInfo(
     user: User,
@@ -106,8 +106,8 @@ export class AuthService {
       ? await this.roleRepository.findOne({ where: { id: user.roleId } })
       : null;
 
-    // ADMIN (role string) hoặc vai trò is_super = toàn quyền (mọi Component).
-    const isSuper = user.role === 'ADMIN' || Boolean(role?.isSuper);
+    // SUPER_ADMIN là quyền ẩn toàn quyền; các role khác dùng đúng roles.perms.
+    const isSuper = role?.ma === 'SUPER_ADMIN';
     let permissions: string[];
     if (isSuper) {
       const all = await this.permissionRepository.find({
