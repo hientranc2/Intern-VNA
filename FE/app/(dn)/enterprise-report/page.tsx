@@ -137,14 +137,23 @@ const formatNumberString = (val: string): string => {
 };
 
 const normalizeDetail = (d: any): AccidentDetail => {
+  const gioiTinh = d.gioiTinh || "Nam";
+  const mucDo = d.mucDo || "Thương nhẹ";
+
+  const parseStr = (val: any, def: string): string => {
+    if (val === undefined || val === null) return def;
+    const s = String(val).trim();
+    return s === "" || s === "null" || s === "undefined" ? def : s;
+  };
+
   return {
     id: d.id,
     hoTen: d.hoTen || "",
     ngaySinh: d.ngaySinh || "",
-    gioiTinh: d.gioiTinh || "Nam",
+    gioiTinh,
     ngheNghiep: d.ngheNghiep || "Công nhân",
     loaiHopDong: d.loaiHopDong || "Hợp đồng xác định thời hạn",
-    mucDo: d.mucDo || "Thương nhẹ",
+    mucDo,
     ngayXayRa: d.ngayXayRa || "",
     diaDiem: d.diaDiem || "",
 
@@ -152,60 +161,29 @@ const normalizeDetail = (d: any): AccidentDetail => {
       d.nguyenNhan ||
       "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn",
     yeuTo: d.yeuTo || "Thiết bị nâng",
-    soVu: String(d.soVu !== undefined ? d.soVu : "1"),
-    soVuCoNguoiChet: String(
-      d.soVuCoNguoiChet !== undefined
-        ? d.soVuCoNguoiChet
-        : d.mucDo === "Chết"
-          ? "1"
-          : "0",
-    ),
-    soVuCo2NguoiBiNan: String(
-      d.soVuCo2NguoiBiNan !== undefined ? d.soVuCo2NguoiBiNan : "0",
-    ),
-    soNguoiBiNan: String(d.soNguoiBiNan !== undefined ? d.soNguoiBiNan : "1"),
-    soLDNu: String(
-      d.soLDNu !== undefined ? d.soLDNu : d.gioiTinh === "Nữ" ? "1" : "0",
-    ),
-    soNguoiBiChet: String(
-      d.soNguoiBiChet !== undefined
-        ? d.soNguoiBiChet
-        : d.mucDo === "Chết"
-          ? "1"
-          : "0",
-    ),
-    soNguoiBiThuongNang: String(
-      d.soNguoiBiThuongNang !== undefined
-        ? d.soNguoiBiThuongNang
-        : d.mucDo === "Thương nặng"
-          ? "1"
-          : "0",
-    ),
-    nanKhongQL: String(d.nanKhongQL !== undefined ? d.nanKhongQL : "0"),
-    nuKhongQL: String(d.nuKhongQL !== undefined ? d.nuKhongQL : "0"),
-    chetKhongQL: String(d.chetKhongQL !== undefined ? d.chetKhongQL : "0"),
-    thuongKhongQL: String(
-      d.thuongKhongQL !== undefined ? d.thuongKhongQL : "0",
-    ),
-    chiPhiYTe: String(d.chiPhiYTe !== undefined ? d.chiPhiYTe : "0").replace(
+
+    soVu: "1", // A detail row always represents exactly 1 accident/victim
+    soVuCoNguoiChet: mucDo === "Chết" ? "1" : "0",
+    soVuCo2NguoiBiNan: "0", // A single victim row cannot be a multi-victim accident by itself
+    soNguoiBiNan: "1",
+    soLDNu: gioiTinh === "Nữ" ? "1" : "0",
+    soNguoiBiChet: mucDo === "Chết" ? "1" : "0",
+    soNguoiBiThuongNang: mucDo === "Thương nặng" ? "1" : "0",
+
+    nanKhongQL: parseStr(d.nanKhongQL, "0"),
+    nuKhongQL: parseStr(d.nuKhongQL, "0"),
+    chetKhongQL: parseStr(d.chetKhongQL, "0"),
+    thuongKhongQL: parseStr(d.thuongKhongQL, "0"),
+
+    chiPhiYTe: parseStr(d.chiPhiYTe, "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    chiPhiLuong: parseStr(d.chiPhiLuong, "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    chiPhiBTTC: parseStr(d.chiPhiBTTC, "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    tongSoTien: parseStr(d.tongSoTien, "0").replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+    soNgayNghi: parseStr(d.soNgayNghi, "0"),
+    thiethaiTaiSan: parseStr(d.thiethaiTaiSan, "0").replace(
       /\B(?=(\d{3})+(?!\d))/g,
       ".",
     ),
-    chiPhiLuong: String(
-      d.chiPhiLuong !== undefined ? d.chiPhiLuong : "0",
-    ).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
-    chiPhiBTTC: String(d.chiPhiBTTC !== undefined ? d.chiPhiBTTC : "0").replace(
-      /\B(?=(\d{3})+(?!\d))/g,
-      ".",
-    ),
-    tongSoTien: String(d.tongSoTien !== undefined ? d.tongSoTien : "0").replace(
-      /\B(?=(\d{3})+(?!\d))/g,
-      ".",
-    ),
-    soNgayNghi: String(d.soNgayNghi !== undefined ? d.soNgayNghi : "0"),
-    thiethaiTaiSan: String(
-      d.thiethaiTaiSan !== undefined ? d.thiethaiTaiSan : "0",
-    ).replace(/\B(?=(\d{3})+(?!\d))/g, "."),
   };
 };
 
@@ -254,12 +232,40 @@ const InputField = ({
       </label>
       <div className="relative flex items-center w-full">
         <input
-          type={type === "text" || suffix ? "text" : "number"}
-          min={type === "text" || suffix ? undefined : 0}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
           className={`${FC} w-full h-[40px] pt-1 ${suffix ? "pr-16" : ""} ${invalid ? "border-danger border-2" : ""}`}
           value={value}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if (type === "number") {
+              const isControlKey = [
+                "Backspace",
+                "Tab",
+                "Delete",
+                "ArrowLeft",
+                "ArrowRight",
+                "ArrowUp",
+                "ArrowDown",
+                "Home",
+                "End",
+                "Enter",
+                "Escape",
+              ].includes(e.key);
+
+              const isShortcut =
+                (e.ctrlKey || e.metaKey) &&
+                ["a", "c", "v", "x"].includes(e.key.toLowerCase());
+
+              const isDigit = /^\d$/.test(e.key);
+
+              if (!isControlKey && !isShortcut && !isDigit) {
+                e.preventDefault();
+              }
+            }
+          }}
           disabled={disabled}
         />
         {suffix && (
@@ -323,7 +329,7 @@ const EMPTY_DETAIL: Omit<AccidentDetail, "id"> = {
   soVu: "1",
   soVuCoNguoiChet: "0",
   soVuCo2NguoiBiNan: "0",
-  soNguoiBiNan: "0",
+  soNguoiBiNan: "1",
   soLDNu: "0",
   soNguoiBiChet: "0",
   soNguoiBiThuongNang: "0",
@@ -716,6 +722,8 @@ export default function EnterpriseReportPage() {
     thiHaiTaiSan,
   ]);
 
+
+
   // Auto-calculate phanLoai rows 1-8 and 17-24
   useEffect(() => {
     if (isLoadingReportRef.current) return;
@@ -867,7 +875,7 @@ export default function EnterpriseReportPage() {
 
   // Cross-validation for tnld section (non-tc)
   const tnldCrossValidations = useMemo(() => {
-    const tVu = parseNum(tcTongVu);
+    const tVu = parseNum(tongVu);
     const vChet = parseNum(vuChet);
     const vNhieu = parseNum(vuNhieu);
     const tNan = parseNum(tongNan);
@@ -893,7 +901,7 @@ export default function EnterpriseReportPage() {
       isThuongKQLGreater: nKQL < thuongKQL,
     };
   }, [
-    tcTongVu,
+    tongVu,
     vuChet,
     vuNhieu,
     tongNan,
@@ -1085,10 +1093,7 @@ export default function EnterpriseReportPage() {
     const hasDetailVuChet = accidentDetails.some((d) => parseNum(d.soVuCoNguoiChet) > 0);
     const hasDetailVuNhieu = accidentDetails.some((d) => parseNum(d.soVuCo2NguoiBiNan) > 0);
 
-    setTongVu(String(totalV));
 
-    if (hasDetailVuChet) setVuChet(String(vChetCount));
-    if (hasDetailVuNhieu) setVuNhieu(String(vNhieuCount));
     if (hasDetailNan) setTongNan(String(totalN));
     if (hasDetailNu) setTongNanNu(String(totalN_Nu));
     if (hasDetailChet) setTongChetNN(String(totalChet));
@@ -2525,8 +2530,8 @@ export default function EnterpriseReportPage() {
   const addDetail = () => {
     setAccidentDetails((prev) => {
       const next = [...prev, { id: Date.now(), ...EMPTY_DETAIL }];
-      // Update tongVu (section 1) to match new count
-      setTongVu(String(next.length));
+      // Update tongNan (section 1) to match new count
+      setTongNan(String(next.length));
       return next;
     });
   };
@@ -2565,16 +2570,17 @@ export default function EnterpriseReportPage() {
   const removeDetail = (id: number) => {
     setAccidentDetails((prev) => {
       const next = prev.filter((d) => d.id !== id);
-      // Update tongVu (section 1) to match new count
-      setTongVu(String(next.length));
+      // Update tongNan (section 1) to match new count
+      setTongNan(String(next.length));
       return next;
     });
   };
 
-  // Auto-sync accidentDetails count when tongVu (section 1 total) changes
+  // Auto-sync accidentDetails count when tongNan (section 1 total victims) changes
   useEffect(() => {
     if (isLoadingReportRef.current) return;
-    const target = parseNum(tongVu);
+    if (tongNan.trim() === "") return; // Skip if temporarily cleared/empty
+    const target = parseNum(tongNan);
     if (target < 0) return;
     setAccidentDetails((prev) => {
       const current = prev.length;
@@ -2588,11 +2594,28 @@ export default function EnterpriseReportPage() {
         }));
         return [...prev, ...newEntries];
       } else {
-        // Remove entries from the end
+        // Safe reduction: check if any of the details to be removed contain user data
+        const slicedOut = prev.slice(target);
+        const hasUserData = slicedOut.some((d) => {
+          return (
+            (d.hoTen?.trim() ?? "") !== "" ||
+            (d.ngaySinh?.trim() ?? "") !== "" ||
+            (d.diaDiem?.trim() ?? "") !== "" ||
+            parseNum(d.chiPhiYTe) > 0 ||
+            parseNum(d.chiPhiLuong) > 0 ||
+            parseNum(d.chiPhiBTTC) > 0 ||
+            parseNum(d.thiethaiTaiSan) > 0 ||
+            parseNum(d.soNgayNghi) > 0
+          );
+        });
+        // If there's user entered data in the rows about to be deleted, preserve the list!
+        if (hasUserData) {
+          return prev;
+        }
         return prev.slice(0, target);
       }
     });
-  }, [tongVu]);
+  }, [tongNan]);
 
   // Năm để lọc lấy từ chính dữ liệu báo cáo (report_configs.nam), đồng thời hiển thị đến năm hiện tại (2026).
   const yearOptions = useMemo(() => {
