@@ -25,6 +25,7 @@ export type BusinessDetail = Business & {
   representativePhone?: string;
   licenseFile?: string;
   otherFile?: string;
+  createdAt?: string;
 };
 
 export type BusinessListResponse = {

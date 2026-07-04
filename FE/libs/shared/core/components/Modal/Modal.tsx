@@ -10,6 +10,7 @@ type ModalProps = {
   footer?: ReactNode;
   /** Mặc định false: bấm ra ngoài (overlay) KHÔNG đóng modal — chỉ đóng bằng nút Hủy/X. */
   closeOnOverlayClick?: boolean;
+  width?: string;
 };
 
 export function Modal({
@@ -19,6 +20,7 @@ export function Modal({
   children,
   footer,
   closeOnOverlayClick = false,
+  width = "w-[400px]",
 }: ModalProps) {
   return (
     <div
@@ -31,7 +33,7 @@ export function Modal({
       }`}
     >
       <div
-        className={`w-[400px] rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
+        className={`${width} rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
           open ? "translate-y-0" : "translate-y-3"
         }`}
       >

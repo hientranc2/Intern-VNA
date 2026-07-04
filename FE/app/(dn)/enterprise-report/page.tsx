@@ -2709,20 +2709,39 @@ export default function EnterpriseReportPage() {
     });
   }, [tongVu]);
 
-  // Năm để lọc lấy từ chính dữ liệu báo cáo (report_configs.nam), đồng thời hiển thị đến năm hiện tại (2026).
+  const isCreatedThisYear = useMemo(() => {
+    if (!businessDetail?.createdAt) return true;
+    const createdYear = new Date(businessDetail.createdAt).getFullYear();
+    const currentYear = new Date().getFullYear();
+    return createdYear === currentYear;
+  }, [businessDetail?.createdAt]);
+
+  // Năm để lọc lấy từ chính dữ liệu báo cáo (report_configs.nam), đồng thời hiển thị đến năm hiện tại.
   const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    if (isCreatedThisYear) {
+      return [String(currentYear)];
+    }
     const years = new Set(
       reports.map((r) => r.nam).filter((n): n is string => !!n),
     );
-    const currentYear = new Date().getFullYear();
     for (let y = 2022; y <= currentYear; y++) {
       years.add(String(y));
     }
     return Array.from(years).sort((a, b) => b.localeCompare(a));
-  }, [reports]);
-  const filteredReports = filterYear
-    ? reports.filter((r) => r.nam === filterYear)
-    : reports;
+  }, [reports, isCreatedThisYear]);
+
+  const filteredReports = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    let res = reports;
+    if (isCreatedThisYear) {
+      res = res.filter((r) => r.nam === String(currentYear) || !r.nam);
+    }
+    if (filterYear) {
+      res = res.filter((r) => r.nam === filterYear);
+    }
+    return res;
+  }, [reports, filterYear, isCreatedThisYear]);
 
   console.log("Factors/Occupations current state:", {
     dbFactors,

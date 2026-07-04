@@ -268,7 +268,22 @@ export class AccidentReportService {
       ? await this.configRepo.find({ where: { id: In(configIds) } })
       : [];
     const namByConfig = new Map(configs.map((c) => [c.id, c.nam]));
-    return reports.map((r) =>
+
+    // Tự động lọc thời gian thực: Nếu tài khoản doanh nghiệp khởi tạo ở năm hiện tại, chỉ hiển thị kỳ báo cáo năm hiện hành
+    const currentYear = new Date().getFullYear();
+    const createdYear = business.createdAt
+      ? new Date(business.createdAt).getFullYear()
+      : currentYear;
+
+    let filteredReports = reports;
+    if (createdYear === currentYear) {
+      filteredReports = reports.filter((r) => {
+        const nam = namByConfig.get(r.configId);
+        return nam === String(currentYear);
+      });
+    }
+
+    return filteredReports.map((r) =>
       this.toDnRecord(r, namByConfig.get(r.configId) ?? null),
     );
   }

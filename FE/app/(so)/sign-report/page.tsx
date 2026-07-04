@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
 import { Toast } from "@/libs/shared/core/components/Toast/Toast";
@@ -20,6 +21,11 @@ import {
   rejectAtvsldReports,
 } from "@/libs/tts/accident-report/atvsldReportApi";
 import { useCan } from "@/libs/tts/auth/abilityContext";
+import {
+  BulkReviewModal,
+  type BulkReportItem,
+  type DecisionItem,
+} from "@/libs/tts/accident-report/BulkReviewModal";
 
 import useDebounce from "@/libs/shared/core/hooks/useDebounce";
 
@@ -328,6 +334,66 @@ export default function SignReportPage() {
       .catch(() => setToast("Không tải được nội dung báo cáo"));
   };
 
+  // Bulk review modal state
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkDefaultAction, setBulkDefaultAction] = useState<"approve" | "reject">("reject");
+
+  const selectedReportItems = useMemo<BulkReportItem[]>(() => {
+    return reports.filter((r) => selectedIds.has(r.id));
+  }, [reports, selectedIds]);
+
+  const router = useRouter();
+
+  const handleStartReject = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    sessionStorage.setItem(
+      "bulk_review_atvsld_reports",
+      JSON.stringify({ ids, defaultAction: "reject" })
+    );
+    router.push("/sign-report/bulk-review");
+  };
+
+  const handleStartApprove = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    sessionStorage.setItem(
+      "bulk_review_atvsld_reports",
+      JSON.stringify({ ids, defaultAction: "approve" })
+    );
+    router.push("/sign-report/bulk-review");
+  };
+
+  const handleBulkConfirm = async (decisions: Record<number, DecisionItem>) => {
+    const approveIds: number[] = [];
+    const rejectGroups: Record<string, number[]> = {};
+
+    Object.entries(decisions).forEach(([idStr, dec]) => {
+      const id = Number(idStr);
+      if (dec.action === "approve") {
+        approveIds.push(id);
+      } else {
+        const reason = dec.reason.trim() || "—";
+        if (!rejectGroups[reason]) rejectGroups[reason] = [];
+        rejectGroups[reason].push(id);
+      }
+    });
+
+    if (approveIds.length > 0) {
+      await approveAtvsldReports(approveIds);
+    }
+
+    for (const [reason, ids] of Object.entries(rejectGroups)) {
+      if (ids.length > 0) {
+        await rejectAtvsldReports(ids, reason);
+      }
+    }
+
+    setToast(`Đã xử lý thành công ${Object.keys(decisions).length} báo cáo`);
+    setSelectedIds(new Set());
+    loadReports(true);
+  };
+
   const confirmReject = async () => {
     const ids = [...selectedIds];
     try {
@@ -340,6 +406,18 @@ export default function SignReportPage() {
     } catch (e) {
       setToast(e instanceof Error ? e.message : "Từ chối báo cáo thất bại");
     }
+  };
+
+  const renderAtvsldReportDetailContent = (item: BulkReportItem) => {
+    const r = reports.find((rep) => rep.id === item.id) || (item as unknown as AtvsldReport);
+    return (
+      <div className="bg-white p-2">
+        <PhuLucIIView
+          values={(r as any).declaration || EMPTY_DECLARATION}
+          report={r as any}
+        />
+      </div>
+    );
   };
 
   return (
@@ -660,7 +738,7 @@ export default function SignReportPage() {
               </span>
               <button
                 type="button"
-                onClick={() => setRejectOpen(true)}
+                onClick={handleStartReject}
                 disabled={disableRejectButton}
                 title={rejectTitle}
                 className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
@@ -680,7 +758,7 @@ export default function SignReportPage() {
               </button>
               <button
                 type="button"
-                onClick={approveSelected}
+                onClick={handleStartApprove}
                 disabled={disableApproveButton}
                 title={approveTitle}
                 className="flex h-8 items-center gap-1.5 rounded-md bg-success px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-success"
@@ -803,6 +881,16 @@ export default function SignReportPage() {
           onChange={(e) => setRejectReason(e.target.value)}
         />
       </Modal>
+
+      {/* Modal duyệt / từ chối hàng loạt tập trung */}
+      <BulkReviewModal
+        open={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        items={selectedReportItems}
+        defaultAction={bulkDefaultAction}
+        onConfirm={handleBulkConfirm}
+        renderDetail={renderAtvsldReportDetailContent}
+      />
 
       <Modal
         open={historyOpen}

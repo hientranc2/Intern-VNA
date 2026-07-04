@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Tooltip from "@mui/material/Tooltip";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
@@ -29,6 +30,11 @@ import {
   getInjuryFactorList,
   getOccupationList,
 } from "@/libs/tts/category/categoryApi";
+import {
+  BulkReviewModal,
+  type BulkReportItem,
+  type DecisionItem,
+} from "@/libs/tts/accident-report/BulkReviewModal";
 
 const cleanName = (name: string): string => {
   return (name || "").replace(/^[–\-—\s\.\u2013\u2014]+/, "").trim();
@@ -196,6 +202,15 @@ export default function AccidentReportPage() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Bulk review modal state
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkDefaultAction, setBulkDefaultAction] = useState<"approve" | "reject">("reject");
+
+  // Selected items list for bulk review
+  const selectedReportItems = useMemo<BulkReportItem[]>(() => {
+    return reports.filter((r) => selectedIds.has(r.id));
+  }, [reports, selectedIds]);
+
   // Report đang xem chi tiết + popup xem lý do từ chối.
   const [viewingReport, setViewingReport] = useState<AccidentReport | null>(
     null,
@@ -247,6 +262,29 @@ export default function AccidentReportPage() {
     }
   };
 
+  const router = useRouter();
+
+  // Triggers for Bulk Review Page
+  const handleStartReject = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    sessionStorage.setItem(
+      "bulk_review_accident_reports",
+      JSON.stringify({ ids, defaultAction: "reject" })
+    );
+    router.push("/accident-report/bulk-review");
+  };
+
+  const handleStartApprove = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    sessionStorage.setItem(
+      "bulk_review_accident_reports",
+      JSON.stringify({ ids, defaultAction: "approve" })
+    );
+    router.push("/accident-report/bulk-review");
+  };
+
   const approveSelected = async () => {
     const ids = [...selectedIds];
     try {
@@ -289,6 +327,41 @@ export default function AccidentReportPage() {
         variant: "error",
       });
     }
+  };
+
+  const handleBulkConfirm = async (decisions: Record<number, DecisionItem>) => {
+    const approveIds: number[] = [];
+    const rejectGroups: Record<string, number[]> = {};
+
+    Object.entries(decisions).forEach(([idStr, dec]) => {
+      const id = Number(idStr);
+      if (dec.action === "approve") {
+        approveIds.push(id);
+      } else {
+        const reason = dec.reason.trim() || "—";
+        if (!rejectGroups[reason]) rejectGroups[reason] = [];
+        rejectGroups[reason].push(id);
+      }
+    });
+
+    if (approveIds.length > 0) {
+      await approveAccidentReports(approveIds);
+    }
+
+    for (const [reason, ids] of Object.entries(rejectGroups)) {
+      if (ids.length > 0) {
+        await rejectAccidentReports(ids, reason);
+      }
+    }
+
+    setToast({
+      message: `Đã xử lý thành công ${Object.keys(decisions).length} báo cáo`,
+      variant: "success",
+    });
+    setSelectedIds(new Set());
+    getAccidentReportList({ page: 1, pageSize: 1000, nam: year || undefined })
+      .then((res) => setReports(res.data))
+      .catch(() => {});
   };
 
   const [fTen, setFTen] = useState("");
@@ -712,6 +785,257 @@ export default function AccidentReportPage() {
       else enabledIds.forEach((id) => next.add(id));
       return next;
     });
+  };
+
+  const renderAccidentReportDetailContent = (item: BulkReportItem) => {
+    const r = reports.find((rep) => rep.id === item.id) || (item as unknown as AccidentReport);
+    if (!r) return null;
+
+    const rows = r.rows ?? {};
+    const phanLoai = r.phanLoaiRows ?? {};
+    const details = r.chiTietRows ?? [];
+
+    const get11 = (ma: string): number[] => {
+      const raw = phanLoai[ma];
+      if (!Array.isArray(raw)) return Array(11).fill(0);
+      return [
+        Number(raw[0] ?? 0),
+        Number(raw[1] ?? 0),
+        Number(raw[2] ?? 0),
+        Number(raw[3] ?? 0),
+        0,
+        Number(raw[4] ?? 0),
+        0,
+        Number(raw[5] ?? 0),
+        0,
+        Number(raw[6] ?? 0),
+        0,
+      ];
+    };
+
+    const section1Vals = [
+      r.soVu ?? 0,
+      r.soVuCoNguoiChet ?? 0,
+      r.soVuCo2NguoiBiNan ?? 0,
+      r.soNguoiBiNan ?? 0,
+      0,
+      r.soLDNu ?? 0,
+      0,
+      r.soNguoiBiChet ?? 0,
+      0,
+      r.soNguoiBiThuongNang ?? 0,
+      0,
+    ];
+
+    const section2Vals = get11("10");
+    const section3Vals = section1Vals.map((v, i) => v + section2Vals[i]);
+
+    const activeFactors = new Set<string>();
+    const activeOccupations = new Set<string>();
+
+    details.forEach((d: any) => {
+      if (d.yeuTo) activeFactors.add(cleanName(d.yeuTo));
+      if (d.ngheNghiep) activeOccupations.add(cleanName(d.ngheNghiep));
+    });
+
+    Object.keys(phanLoai).forEach((key) => {
+      if (key.startsWith("factor_")) {
+        activeFactors.add(cleanName(key.replace("factor_", "")));
+      }
+      if (key.startsWith("occupation_")) {
+        activeOccupations.add(cleanName(key.replace("occupation_", "")));
+      }
+    });
+
+    if (activeFactors.size === 0 && activeOccupations.size === 0) {
+      activeFactors.add("Thiết bị nâng");
+      activeOccupations.add("Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương");
+      activeOccupations.add("Công nhân");
+    }
+
+    const dynamicRows: {
+      kind: "normal" | "sub" | "section";
+      label: string;
+      ma: string;
+      bold?: boolean;
+    }[] = [
+      { kind: "section", label: "1. Tai nạn lao động", ma: "" },
+      { kind: "normal", label: "Tai nạn lao động", ma: "1" },
+      { kind: "sub", label: "1.1 Phân theo nguyên nhân xảy ra TNLĐ", ma: "", bold: true },
+      { kind: "sub", label: "a. Do người sử dụng lao động", ma: "" },
+      { kind: "normal", label: "Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn", ma: "1" },
+      { kind: "normal", label: "Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt", ma: "2" },
+      { kind: "normal", label: "Tổ chức lao động không hợp lý", ma: "3" },
+      { kind: "normal", label: "Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ", ma: "4" },
+      { kind: "normal", label: "Không có quy trình an toàn hoặc biện pháp làm việc an toàn", ma: "5" },
+      { kind: "normal", label: "Điều kiện làm việc không tốt", ma: "6" },
+      { kind: "sub", label: "b. Do người lao động", ma: "" },
+      { kind: "normal", label: "Quy phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn", ma: "7" },
+      { kind: "normal", label: "Không sử dụng phương tiện bảo vệ cá nhân", ma: "8" },
+      { kind: "normal", label: "Khách quan khó tránh/ Nguyên nhân chưa kể đến", ma: "9" },
+    ];
+
+    dynamicRows.push({ kind: "sub", label: "1.2. Phân theo yếu tố gây chấn thương", ma: "", bold: true });
+    Array.from(activeFactors).forEach((factor) => {
+      dynamicRows.push({ kind: "normal", label: factor, ma: `factor_${factor}` });
+    });
+
+    dynamicRows.push({ kind: "sub", label: "1.3 Phân theo nghề nghiệp", ma: "", bold: true });
+    Array.from(activeOccupations).forEach((occ) => {
+      dynamicRows.push({ kind: "normal", label: occ, ma: `occupation_${occ}` });
+    });
+
+    dynamicRows.push(
+      { kind: "section", label: "2. Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ", ma: "" },
+      { kind: "normal", label: "Tai nạn được hưởng trợ cấp theo quy định tại Khoản 2 Điều 39 Luật ATVSLĐ", ma: "10" },
+      { kind: "section", label: "3. Tổng số", ma: "" },
+      { kind: "normal", label: "Tổng số (3=1+2)", ma: "total" }
+    );
+
+    const calculatedDetailRows = dynamicRows.map((row) => {
+      if (row.kind !== "normal" && row.kind !== "section") {
+        return row;
+      }
+      let vals = Array(11).fill(0);
+      const ma = row.ma;
+      if (row.label === "Tai nạn lao động" && ma === "1") {
+        vals = section1Vals;
+      } else if (row.label === "Tổng số (3=1+2)" && ma === "total") {
+        vals = section3Vals;
+      } else if (ma === "10") {
+        vals = section2Vals;
+      } else if (ma) {
+        vals = get11(ma);
+      }
+      return { ...row, vals };
+    });
+
+    return (
+      <div className="space-y-4 text-xs text-[#374151]">
+        <div className="flex items-center justify-between border-b border-line pb-2">
+          <div>
+            <div className="font-bold text-[14px] text-ink">{r.ten}</div>
+            <div className="text-muted text-[12px]">Mã số thuế: {r.mst} | Kỳ: {r.ky || "6 tháng"} - Năm {r.nam}</div>
+          </div>
+          {r.fileUrl && (
+            <a
+              href={r.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1 text-primary hover:underline text-[12px] font-medium"
+            >
+              📎 File đính kèm có mộc
+            </a>
+          )}
+        </div>
+
+        <div>
+          <div className="mb-2 font-bold text-ink">I. Phân loại tai nạn lao động theo mức độ thương tật</div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[11px]">
+              <thead>
+                <tr>
+                  <th className={`${CT_TH} text-left min-w-[200px]`} rowSpan={4}>Tên chỉ tiêu thống kê</th>
+                  <th className={`${CT_TH} w-[50px]`} rowSpan={4}>Mã số</th>
+                  <th className={CT_TH} colSpan={11}>Phân loại TNLĐ theo mức độ thương tật</th>
+                </tr>
+                <tr>
+                  <th className={CT_TH} colSpan={3}>Số vụ (Vụ)</th>
+                  <th className={CT_TH} colSpan={8}>Số người bị nạn (Người)</th>
+                </tr>
+                <tr>
+                  <th className={CT_TH} rowSpan={2}>Tổng số</th>
+                  <th className={CT_TH} rowSpan={2}>Số vụ có người chết</th>
+                  <th className={CT_TH} rowSpan={2}>Số vụ ≥ 2 người bị nạn</th>
+                  <th className={CT_TH} colSpan={2}>Tổng số</th>
+                  <th className={CT_TH} colSpan={2}>Số LĐ nữ</th>
+                  <th className={CT_TH} colSpan={2}>Số người bị chết</th>
+                  <th className={CT_TH} colSpan={2}>Số người bị thương nặng</th>
+                </tr>
+                <tr>
+                  <th className={CT_TH}>Tổng số</th>
+                  <th className={CT_TH}>KQL</th>
+                  <th className={CT_TH}>Tổng số</th>
+                  <th className={CT_TH}>KQL</th>
+                  <th className={CT_TH}>Tổng số</th>
+                  <th className={CT_TH}>KQL</th>
+                  <th className={CT_TH}>Tổng số</th>
+                  <th className={CT_TH}>KQL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {calculatedDetailRows.map((row: any, idx: number) => {
+                  if (row.kind === "sub") {
+                    return (
+                      <tr key={idx}>
+                        <td className={`${CT_TD} text-left ${row.bold ? "font-semibold" : "italic"}`} colSpan={13}>
+                          {row.label}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  if (row.kind === "section") {
+                    return (
+                      <tr key={idx} className="bg-[#f9fafb]">
+                        <td className={`${CT_TD} text-left font-bold`} colSpan={13}>
+                          {row.label}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  const vals = (row.vals ?? []) as number[];
+                  return (
+                    <tr key={idx}>
+                      <td className={`${CT_TD} text-left`}>{row.label}</td>
+                      <td className={CT_TD}>{row.ma || ""}</td>
+                      {vals.map((v, i) => (
+                        <td key={i} className={CT_TD}>{v ?? 0}</td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-2 font-bold text-ink">II. Thiệt hại do tai nạn lao động</div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[11px]">
+              <thead>
+                <tr>
+                  <th className={`${CT_TH} text-left min-w-[200px]`} rowSpan={3}>
+                    Tổng số ngày nghỉ vì TNLĐ
+                  </th>
+                  <th className={CT_TH} colSpan={4}>Chi phí TNLĐ (1.000đ)</th>
+                  <th className={CT_TH} rowSpan={3}>Thiệt hại tài sản (1.000đ)</th>
+                </tr>
+                <tr>
+                  <th className={CT_TH} rowSpan={2}>Tổng số</th>
+                  <th className={CT_TH} colSpan={3}>Khoản chi cụ thể</th>
+                </tr>
+                <tr>
+                  <th className={CT_TH}>Y tế</th>
+                  <th className={CT_TH}>Trả lương điều trị</th>
+                  <th className={CT_TH}>Bồi thường trợ cấp</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className={CT_TD}>{r.soNgayNghi ?? 0}</td>
+                  <td className={CT_TD}>{fmtMoney(r.tongSoTien ?? 0)}</td>
+                  <td className={CT_TD}>{fmtMoney(r.chiPhiYTe ?? 0)}</td>
+                  <td className={CT_TD}>{fmtMoney(r.chiPhiTraLuong ?? 0)}</td>
+                  <td className={CT_TD}>{fmtMoney(r.boiThuongTroCap ?? 0)}</td>
+                  <td className={CT_TD}>{fmtMoney(r.thiethaiTaiSan ?? 0)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -1665,7 +1989,7 @@ export default function AccidentReportPage() {
           <span className="text-[13px] text-[#374151]">dữ liệu được chọn</span>
           <button
             type="button"
-            onClick={() => setRejectOpen(true)}
+            onClick={handleStartReject}
             disabled={disableReject}
             className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
           >
@@ -1684,7 +2008,7 @@ export default function AccidentReportPage() {
           </button>
           <button
             type="button"
-            onClick={approveSelected}
+            onClick={handleStartApprove}
             disabled={disableApprove}
             className="flex h-8 items-center gap-1.5 rounded-md bg-success px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-success"
           >
@@ -1748,13 +2072,17 @@ export default function AccidentReportPage() {
         <label className="mb-1.5 block text-[12.5px] text-[#374151]">
           Lý do từ chối <span className="text-danger">*</span>
         </label>
-        <textarea
-          className="min-h-22.5 w-full rounded-md border border-line px-3 py-2 text-[13px] text-ink outline-none focus:border-[#3b82f6] resize-none"
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="Nhập lý do từ chối báo cáo..."
-        />
       </Modal>
+
+      {/* Modal duyệt / từ chối hàng loạt tập trung */}
+      <BulkReviewModal
+        open={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        items={selectedReportItems}
+        defaultAction={bulkDefaultAction}
+        onConfirm={handleBulkConfirm}
+        renderDetail={renderAccidentReportDetailContent}
+      />
 
       {/* Modal xem lịch sử xử lý (trong view chi tiết) */}
       <Modal

@@ -399,9 +399,18 @@ export default function EnterpriseSignReportPage() {
     }
   }, [fNgayBatDau, fNgayCapNhat]);
 
+  const isCreatedThisYear = useMemo(() => {
+    if (!businessDetail?.createdAt) return true;
+    const createdYear = new Date(businessDetail.createdAt).getFullYear();
+    const currentYear = new Date().getFullYear();
+    return createdYear === currentYear;
+  }, [businessDetail?.createdAt]);
+
   const filtered = useMemo(() => {
+    const currentYear = new Date().getFullYear();
     const bothFilled = !!(fNgayBatDau && fNgayCapNhat);
     return reports.filter((r) => {
+      if (isCreatedThisYear && r.nam && r.nam !== currentYear) return false;
       if (fStatus && r.status !== fStatus) return false;
       if (fTen && !(r.ten || "").toLowerCase().includes(fTen.toLowerCase()))
         return false;
@@ -437,6 +446,7 @@ export default function EnterpriseSignReportPage() {
     });
   }, [
     reports,
+    isCreatedThisYear,
     fStatus,
     fTen,
     fNgayBatDau,
@@ -651,6 +661,13 @@ export default function EnterpriseSignReportPage() {
                           <option value="" className="text-ink bg-white">Tất cả</option>
                           {(() => {
                             const maxYear = new Date().getFullYear();
+                            if (isCreatedThisYear) {
+                              return (
+                                <option value={String(maxYear)} className="text-ink bg-white">
+                                  {maxYear}
+                                </option>
+                              );
+                            }
                             const years = [];
                             for (let y = maxYear; y >= 2022; y--) {
                               years.push(y);
