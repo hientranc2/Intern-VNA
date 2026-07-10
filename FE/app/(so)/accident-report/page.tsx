@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Tooltip from "@mui/material/Tooltip";
 import { TriCheckbox } from "@/libs/shared/core/components/TriCheckbox/TriCheckbox";
 import { Modal } from "@/libs/shared/core/components/Modal/Modal";
@@ -128,6 +129,8 @@ const formatTime = (dStr?: string | null): string => {
 };
 
 export default function AccidentReportPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [view, setView] = useState<ViewMode>("list");
   const [reports, setReports] = useState<AccidentReport[]>([]);
   const [dbFactors, setDbFactors] = useState<{ ten: string; ma: string }[]>([]);
@@ -187,6 +190,30 @@ export default function AccidentReportPage() {
       .then((res) => setReports(res.data))
       .catch(() => {});
   }, [year]);
+
+  useEffect(() => {
+    const reportIdParam = searchParams.get("reportId");
+    if (!reportIdParam) return;
+
+    const id = Number(reportIdParam);
+    if (!Number.isFinite(id) || id <= 0) return;
+
+    const existing = reports.find((report) => report.id === id);
+    if (existing) {
+      setViewingReport(existing);
+      setView("detail");
+      return;
+    }
+
+    getAccidentReportById(id)
+      .then((fullReport) => {
+        setViewingReport(fullReport);
+        setView("detail");
+      })
+      .catch(() => {
+        setToast({ message: "Không thể tải chi tiết báo cáo", variant: "error" });
+      });
+  }, [reports, searchParams]);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState<{
@@ -696,13 +723,9 @@ export default function AccidentReportPage() {
     [reports, selectedIds],
   );
 
-  // Nháp ("Đang báo cáo") chưa nộp → không cho duyệt lẫn từ chối.
+  // Nháp ("Đang báo cáo") chưa nộp → không cho duyệt.
   // "Đã tiếp nhận" = đã duyệt rồi → không cho duyệt lại.
-  // "Từ chối" rồi → không cho từ chối lại.
   const disableApprove = selectedReports.some((r) => r.tt !== "Đã nộp");
-  const disableReject = selectedReports.some(
-    (r) => r.tt !== "Đã nộp" && r.tt !== "Đã tiếp nhận",
-  );
 
   const toggleSelectAll = () => {
     const enabledIds = enabledPaged.map((r) => r.id);
@@ -1663,25 +1686,18 @@ export default function AccidentReportPage() {
             {selectedIds.size}
           </span>
           <span className="text-[13px] text-[#374151]">dữ liệu được chọn</span>
-          <button
-            type="button"
-            onClick={() => setRejectOpen(true)}
-            disabled={disableReject}
-            className="flex h-8 items-center gap-1.5 rounded-md bg-danger px-3.5 text-[12.5px] font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-danger"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+          {selectedIds.size > 1 ? (
+            <button
+              type="button"
+              onClick={() => {
+                const ids = Array.from(selectedIds).join(",");
+                router.push(`/accident-report/review?ids=${ids}`);
+              }}
+              className="flex h-8 items-center gap-1.5 rounded-md border border-primary bg-white px-3.5 text-[12.5px] font-semibold text-primary hover:bg-[#eff6ff]"
             >
-              <polyline points="1 4 1 10 7 10" />
-              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-            </svg>
-            Từ chối
-          </button>
+              Xem chọn nhiều
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={approveSelected}
