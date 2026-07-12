@@ -268,21 +268,29 @@ export default function AccidentReportPage() {
   const handleStartReject = () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    sessionStorage.setItem(
-      "bulk_review_accident_reports",
-      JSON.stringify({ ids, defaultAction: "reject" })
-    );
-    router.push("/accident-report/bulk-review");
+    if (ids.length === 1) {
+      setRejectOpen(true);
+    } else {
+      sessionStorage.setItem(
+        "bulk_review_accident_reports",
+        JSON.stringify({ ids, defaultAction: "reject" })
+      );
+      router.push("/accident-report/bulk-review");
+    }
   };
 
   const handleStartApprove = () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    sessionStorage.setItem(
-      "bulk_review_accident_reports",
-      JSON.stringify({ ids, defaultAction: "approve" })
-    );
-    router.push("/accident-report/bulk-review");
+    if (ids.length === 1) {
+      approveSelected();
+    } else {
+      sessionStorage.setItem(
+        "bulk_review_accident_reports",
+        JSON.stringify({ ids, defaultAction: "approve" })
+      );
+      router.push("/accident-report/bulk-review");
+    }
   };
 
   const approveSelected = async () => {
@@ -2062,16 +2070,25 @@ export default function AccidentReportPage() {
             <button
               type="button"
               onClick={confirmReject}
-              className="h-9.5 rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626]"
+              disabled={!rejectReason.trim()}
+              className="h-9.5 rounded-md bg-danger px-6 text-sm font-semibold text-white hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Xác nhận từ chối
             </button>
           </div>
         }
       >
-        <label className="mb-1.5 block text-[12.5px] text-[#374151]">
-          Lý do từ chối <span className="text-danger">*</span>
-        </label>
+        <div className="flex flex-col gap-2">
+          <label className="mb-1 block text-[12.5px] text-[#374151]">
+            Lý do từ chối <span className="text-danger">*</span>
+          </label>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Nhập lý do từ chối..."
+            className="min-h-[90px] w-full rounded-md border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[#3b82f6] resize-none"
+          />
+        </div>
       </Modal>
 
       {/* Modal duyệt / từ chối hàng loạt tập trung */}

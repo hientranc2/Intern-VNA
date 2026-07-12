@@ -83,7 +83,6 @@ INSERT INTO report_configs (nam, ten, ky, bat_dau, ket_thuc, active)
 SELECT v.nam, v.ten, v.ky, v.bat_dau, v.ket_thuc, v.active
 FROM (VALUES
   ('2022', 'Báo cáo tai nạn lao động', 'Cả năm', '15/12/2023', '10/01/2024', true),
-  ('2022', 'Báo cáo TNLĐ',            '6 tháng', '01/07/2022', '15/07/2022', true),
   ('2023', 'Báo cáo tai nạn lao động', 'Cả năm', '01/01/2024', '28/02/2024', false)
 ) AS v(nam, ten, ky, bat_dau, ket_thuc, active)
 WHERE NOT EXISTS (

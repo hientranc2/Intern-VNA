@@ -344,7 +344,7 @@ export class AccidentReportService {
         config = this.configRepo.create({
           nam: dto.nam,
           ky: dto.ky,
-          ten: `Báo cáo TNLĐ ${dto.nam} (${dto.ky})`,
+          ten: 'Báo cáo tai nạn lao động',
           batDau,
           ketThuc,
           active: true,

@@ -349,20 +349,63 @@ export default function EnterprisePage() {
         const cleanKey = k.replace(/\s*\*\s*$/, "").trim();
         normalizedRow[cleanKey] = String(row[k] ?? "").trim();
       }
+
+      const rawRegProvince = normalizedRow["Tỉnh ĐKKD"] || normalizedRow["Tỉnh/Thành ĐKKD"] || "";
+      const regProvince = PROVINCES.find(p => {
+        const normP = p.toLowerCase().replace(/^(thành phố|tỉnh)\s+/, '').trim();
+        const normRaw = rawRegProvince.toLowerCase().replace(/^(thành phố|tp\.?|tỉnh)\s+/, '').trim();
+        return normP === normRaw || p.toLowerCase() === rawRegProvince.toLowerCase() || normP === rawRegProvince.toLowerCase();
+      }) || rawRegProvince;
+
+      const rawRegWard = normalizedRow["Phường ĐKKD"] || normalizedRow["Phường/Xã ĐKKD"] || "";
+      let regWard = rawRegWard;
+      if (regProvince && rawRegWard) {
+        const validWards = WARDS_BY_PROVINCE[regProvince] ?? [];
+        const matched = validWards.find(w => {
+          const normW = w.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/, '').trim();
+          const normRawW = rawRegWard.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/, '').trim();
+          return normW === normRawW || w.toLowerCase() === rawRegWard.toLowerCase() || normW === rawRegWard.toLowerCase();
+        });
+        if (matched) {
+          regWard = matched;
+        }
+      }
+
+      const rawOpProvince = normalizedRow["Tỉnh hoạt động"] || normalizedRow["Tỉnh/Thành hoạt động"] || "";
+      const opProvince = PROVINCES.find(p => {
+        const normP = p.toLowerCase().replace(/^(thành phố|tỉnh)\s+/, '').trim();
+        const normRaw = rawOpProvince.toLowerCase().replace(/^(thành phố|tp\.?|tỉnh)\s+/, '').trim();
+        return normP === normRaw || p.toLowerCase() === rawOpProvince.toLowerCase() || normP === rawOpProvince.toLowerCase();
+      }) || rawOpProvince;
+
+      const rawOpWard = normalizedRow["Phường hoạt động"] || normalizedRow["Phường/Xã hoạt động"] || "";
+      let opWard = rawOpWard;
+      if (opProvince && rawOpWard) {
+        const validWards = WARDS_BY_PROVINCE[opProvince] ?? [];
+        const matched = validWards.find(w => {
+          const normW = w.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/, '').trim();
+          const normRawW = rawOpWard.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/, '').trim();
+          return normW === normRawW || w.toLowerCase() === rawOpWard.toLowerCase() || normW === rawOpWard.toLowerCase();
+        });
+        if (matched) {
+          opWard = matched;
+        }
+      }
+
       return {
         "Tên doanh nghiệp":      normalizedRow["Tên doanh nghiệp"]      || normalizedRow["Tên công ty"]          || "",
         "Mã số thuế":            normalizedRow["Mã số thuế"]            || normalizedRow["MST"]                  || "",
         "Loại hình kinh doanh":  normalizedRow["Loại hình kinh doanh"]  || normalizedRow["Loại hình KD"]         || "",
         "Ngành nghề kinh doanh": normalizedRow["Ngành nghề kinh doanh"] || normalizedRow["Ngành nghề KD"]        || "",
         "Ngày cấp GPKD":         normalizedRow["Ngày cấp GPKD"]                                                 || "",
-        "Tỉnh ĐKKD":             normalizedRow["Tỉnh ĐKKD"]             || normalizedRow["Tỉnh/Thành ĐKKD"]      || "",
-        "Phường ĐKKD":           normalizedRow["Phường ĐKKD"]           || normalizedRow["Phường/Xã ĐKKD"]       || "",
+        "Tỉnh ĐKKD":             regProvince,
+        "Phường ĐKKD":           regWard,
         "Địa chỉ":               normalizedRow["Địa chỉ"]                                                       || "",
         "Tên tiếng nước ngoài":  normalizedRow["Tên tiếng nước ngoài"]                                          || "",
         "Email":                 normalizedRow["Email"]                  || normalizedRow["E-mail"]               || "",
         "SĐT văn phòng":         normalizedRow["SĐT văn phòng"]         || normalizedRow["Điện thoại văn phòng"] || "",
-        "Tỉnh hoạt động":        normalizedRow["Tỉnh hoạt động"]        || normalizedRow["Tỉnh/Thành hoạt động"] || "",
-        "Phường hoạt động":      normalizedRow["Phường hoạt động"]      || normalizedRow["Phường/Xã hoạt động"]  || "",
+        "Tỉnh hoạt động":        opProvince,
+        "Phường hoạt động":      opWard,
         "Địa chỉ hoạt động":     normalizedRow["Địa chỉ hoạt động"]                                             || "",
         "Người đại diện":        normalizedRow["Người đại diện"]                                                 || "",
         "SĐT đại diện":          normalizedRow["SĐT đại diện"]          || normalizedRow["Điện thoại đại diện"]  || "",
@@ -2210,7 +2253,7 @@ export default function EnterprisePage() {
       {/* Modal Preview & Sửa lỗi Import */}
       {importPreviewOpen && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/45 transition-opacity duration-200">
-          <div className="w-11/12 max-w-7xl h-[85vh] flex flex-col overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+          <div className="w-[98vw] max-w-[1800px] h-[85vh] flex flex-col overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
             <div className="bg-primary px-6 py-4 flex items-center justify-between">
               <h3 className="text-base font-semibold text-white">
                 Kiểm tra dữ liệu Import Doanh nghiệp: {importFileName}

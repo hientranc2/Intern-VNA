@@ -58,16 +58,16 @@ const SECTORS = [
 
 // Mỗi role một user đại diện: [usernameSuffix, fullName, jobTitle, roleId, roleString].
 const ROLE_USERS = [
-  ['manager', 'Lê Quang Đại', 'Trưởng phòng', 1, 'USER'],
-  ['employee', 'Phạm Thị Mai', 'Cán bộ', 2, 'USER'],
-  ['ceo', 'Trần Hữu Phước', 'Tổng giám đốc', 3, 'USER'],
-  ['ketoan', 'Nguyễn Thị Lan', 'Kế toán trưởng', 4, 'USER'],
-  ['nhansu', 'Đỗ Văn Hùng', 'Trưởng phòng nhân sự', 5, 'USER'],
-  ['thamdinh', 'Vũ Minh Tuấn', 'Cán bộ thẩm định', 6, 'USER'],
-  ['chinhanh', 'Hoàng Thị Thu', 'Quản lý chi nhánh', 7, 'USER'],
-  ['antoan', 'Bùi Văn Sơn', 'Giám sát an toàn', 8, 'USER'],
-  ['thuky', 'Ngô Thị Hạnh', 'Thư ký', 9, 'USER'],
-  ['quantri2', 'Đặng Quốc Bảo', 'Quản trị viên hệ thống', 10, 'ADMIN'],
+  ['manager', 'Lê Quang Đại', 'Trưởng phòng', 'Role1', 'USER'],
+  ['employee', 'Phạm Thị Mai', 'Cán bộ', 'Role2', 'USER'],
+  ['ceo', 'Trần Hữu Phước', 'Tổng giám đốc', 'Role3', 'USER'],
+  ['ketoan', 'Nguyễn Thị Lan', 'Kế toán trưởng', 'Role4', 'USER'],
+  ['nhansu', 'Đỗ Văn Hùng', 'Trưởng phòng nhân sự', 'Role5', 'USER'],
+  ['thamdinh', 'Vũ Minh Tuấn', 'Cán bộ thẩm định', 'Role6', 'USER'],
+  ['chinhanh', 'Hoàng Thị Thu', 'Quản lý chi nhánh', 'Role7', 'USER'],
+  ['antoan', 'Bùi Văn Sơn', 'Giám sát an toàn', 'Role8', 'USER'],
+  ['thuky', 'Ngô Thị Hạnh', 'Thư ký', 'Role9', 'USER'],
+  ['quantri2', 'Đặng Quốc Bảo', 'Quản trị viên hệ thống', 'Role10', 'ADMIN'],
 ];
 
 // Doanh nghiệp seed: [tên, loại hình, ngành (cap4 ten)].
@@ -105,9 +105,16 @@ async function seedSectors(c) {
 }
 
 async function seedRoleUsers(c, hash) {
+  const rolesRes = await c.query('SELECT id, ma FROM roles');
+  const roleMap = {};
+  for (const r of rolesRes.rows) {
+    roleMap[r.ma] = r.id;
+  }
+
   let n = 0;
-  for (const [suffix, fullName, jobTitle, roleId, roleStr] of ROLE_USERS) {
+  for (const [suffix, fullName, jobTitle, roleCode, roleStr] of ROLE_USERS) {
     const username = `role_${suffix}`;
+    const roleId = roleMap[roleCode] ?? null;
     const r = await c.query(
       `INSERT INTO users (username, password, email, full_name, job_title, role, role_id, is_active)
        VALUES ($1,$2,$3,$4,$5,$6,$7,true)
@@ -160,26 +167,31 @@ async function seedBusinesses(c, hash) {
 async function getConfigByYear(c) {
   const map = {};
   for (const y of YEARS) {
-    let r = await c.query(
-      `SELECT id FROM report_configs WHERE nam=$1 AND ky='Cả năm' ORDER BY id LIMIT 1`,
-      [String(y)],
-    );
-    if (r.rowCount === 0) {
-      const ins = await c.query(
-        `INSERT INTO report_configs (nam, ten, ky, bat_dau, ket_thuc, active)
-         VALUES ($1, 'Báo cáo tai nạn lao động', 'Cả năm', $2, $3, true) RETURNING id`,
-        [String(y), `15/12/${y}`, `10/01/${Number(y) + 1}`]
+    for (const ky of ['Cả năm', '6 tháng']) {
+      let r = await c.query(
+        `SELECT id FROM report_configs WHERE nam=$1 AND ky=$2 ORDER BY id LIMIT 1`,
+        [String(y), ky],
       );
-      map[y] = ins.rows[0].id;
-      console.log(`+ Tự động thêm report_config cho năm ${y}`);
-    } else {
-      map[y] = r.rows[0].id;
+      const key = `${y}_${ky}`;
+      if (r.rowCount === 0) {
+        const batDau = ky === '6 tháng' ? `01/01/${y}` : `15/12/${y}`;
+        const ketThuc = ky === '6 tháng' ? `29/06/${y}` : `10/01/${Number(y) + 1}`;
+        const ins = await c.query(
+          `INSERT INTO report_configs (nam, ten, ky, bat_dau, ket_thuc, active)
+           VALUES ($1, 'Báo cáo tai nạn lao động', $2, $3, $4, true) RETURNING id`,
+          [String(y), ky, batDau, ketThuc]
+        );
+        map[key] = ins.rows[0].id;
+        console.log(`+ Tự động thêm report_config cho năm ${y} (${ky})`);
+      } else {
+        map[key] = r.rows[0].id;
+      }
     }
   }
   return map;
 }
 
-async function seedAccidentReports(c, businesses, cfgByYear) {
+async function seedAccidentReports(c, businesses, cfgMap) {
   // Xóa report cũ của DN seed (theo enterprise_id) để idempotent
   await c.query(`DELETE FROM accident_reports WHERE enterprise_id = ANY($1)`, [
     businesses.map((b) => b.id),
@@ -192,67 +204,73 @@ async function seedAccidentReports(c, businesses, cfgByYear) {
       const y = YEARS[yi];
       // Mỗi DN vắng mặt đúng 1 năm khác nhau (bi%4) → tập DN mỗi năm khác nhau, filter nhìn rõ.
       if (bi % 4 === yi) continue;
-      const cfg = cfgByYear[y];
-      if (!cfg) continue;
-      const status = STATUSES_TNLD[seed % STATUSES_TNLD.length];
-      
-      const soVu = ri(seed * 1.7, 5);
-      const soVuCoNguoiChet = soVu > 0 ? ri(seed * 2.1, soVu) : 0;
-      const soNguoiBiNan = soVu > 0 ? soVu + ri(seed, 3) : 0;
-      const soLDNu = soNguoiBiNan > 0 ? ri(seed + 5, soNguoiBiNan) : 0;
-      const soNguoiBiChet = soVuCoNguoiChet > 0 ? ri(seed * 3.3, soVuCoNguoiChet) : 0;
-      const soNgayNghi = soVu * 10;
-      const tongSoTien = soVu > 0 ? 1000000 * (1 + ri(seed, 20)) : 0;
 
-      const chiPhiYTe = Math.floor(tongSoTien / 3);
-      const chiPhiTraLuong = Math.floor(tongSoTien / 3);
-      const boiThuongTroCap = tongSoTien - chiPhiYTe - chiPhiTraLuong;
-      const thiethaiTaiSan = soVu > 0 ? 1000000 * ri(seed, 5) : 0;
+      for (const ky of ['Cả năm', '6 tháng']) {
+        const cfgKey = `${y}_${ky}`;
+        const cfg = cfgMap[cfgKey];
+        if (!cfg) continue;
+        const status = STATUSES_TNLD[seed % STATUSES_TNLD.length];
 
-      const vals = [
-        soVu,
-        soVuCoNguoiChet,
-        0,
-        soNguoiBiNan,
-        soLDNu,
-        soNguoiBiChet,
-        soNguoiBiNan - soNguoiBiChet,
-        soNgayNghi,
-        tongSoTien,
-        chiPhiYTe,
-        chiPhiTraLuong,
-        boiThuongTroCap,
-        thiethaiTaiSan
-      ];
+        const soVu = ri(seed * 1.7, 5);
+        const soVuCoNguoiChet = soVu > 0 ? ri(seed * 2.1, soVu) : 0;
+        const soNguoiBiNan = soVu > 0 ? soVu + ri(seed, 3) : 0;
+        const soLDNu = soNguoiBiNan > 0 ? ri(seed + 5, soNguoiBiNan) : 0;
+        const soNguoiBiChet = soVuCoNguoiChet > 0 ? ri(seed * 3.3, soVuCoNguoiChet) : 0;
+        const soNgayNghi = soVu * 10;
+        const tongSoTien = soVu > 0 ? 1000000 * (1 + ri(seed, 20)) : 0;
 
-      const phanLoaiRows = {};
-      for (let m = 1; m <= 24; m++) {
-        phanLoaiRows[String(m)] = Array(13).fill(0);
+        const chiPhiYTe = Math.floor(tongSoTien / 3);
+        const chiPhiTraLuong = Math.floor(tongSoTien / 3);
+        const boiThuongTroCap = tongSoTien - chiPhiYTe - chiPhiTraLuong;
+        const thiethaiTaiSan = soVu > 0 ? 1000000 * ri(seed, 5) : 0;
+
+        const vals = [
+          soVu,
+          soVuCoNguoiChet,
+          0,
+          soNguoiBiNan,
+          soLDNu,
+          soNguoiBiChet,
+          soNguoiBiNan - soNguoiBiChet,
+          soNgayNghi,
+          tongSoTien,
+          chiPhiYTe,
+          chiPhiTraLuong,
+          boiThuongTroCap,
+          thiethaiTaiSan
+        ];
+
+        const phanLoaiRows = {};
+        for (let m = 1; m <= 24; m++) {
+          phanLoaiRows[String(m)] = Array(13).fill(0);
+        }
+        phanLoaiRows['2'] = vals;
+        phanLoaiRows['16'] = vals;
+        phanLoaiRows['24'] = vals;
+
+        const phanLoaiJson = JSON.stringify(phanLoaiRows);
+        const submittedDate = ky === '6 tháng' ? `${y}-06-20` : `${y}-12-28`;
+
+        await c.query(
+          `INSERT INTO accident_reports
+             (enterprise_id, config_id, ten, mst, ky, status, rows, chi_tiet_rows, phan_loai_rows,
+              province, ward, loai_hinh, so_lao_dong, so_ld_co_bao_hiem, so_vu, so_vu_co_nguoi_chet,
+              so_nguoi_bi_nan, so_ld_nu, so_nguoi_bi_chet, so_ngay_nghi, tong_so_tien, submitted_at)
+           VALUES ($1,$2,$3,$4,$21,$5,$6::jsonb,'[]'::jsonb,$7::jsonb,$8,$9,$10,
+              $11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+          [
+            b.id, cfg, b.name, b.tax, status, phanLoaiJson, phanLoaiJson, b.province, b.ward, b.type,
+            50 + ri(seed, 200), 40 + ri(seed + 1, 150), soVu, soVuCoNguoiChet,
+            soNguoiBiNan, soLDNu, soNguoiBiChet, soNgayNghi,
+            tongSoTien, status === 'Đang báo cáo' ? null : new Date(submittedDate),
+            ky
+          ],
+        );
+        n++; seed++;
       }
-      phanLoaiRows['2'] = vals;
-      phanLoaiRows['16'] = vals;
-      phanLoaiRows['24'] = vals;
-
-      const phanLoaiJson = JSON.stringify(phanLoaiRows);
-
-      await c.query(
-        `INSERT INTO accident_reports
-           (enterprise_id, config_id, ten, mst, ky, status, rows, chi_tiet_rows, phan_loai_rows,
-            province, ward, loai_hinh, so_lao_dong, so_ld_co_bao_hiem, so_vu, so_vu_co_nguoi_chet,
-            so_nguoi_bi_nan, so_ld_nu, so_nguoi_bi_chet, so_ngay_nghi, tong_so_tien, submitted_at)
-         VALUES ($1,$2,$3,$4,'Cả năm',$5,$6::jsonb,'[]'::jsonb,$7::jsonb,$8,$9,$10,
-            $11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
-        [
-          b.id, cfg, b.name, b.tax, status, phanLoaiJson, phanLoaiJson, b.province, b.ward, b.type,
-          50 + ri(seed, 200), 40 + ri(seed + 1, 150), soVu, soVuCoNguoiChet,
-          soNguoiBiNan, soLDNu, soNguoiBiChet, soNgayNghi,
-          tongSoTien, status === 'Đang báo cáo' ? null : new Date(`${y}-07-15`),
-        ],
-      );
-      n++; seed++;
     }
   }
-  console.log(`✓ accident_reports seed: +${n} báo cáo TNLĐ (DN seed, 2022..2026, đủ trạng thái)`);
+  console.log(`✓ accident_reports seed: +${n} báo cáo TNLĐ (DN seed, 2022..2026, 6 tháng + Cả năm, đủ trạng thái)`);
 }
 
 async function seedAtvsldReports(c, businesses) {

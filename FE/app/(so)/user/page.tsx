@@ -413,14 +413,35 @@ export default function UserPage() {
         return "";
       };
 
+      const rawProvince = pick(['Tỉnh/Thành', 'Tỉnh', 'Thành phố']);
+      const matchedProvince = PROVINCES.find(p => {
+        const normP = p.toLowerCase().replace(/^(thành phố|tỉnh)\s+/, '').trim();
+        const normRaw = rawProvince.toLowerCase().replace(/^(thành phố|tp\.?|tỉnh)\s+/, '').trim();
+        return normP === normRaw || p.toLowerCase() === rawProvince.toLowerCase() || normP === rawProvince.toLowerCase();
+      }) || rawProvince;
+
+      const rawWard = pick(['Phường/Xã', 'Phường', 'Xã']);
+      let matchedWard = rawWard;
+      if (matchedProvince && rawWard) {
+        const validWards = WARDS_BY_PROVINCE[matchedProvince] ?? [];
+        const matched = validWards.find(w => {
+          const normW = w.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/, '').trim();
+          const normRawW = rawWard.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/, '').trim();
+          return normW === normRawW || w.toLowerCase() === rawWard.toLowerCase() || normW === rawWard.toLowerCase();
+        });
+        if (matched) {
+          matchedWard = matched;
+        }
+      }
+
       return {
         'Tên đăng nhập': pick(['Tên đăng nhập', 'Username', 'Tài khoản']),
         'Họ và tên': pick(['Họ và tên', 'Họ tên', 'Tên đầy đủ']),
         'Email': pick(['Email', 'E-mail']),
         'Vai trò': pick(['Vai trò', 'Role']),
         'Chức danh': pick(['Chức danh', 'Chức vụ']),
-        'Tỉnh/Thành': pick(['Tỉnh/Thành', 'Tỉnh', 'Thành phố']),
-        'Phường/Xã': pick(['Phường/Xã', 'Phường', 'Xã']),
+        'Tỉnh/Thành': matchedProvince,
+        'Phường/Xã': matchedWard,
         'Địa chỉ': pick(['Địa chỉ']),
         'Ngày sinh': pick(['Ngày sinh']),
         'Giới tính': pick(['Giới tính']),
@@ -1844,7 +1865,7 @@ export default function UserPage() {
       {/* Modal Preview & Sửa lỗi Import */}
       {importPreviewOpen && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/45 transition-opacity duration-200">
-          <div className="w-11/12 max-w-6xl h-[85vh] flex flex-col overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+          <div className="w-[95vw] max-w-[1400px] h-[85vh] flex flex-col overflow-hidden rounded-[10px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
             <div className="bg-primary px-6 py-4 flex items-center justify-between">
               <h3 className="text-base font-semibold text-white">Kiểm tra dữ liệu Import: {importFileName}</h3>
               <button
