@@ -259,7 +259,7 @@ export class AuthService {
   <!-- Phần Logo / Header -->
   <div style="text-align: center; border-bottom: 2px solid #f4f4f4; padding-bottom: 20px;">
     <!-- Hình ảnh Logo -->
-    <img src="https://ziroujfjpyvswzjjsorf.supabase.co/storage/v1/object/public/assets/khong%20nen%20_%20sang.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
+    <img src="https://pzaceeeibgpscehvwzom.supabase.co/storage/v1/object/public/assets/logo.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
     <!-- Dòng chữ VNA GROUP -->
     <div style="color: #c49a45; font-size: 18px; font-weight: bold; letter-spacing: 2px;">
       
@@ -345,7 +345,7 @@ export class AuthService {
     const htmlTemplate = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
   <div style="text-align: center; border-bottom: 2px solid #f4f4f4; padding-bottom: 20px;">
-    <img src="https://ziroujfjpyvswzjjsorf.supabase.co/storage/v1/object/public/assets/khong%20nen%20_%20sang.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
+    <img src="https://pzaceeeibgpscehvwzom.supabase.co/storage/v1/object/public/assets/logo.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
   </div>
   <div style="padding: 20px 0; color: #333; line-height: 1.6;">
     <h2 style="color: #002b5e;">Xin chào, ${business.businessName}</h2>
@@ -491,7 +491,7 @@ export class AuthService {
       const htmlTemplate = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
   <div style="text-align: center; border-bottom: 2px solid #f4f4f4; padding-bottom: 20px;">
-    <img src="https://ziroujfjpyvswzjjsorf.supabase.co/storage/v1/object/public/assets/khong%20nen%20_%20sang.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
+    <img src="https://pzaceeeibgpscehvwzom.supabase.co/storage/v1/object/public/assets/logo.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
   </div>
   <div style="padding: 20px 0; color: #333; line-height: 1.6;">
     <h2 style="color: #002b5e;">Xin chào, ${user.fullName || user.username}</h2>
@@ -543,7 +543,7 @@ export class AuthService {
     const htmlTemplate = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
   <div style="text-align: center; border-bottom: 2px solid #f4f4f4; padding-bottom: 20px;">
-    <img src="https://ziroujfjpyvswzjjsorf.supabase.co/storage/v1/object/public/assets/khong%20nen%20_%20sang.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
+    <img src="https://pzaceeeibgpscehvwzom.supabase.co/storage/v1/object/public/assets/logo.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
   </div>
   <div style="padding: 20px 0; color: #333; line-height: 1.6;">
     <h2 style="color: #002b5e;">Xin chào, ${business.businessName}</h2>
@@ -677,7 +677,7 @@ export class AuthService {
     const htmlTemplate = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; padding: 20px; border-radius: 8px;">
   <div style="text-align: center; border-bottom: 2px solid #f4f4f4; padding-bottom: 20px;">
-    <img src="https://ziroujfjpyvswzjjsorf.supabase.co/storage/v1/object/public/assets/khong%20nen%20_%20sang.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
+    <img src="https://pzaceeeibgpscehvwzom.supabase.co/storage/v1/object/public/assets/logo.png" alt="VNA Logo" style="max-width: 120px; height: auto; margin-bottom: 12px;" />
   </div>
   <div style="padding: 20px 0; color: #333; line-height: 1.6;">
     <h2 style="color: #002b5e;">Xác thực email đăng ký doanh nghiệp</h2>
